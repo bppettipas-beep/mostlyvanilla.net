@@ -5,6 +5,7 @@ import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 
 import java.util.*;
+import java.util.Collection;
 
 public class BalanceCommand implements CommandExecutor, TabCompleter {
 
@@ -26,7 +27,7 @@ public class BalanceCommand implements CommandExecutor, TabCompleter {
         }
 
         Player player = (Player) sender;
-        Set<String> currencies = economy.getCurrencies();
+        Collection<String> currencies = economy.getCurrencies();
 
         if (currencies.isEmpty()) {
             sender.sendMessage("§cNo currencies have been created yet.");

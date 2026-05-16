@@ -12,13 +12,11 @@ import java.util.UUID;
 
 public class PlayerBoard {
 
-    // Unique invisible entries for each sidebar line
     private static final String[] ENTRIES = {
         "§0§r", "§1§r", "§2§r", "§3§r", "§4§r", "§5§r", "§6§r",
         "§7§r", "§8§r", "§9§r", "§a§r", "§b§r", "§c§r", "§d§r"
     };
-
-    private static final int LINES = ENTRIES.length; // 14
+    private static final int LINES = ENTRIES.length;
 
     private final Scoreboard scoreboard;
     @SuppressWarnings("deprecation")
@@ -37,14 +35,9 @@ public class PlayerBoard {
             objective.getScore(ENTRIES[i]).setScore(LINES - 1 - i);
             teams[i] = team;
         }
-
         player.setScoreboard(scoreboard);
     }
 
-    /**
-     * Called every tick. Updates animated lines always; re-fetches live player
-     * data only when fullUpdate is true.
-     */
     @SuppressWarnings("deprecation")
     public void update(Player player, String title, String sep,
                        boolean fullUpdate, String currency1, String currency2,
@@ -58,23 +51,19 @@ public class PlayerBoard {
         setLine(1,  "   §a§lMostly Vanilla");
         setLine(3,  " ");
 
-        // Role from MostlyVanillaRoles plugin
         setLine(4,  " §7Role");
         setLine(5,  "  " + fetchRole(player));
         setLine(6,  "  ");
 
-        // Currencies via PlaceholderAPI → MostlyVanillaEconomy
-        setLine(7,  " §e" + capitalize(currency1) + " §8» §a" + fetchBalance(player, currency1));
-        setLine(8,  " §2" + capitalize(currency2) + " §8» §a" + fetchBalance(player, currency2));
+        setLine(7,  " §e" + currency1 + " §8» §a" + fetchBalance(player, currency1));
+        setLine(8,  " §2" + currency2 + " §8» §a" + fetchBalance(player, currency2));
         setLine(9,  "   ");
 
-        // Stats (built-in Bukkit statistics)
         int kills  = player.getStatistic(Statistic.PLAYER_KILLS);
         int deaths = player.getStatistic(Statistic.DEATHS);
         setLine(10, " §7Kills §a" + kills + "  §7Deaths §c" + deaths);
         setLine(11, " §7Playtime §f" + formatPlaytime(player.getStatistic(Statistic.PLAY_ONE_MINUTE)));
         setLine(12, "    ");
-
         setLine(13, " §7" + serverAddress);
     }
 
@@ -90,31 +79,46 @@ public class PlayerBoard {
         Plugin rolesPlugin = Bukkit.getPluginManager().getPlugin("MostlyVanillaRoles");
         if (rolesPlugin == null) return "§7Member";
         try {
-            // RoleManager rm = rolesPlugin.getRoleManager()
             Object rm = rolesPlugin.getClass().getMethod("getRoleManager").invoke(rolesPlugin);
             if (rm == null) return "§7Member";
 
-            // Try getPrefix(UUID) first — returns the &-coded prefix string
-            String prefix = (String) rm.getClass()
-                    .getMethod("getPrefix", UUID.class)
-                    .invoke(rm, player.getUniqueId());
-            if (prefix != null && !prefix.isBlank()) {
-                return ChatColor.translateAlternateColorCodes('&', prefix);
-            }
-
-            // Fall back to plain role name (getPlayerRole returns e.g. "admin")
-            String role = (String) rm.getClass()
+            String roleName = (String) rm.getClass()
                     .getMethod("getPlayerRole", UUID.class)
                     .invoke(rm, player.getUniqueId());
-            return role != null ? "§f" + capitalize(role) : "§7Member";
+            if (roleName == null) return "§7Member";
+
+            // Get the color from the role's prefix, apply it to the role name
+            String color = extractPrefixColor(rm, player.getUniqueId());
+            return color + capitalize(roleName);
         } catch (Exception ignored) {
             return "§7Member";
         }
     }
 
+    /** Pulls the first color code out of the role prefix (e.g. "&c[Admin]" → "§c"). */
+    private String extractPrefixColor(Object rm, UUID uuid) {
+        try {
+            String prefix = (String) rm.getClass()
+                    .getMethod("getPrefix", UUID.class)
+                    .invoke(rm, uuid);
+            if (prefix == null || prefix.isBlank()) return "§f";
+            String t = ChatColor.translateAlternateColorCodes('&', prefix.trim());
+            int i = 0;
+            while (i + 1 < t.length() && t.charAt(i) == '§') {
+                char code = Character.toLowerCase(t.charAt(i + 1));
+                if ("0123456789abcdef".indexOf(code) >= 0) {
+                    return "§" + code;
+                }
+                i += 2; // skip formatting codes (§l, §o, etc.) and keep looking
+            }
+        } catch (Exception ignored) {}
+        return "§f";
+    }
+
     private String fetchBalance(Player player, String currency) {
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            String result = PlaceholderAPI.setPlaceholders(player, "%economy_balance_" + currency + "%");
+            String result = PlaceholderAPI.setPlaceholders(
+                    player, "%economy_balance_" + currency.toLowerCase() + "%");
             if (result != null && !result.startsWith("%")) return result;
         }
         return "0";
@@ -130,8 +134,7 @@ public class PlayerBoard {
         long seconds = ticks / 20L;
         long hours   = seconds / 3600;
         long minutes = (seconds % 3600) / 60;
-        if (hours > 0) return hours + "h " + minutes + "m";
-        return minutes + "m";
+        return hours > 0 ? hours + "h " + minutes + "m" : minutes + "m";
     }
 
     private String capitalize(String s) {

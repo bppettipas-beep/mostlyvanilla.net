@@ -13,7 +13,6 @@ import java.util.UUID;
 
 public class BoardManager {
 
-    // Title cycles through alternating §a/§2 letter colours, then a white flash
     private static final String[] TITLE_FRAMES = {
         "§a§lM§2§lO§a§lS§2§lT§a§lL§2§lY §a§lV§2§lA§a§lN§2§lI§a§lL§2§lL§a§lA",
         "§2§lM§a§lO§2§lS§a§lT§2§lL§a§lY §2§lV§a§lA§2§lN§a§lI§2§lL§a§lL§2§lA",
@@ -23,7 +22,6 @@ public class BoardManager {
         "§f§lMOSTLY VANILLA"
     };
 
-    // Separator — dark green "spot" travels across light green ▬ bar (16 chars wide)
     private static final String[] SEP_FRAMES = {
         "§2▬▬▬▬▬§a▬▬▬▬▬▬▬▬▬▬▬",
         "§a▬▬§2▬▬▬▬▬§a▬▬▬▬▬▬▬▬",
@@ -36,31 +34,30 @@ public class BoardManager {
     };
 
     private final Plugin plugin;
-    private final String currency1;
-    private final String currency2;
+    private String currency1;
+    private String currency2;
     private final String serverAddress;
     private final int sepAnimInterval;
     private final int titleAnimInterval;
     private final int dataRefreshInterval;
 
     private final Map<UUID, PlayerBoard> boards = new HashMap<>();
-    private final Set<UUID> hidden = new HashSet<>(); // players who /sb'd off
+    private final Set<UUID> hidden = new HashSet<>();
 
     private BukkitTask task;
-    private int tick = 0;
     private int titleFrame = 0;
-    private int sepFrame = 0;
-    private int titleTick = 0;
-    private int sepTick = 0;
-    private int dataTick = 0;
+    private int sepFrame   = 0;
+    private int titleTick  = 0;
+    private int sepTick    = 0;
+    private int dataTick   = 0;
 
     public BoardManager(Plugin plugin) {
-        this.plugin            = plugin;
-        this.currency1         = plugin.getConfig().getString("currency-1", "diamonds");
-        this.currency2         = plugin.getConfig().getString("currency-2", "emeralds");
-        this.serverAddress     = plugin.getConfig().getString("server-address", "mc.mostlyvanilla.net");
-        this.sepAnimInterval   = plugin.getConfig().getInt("separator-anim-interval", 3);
-        this.titleAnimInterval = plugin.getConfig().getInt("title-anim-interval", 8);
+        this.plugin              = plugin;
+        this.currency1           = plugin.getConfig().getString("currency-1", "diamonds");
+        this.currency2           = plugin.getConfig().getString("currency-2", "emeralds");
+        this.serverAddress       = plugin.getConfig().getString("server-address", "mc.mostlyvanilla.net");
+        this.sepAnimInterval     = plugin.getConfig().getInt("separator-anim-interval", 3);
+        this.titleAnimInterval   = plugin.getConfig().getInt("title-anim-interval", 8);
         this.dataRefreshInterval = plugin.getConfig().getInt("data-refresh-interval", 40);
     }
 
@@ -70,7 +67,6 @@ public class BoardManager {
 
     public void stop() {
         if (task != null) task.cancel();
-        // Restore all players to the main scoreboard
         for (Map.Entry<UUID, PlayerBoard> entry : boards.entrySet()) {
             Player p = Bukkit.getPlayer(entry.getKey());
             entry.getValue().remove(p);
@@ -79,7 +75,6 @@ public class BoardManager {
     }
 
     private void tick() {
-        tick++;
         sepTick++;
         titleTick++;
         dataTick++;
@@ -92,7 +87,6 @@ public class BoardManager {
         if (advanceTitle) { titleTick = 0; titleFrame = (titleFrame + 1) % TITLE_FRAMES.length; }
         if (refreshData)  { dataTick  = 0; }
 
-        // Only push updates when something actually changed
         if (!advanceSep && !advanceTitle && !refreshData) return;
 
         String title = TITLE_FRAMES[titleFrame];
@@ -109,7 +103,6 @@ public class BoardManager {
         if (hidden.contains(player.getUniqueId())) return;
         PlayerBoard board = new PlayerBoard(player);
         boards.put(player.getUniqueId(), board);
-        // Immediately do a full render so the board isn't blank on join
         board.update(player, TITLE_FRAMES[titleFrame], SEP_FRAMES[sepFrame],
                 true, currency1, currency2, serverAddress);
     }
@@ -131,4 +124,21 @@ public class BoardManager {
             player.sendMessage("§cScoreboard disabled. Run §e/sb §cto bring it back.");
         }
     }
+
+    /** Changes a currency slot (1 or 2), saves to config, and forces an immediate refresh. */
+    public void setCurrency(int slot, String name) {
+        if (slot == 1) {
+            currency1 = name;
+            plugin.getConfig().set("currency-1", name);
+        } else {
+            currency2 = name;
+            plugin.getConfig().set("currency-2", name);
+        }
+        plugin.saveConfig();
+        // Trigger a data refresh on the very next tick
+        dataTick = dataRefreshInterval;
+    }
+
+    public String getCurrency1() { return currency1; }
+    public String getCurrency2() { return currency2; }
 }

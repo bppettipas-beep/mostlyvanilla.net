@@ -13,8 +13,13 @@ public class EconomyManager {
     private final MostlyVanillaEconomy plugin;
     private final File dataFolder;
 
-    private final Set<String> currencies = new HashSet<>();
+    // lowercase key → original display name (e.g. "diamonds" → "Diamonds")
+    private final Map<String, String> currencies = new LinkedHashMap<>();
+
+    // lowercase currency key → (playerUUID → balance)
     private final Map<String, Map<UUID, Double>> balances = new HashMap<>();
+
+    // stored as original display name (e.g. "Diamonds")
     private String mainCurrency = null;
 
     public EconomyManager(MostlyVanillaEconomy plugin) {
@@ -23,76 +28,67 @@ public class EconomyManager {
     }
 
     public void load() {
-        if (!dataFolder.exists()) {
-            dataFolder.mkdirs();
-        }
+        if (!dataFolder.exists()) dataFolder.mkdirs();
 
         File currenciesFile = new File(plugin.getDataFolder(), "currencies.yml");
         if (currenciesFile.exists()) {
             FileConfiguration config = YamlConfiguration.loadConfiguration(currenciesFile);
-            List<String> list = config.getStringList("currencies");
-            currencies.addAll(list);
+            for (String name : config.getStringList("currencies")) {
+                currencies.put(name.toLowerCase(), name);
+            }
             mainCurrency = config.getString("main", null);
         }
 
-        for (String currency : currencies) {
-            loadCurrencyData(currency);
+        for (String key : currencies.keySet()) {
+            loadCurrencyData(key);
         }
     }
 
-    private void loadCurrencyData(String currency) {
-        File file = new File(dataFolder, currency + ".yml");
+    private void loadCurrencyData(String key) {
+        File file = new File(dataFolder, key + ".yml");
         Map<UUID, Double> data = new HashMap<>();
         if (file.exists()) {
             FileConfiguration config = YamlConfiguration.loadConfiguration(file);
-            for (String key : config.getKeys(false)) {
-                try {
-                    data.put(UUID.fromString(key), config.getDouble(key));
-                } catch (IllegalArgumentException ignored) {}
+            for (String k : config.getKeys(false)) {
+                try { data.put(UUID.fromString(k), config.getDouble(k)); }
+                catch (IllegalArgumentException ignored) {}
             }
         }
-        balances.put(currency, data);
+        balances.put(key, data);
     }
 
     public void save() {
         saveCurrencyList();
-        for (String currency : currencies) {
-            saveCurrencyData(currency);
+        for (String key : currencies.keySet()) {
+            saveCurrencyData(key);
         }
     }
 
     private void saveCurrencyList() {
         File file = new File(plugin.getDataFolder(), "currencies.yml");
         FileConfiguration config = new YamlConfiguration();
-        config.set("currencies", new ArrayList<>(currencies));
+        config.set("currencies", new ArrayList<>(currencies.values())); // save display names
         if (mainCurrency != null) config.set("main", mainCurrency);
-        try {
-            config.save(file);
-        } catch (IOException e) {
-            plugin.getLogger().warning("Failed to save currencies.yml: " + e.getMessage());
-        }
+        try { config.save(file); }
+        catch (IOException e) { plugin.getLogger().warning("Failed to save currencies.yml: " + e.getMessage()); }
     }
 
-    private void saveCurrencyData(String currency) {
-        File file = new File(dataFolder, currency + ".yml");
+    private void saveCurrencyData(String key) {
+        File file = new File(dataFolder, key + ".yml");
         FileConfiguration config = new YamlConfiguration();
-        Map<UUID, Double> data = balances.getOrDefault(currency, Collections.emptyMap());
-        for (Map.Entry<UUID, Double> entry : data.entrySet()) {
-            config.set(entry.getKey().toString(), entry.getValue());
+        for (Map.Entry<UUID, Double> e : balances.getOrDefault(key, Collections.emptyMap()).entrySet()) {
+            config.set(e.getKey().toString(), e.getValue());
         }
-        try {
-            config.save(file);
-        } catch (IOException e) {
-            plugin.getLogger().warning("Failed to save " + currency + ".yml: " + e.getMessage());
-        }
+        try { config.save(file); }
+        catch (IOException e) { plugin.getLogger().warning("Failed to save " + key + ".yml: " + e.getMessage()); }
     }
 
     // --- Currency management ---
 
     public boolean createCurrency(String name) {
         String key = name.toLowerCase();
-        if (currencies.contains(key)) return false;
-        currencies.add(key);
+        if (currencies.containsKey(key)) return false;
+        currencies.put(key, name);
         balances.put(key, new HashMap<>());
         saveCurrencyList();
         return true;
@@ -100,10 +96,10 @@ public class EconomyManager {
 
     public boolean deleteCurrency(String name) {
         String key = name.toLowerCase();
-        if (!currencies.contains(key)) return false;
+        if (!currencies.containsKey(key)) return false;
         currencies.remove(key);
         balances.remove(key);
-        if (key.equals(mainCurrency)) mainCurrency = null;
+        if (mainCurrency != null && mainCurrency.equalsIgnoreCase(name)) mainCurrency = null;
         File file = new File(dataFolder, key + ".yml");
         if (file.exists()) file.delete();
         saveCurrencyList();
@@ -111,23 +107,27 @@ public class EconomyManager {
     }
 
     public boolean currencyExists(String name) {
-        return currencies.contains(name.toLowerCase());
+        return currencies.containsKey(name.toLowerCase());
     }
 
-    public Set<String> getCurrencies() {
-        return Collections.unmodifiableSet(currencies);
+    /** Returns display names (original casing). */
+    public Collection<String> getCurrencies() {
+        return Collections.unmodifiableCollection(currencies.values());
+    }
+
+    /** Returns the original display name for a currency (e.g. "diamonds" → "Diamonds"). */
+    public String getDisplayName(String name) {
+        return currencies.getOrDefault(name.toLowerCase(), name);
     }
 
     // --- Main currency ---
 
-    public String getMainCurrency() {
-        return mainCurrency;
-    }
+    public String getMainCurrency() { return mainCurrency; }
 
     public boolean setMainCurrency(String name) {
         String key = name.toLowerCase();
-        if (!currencies.contains(key)) return false;
-        mainCurrency = key;
+        if (!currencies.containsKey(key)) return false;
+        mainCurrency = currencies.get(key); // store original display name
         saveCurrencyList();
         return true;
     }
@@ -161,11 +161,7 @@ public class EconomyManager {
                 .entrySet().stream()
                 .sorted(Map.Entry.<UUID, Double>comparingByValue().reversed())
                 .limit(limit)
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (a, b) -> a,
-                        LinkedHashMap::new
-                ));
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+                        (a, b) -> a, LinkedHashMap::new));
     }
 }

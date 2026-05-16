@@ -7,6 +7,7 @@ import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 
 import java.util.*;
+import java.util.Collection;
 
 public class EcoCommand implements CommandExecutor, TabCompleter {
 
@@ -227,13 +228,17 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
 
     // /eco list
     private boolean handleList(CommandSender sender) {
-        Set<String> currencies = economy.getCurrencies();
+        Collection<String> currencies = economy.getCurrencies();
         if (currencies.isEmpty()) {
             sender.sendMessage("§cNo currencies exist. Create one with §e/eco create <name>§c.");
             return true;
         }
-        sender.sendMessage("§6§lCurrencies §7(" + currencies.size() + ")§6§l: §e"
-                + String.join("§7, §e", currencies));
+        String main = economy.getMainCurrency();
+        sender.sendMessage("§6§lCurrencies §7(" + currencies.size() + ")§6§l:");
+        for (String c : currencies) {
+            String tag = c.equalsIgnoreCase(main) ? " §7(main)" : "";
+            sender.sendMessage("  §e" + c + tag);
+        }
         return true;
     }
 
@@ -358,9 +363,14 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
     }
 
     public static String fmt(double amount) {
-        if (amount == Math.floor(amount) && !Double.isInfinite(amount)) {
-            return String.valueOf((long) amount);
-        }
+        if (amount >= 1_000_000_000) return trimmed(amount / 1_000_000_000) + "B";
+        if (amount >= 1_000_000)     return trimmed(amount / 1_000_000) + "M";
+        if (amount >= 1_000)         return trimmed(amount / 1_000) + "K";
+        if (amount == Math.floor(amount) && !Double.isInfinite(amount)) return String.valueOf((long) amount);
         return String.format("%.2f", amount);
+    }
+
+    private static String trimmed(double v) {
+        return v == Math.floor(v) ? String.valueOf((long) v) : String.format("%.1f", v);
     }
 }
