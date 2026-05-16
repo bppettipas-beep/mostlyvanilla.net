@@ -114,6 +114,26 @@ app.post('/api/discord-role/assign', requireSecret, async (req, res) => {
     }
 });
 
+// Returns all Discord role IDs held by the verified player (used by Minecraft to sync highest role)
+app.get('/api/discord-roles/:uuid', requireSecret, async (req, res) => {
+    const row = db.getByMinecraft(req.params.uuid);
+    if (!row) return res.json([]);
+    try {
+        const guild = client.guilds.cache.get(process.env.GUILD_ID);
+        if (!guild) return res.json([]);
+        const member = await guild.members.fetch(row.discord_id).catch(() => null);
+        if (!member) return res.json([]);
+        // Return every role ID except the @everyone role
+        const roleIds = member.roles.cache
+            .filter(r => r.id !== guild.id)
+            .map(r => r.id);
+        res.json(roleIds);
+    } catch (err) {
+        console.error('[API] discord-roles error:', err.message);
+        res.json([]);
+    }
+});
+
 // Polled by the Minecraft plugin every poll-interval seconds
 app.get('/api/pending-game-roles', requireSecret, (req, res) => {
     const rows = db.pendingGameRoles.drainAll();
