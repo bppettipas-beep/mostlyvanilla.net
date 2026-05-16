@@ -59,9 +59,9 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (economy.createCurrency(name)) {
-            sender.sendMessage("§aCurrency §e" + name.toLowerCase() + " §acreated.");
+            sender.sendMessage("§aCurrency §e" + name + " §acreated.");
         } else {
-            sender.sendMessage("§cCurrency §e" + name.toLowerCase() + " §calready exists.");
+            sender.sendMessage("§cCurrency §e" + economy.getDisplayName(name) + " §calready exists.");
         }
         return true;
     }
@@ -96,13 +96,12 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         double amount = parseAmount(sender, args[3]);
-        if (amount <= 0) return true;
+        if (amount < 0) return true;
 
         economy.giveBalance(target.getUniqueId(), args[2], amount);
-        sender.sendMessage("§aGave §e" + fmt(amount) + " " + args[2].toLowerCase()
-                + " §ato §e" + target.getName() + "§a.");
-        notifyIfOnline(target, "§aYou received §e" + fmt(amount) + " " + args[2].toLowerCase()
-                + " §afrom an admin.");
+        String displayCur = economy.getDisplayName(args[2]);
+        sender.sendMessage("§aGave §e" + fmt(amount) + " " + displayCur + " §ato §e" + target.getName() + "§a.");
+        notifyIfOnline(target, "§aYou received §e" + fmt(amount) + " " + displayCur + " §afrom an admin.");
         return true;
     }
 
@@ -122,17 +121,15 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         double amount = parseAmount(sender, args[3]);
-        if (amount <= 0) return true;
+        if (amount < 0) return true;
 
+        String displayCur2 = economy.getDisplayName(args[2]);
         if (economy.takeBalance(target.getUniqueId(), args[2], amount)) {
-            sender.sendMessage("§aRemoved §e" + fmt(amount) + " " + args[2].toLowerCase()
-                    + " §afrom §e" + target.getName() + "§a.");
-            notifyIfOnline(target, "§cAn admin removed §e" + fmt(amount) + " " + args[2].toLowerCase()
-                    + " §cfrom your balance.");
+            sender.sendMessage("§aRemoved §e" + fmt(amount) + " " + displayCur2 + " §afrom §e" + target.getName() + "§a.");
+            notifyIfOnline(target, "§cAn admin removed §e" + fmt(amount) + " " + displayCur2 + " §cfrom your balance.");
         } else {
             double has = economy.getBalance(target.getUniqueId(), args[2]);
-            sender.sendMessage("§c" + target.getName() + " §conly has §e" + fmt(has) + " "
-                    + args[2].toLowerCase() + "§c.");
+            sender.sendMessage("§c" + target.getName() + " §conly has §e" + fmt(has) + " " + displayCur2 + "§c.");
         }
         return true;
     }
@@ -152,19 +149,11 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("§cCurrency §e" + args[2] + " §cdoes not exist.");
             return true;
         }
-        double amount;
-        try {
-            amount = Double.parseDouble(args[3]);
-        } catch (NumberFormatException e) {
-            sender.sendMessage("§cInvalid amount: §e" + args[3]);
-            return true;
-        }
-        if (amount < 0) {
-            sender.sendMessage("§cAmount cannot be negative.");
-            return true;
-        }
+        double amount = parseAmount(sender, args[3], true);
+        if (amount < 0) return true;
+
         economy.setBalance(target.getUniqueId(), args[2], amount);
-        sender.sendMessage("§aSet §e" + target.getName() + "§a's §e" + args[2].toLowerCase()
+        sender.sendMessage("§aSet §e" + target.getName() + "§a's §e" + economy.getDisplayName(args[2])
                 + " §abalance to §e" + fmt(amount) + "§a.");
         return true;
     }
@@ -186,7 +175,7 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
         }
         double bal = economy.getBalance(target.getUniqueId(), args[2]);
         sender.sendMessage("§e" + target.getName() + " §ahas §e" + fmt(bal) + " "
-                + args[2].toLowerCase() + "§a.");
+                + economy.getDisplayName(args[2]) + "§a.");
         return true;
     }
 
@@ -206,7 +195,7 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         economy.setBalance(target.getUniqueId(), args[2], 0.0);
-        sender.sendMessage("§aReset §e" + target.getName() + "§a's §e" + args[2].toLowerCase()
+        sender.sendMessage("§aReset §e" + target.getName() + "§a's §e" + economy.getDisplayName(args[2])
                 + " §abalance to §e0§a.");
         return true;
     }
@@ -341,16 +330,26 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
     }
 
     private double parseAmount(CommandSender sender, String raw) {
+        return parseAmount(sender, raw, false);
+    }
+
+    /** Returns -1 on failure (error already sent). allowZero permits 0 as a valid value. */
+    private double parseAmount(CommandSender sender, String raw, boolean allowZero) {
+        String s = raw.toLowerCase().trim();
+        double mult = 1;
+        if      (s.endsWith("k")) { mult = 1_000;         s = s.substring(0, s.length() - 1); }
+        else if (s.endsWith("m")) { mult = 1_000_000;     s = s.substring(0, s.length() - 1); }
+        else if (s.endsWith("b")) { mult = 1_000_000_000; s = s.substring(0, s.length() - 1); }
         try {
-            double v = Double.parseDouble(raw);
-            if (v <= 0) {
-                sender.sendMessage("§cAmount must be greater than 0.");
-                return 0;
+            double v = Double.parseDouble(s) * mult;
+            if (v < 0 || (!allowZero && v == 0)) {
+                sender.sendMessage(allowZero ? "§cAmount cannot be negative." : "§cAmount must be greater than 0.");
+                return -1;
             }
             return v;
         } catch (NumberFormatException e) {
-            sender.sendMessage("§cInvalid amount: §e" + raw);
-            return 0;
+            sender.sendMessage("§cInvalid amount: §e" + raw + " §7(use numbers or 1k/1m/1b)");
+            return -1;
         }
     }
 

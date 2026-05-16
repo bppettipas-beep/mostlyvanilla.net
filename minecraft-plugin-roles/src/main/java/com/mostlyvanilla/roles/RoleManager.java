@@ -479,6 +479,15 @@ public class RoleManager {
         return role != null ? roles.get(role) : null;
     }
 
+    /** Returns the role prefix serialized to §-format legacy string (handles gradients). */
+    public String getPrefixLegacy(UUID uuid) {
+        String role = playerRoles.get(uuid);
+        if (role == null) return null;
+        String prefix = roles.get(role);
+        if (prefix == null || prefix.isBlank()) return null;
+        return LegacyComponentSerializer.legacySection().serialize(parsePrefix(prefix));
+    }
+
     public String getPlayerRole(UUID uuid)        { return playerRoles.get(uuid); }
     public String getJoinRole()                   { return joinRole; }
     public boolean roleExists(String name)        { return roles.containsKey(name); }

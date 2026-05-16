@@ -55,7 +55,7 @@ public class BoardManager {
         this.plugin              = plugin;
         this.currency1           = plugin.getConfig().getString("currency-1", "diamonds");
         this.currency2           = plugin.getConfig().getString("currency-2", "emeralds");
-        this.serverAddress       = plugin.getConfig().getString("server-address", "mc.mostlyvanilla.net");
+        this.serverAddress       = plugin.getConfig().getString("server-address", "mostlyvanilla.net");
         this.sepAnimInterval     = plugin.getConfig().getInt("separator-anim-interval", 3);
         this.titleAnimInterval   = plugin.getConfig().getInt("title-anim-interval", 8);
         this.dataRefreshInterval = plugin.getConfig().getInt("data-refresh-interval", 40);

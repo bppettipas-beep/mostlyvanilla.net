@@ -11,6 +11,8 @@ public class MostlyVanillaEconomy extends JavaPlugin {
 
     private EconomyManager economyManager;
 
+    public EconomyManager getEconomyManager() { return economyManager; }
+
     @Override
     public void onEnable() {
         economyManager = new EconomyManager(this);
