@@ -1,0 +1,65 @@
+# -------------------------------------------------------
+#   Mostly Vanilla — TAB Plugin Animations
+#   Place this file in: plugins/TAB/animations.yml
+# -------------------------------------------------------
+
+animations:
+
+  # Scrolling dark-green block that bounces left and right across the bar
+  separator:
+    change-interval: 65
+    texts:
+      - "&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+      - "&a▬▬▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+      - "&a▬▬▬▬▬▬▬▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬▬▬▬"
+      - "&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬"
+      - "&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬&2▬▬▬▬▬"
+      - "&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬"
+      - "&a▬▬▬▬▬▬▬▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬▬▬▬"
+      - "&a▬▬▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+
+  # MOSTLY VANILLA title — checkerboard shimmer with icon swap and white flash
+  mv_title:
+    change-interval: 280
+    texts:
+      - "&a&l✦ &a&lM&2&lO&a&lS&2&lT&a&lL&2&lY &a&lV&2&lA&a&lN&2&lI&a&lL&2&lL&a&lA &a&l✦"
+      - "&2&l✦ &2&lM&a&lO&2&lS&a&lT&2&lL&a&lY &2&lV&a&lA&2&lN&a&lI&2&lL&a&lL&2&lA &2&l✦"
+      - "&a&l✦ &a&lM&2&lO&a&lS&2&lT&a&lL&2&lY &a&lV&2&lA&a&lN&2&lI&a&lL&2&lL&a&lA &a&l✦"
+      - "&2&l✦ &2&lM&a&lO&2&lS&a&lT&2&lL&a&lY &2&lV&a&lA&2&lN&a&lI&2&lL&a&lL&2&lA &2&l✦"
+      - "&f&l✦ &f&lMOSTLY VANILLA &f&l✦"
+      - "&a&l✧ &a&lM&2&lO&a&lS&2&lT&a&lL&2&lY &a&lV&2&lA&a&lN&2&lI&a&lL&2&lL&a&lA &a&l✧"
+      - "&2&l✧ &2&lM&a&lO&2&lS&a&lT&2&lL&a&lY &2&lV&a&lA&2&lN&a&lI&2&lL&a&lL&2&lA &2&l✧"
+      - "&a&l❋ &a&lM&2&lO&a&lS&2&lT&a&lL&2&lY &a&lV&2&lA&a&lN&2&lI&a&lL&2&lL&a&lA &a&l❋"
+
+  # Slowly rotating server taglines
+  taglines:
+    change-interval: 4000
+    texts:
+      - "&7&o✦ Survival • Community • Vanilla ✦"
+      - "&7&o✦ No nonsense. Just Minecraft. ✦"
+      - "&7&o✦ Where every block matters. ✦"
+      - "&7&o✦ Mostly vanilla, fully adventure. ✦"
+      - "&7&o✦ Build. Explore. Survive. ✦"
+
+  # Pulsing online indicator dot
+  online_dot:
+    change-interval: 700
+    texts:
+      - "&a⬤"
+      - "&2⬤"
+
+  # Spinning Discord icon
+  discord_spin:
+    change-interval: 180
+    texts:
+      - "&a◐ &fdiscord.gg/mostlyvanilla"
+      - "&a◓ &fdiscord.gg/mostlyvanilla"
+      - "&a◑ &fdiscord.gg/mostlyvanilla"
+      - "&a◒ &fdiscord.gg/mostlyvanilla"
+
+  # Animated arrow pointing to player count
+  arrow_pulse:
+    change-interval: 500
+    texts:
+      - "&a»"
+      - "&2»"
