@@ -16,8 +16,8 @@ import java.util.UUID;
 public class PlayerBoard {
 
     private static final String[] ENTRIES = {
-        "§0§r", "§1§r", "§2§r", "§3§r", "§4§r", "§5§r",
-        "§6§r", "§7§r", "§8§r", "§9§r", "§a§r", "§b§r"
+        "§0§r", "§1§r", "§2§r", "§3§r", "§4§r",
+        "§5§r", "§6§r", "§7§r", "§8§r"
     };
     private static final int LINES = ENTRIES.length;
 
@@ -42,12 +42,8 @@ public class PlayerBoard {
             teams[i] = team;
         }
 
-        // Static lines that never change
+        // Static separator
         setLine(0, SEPARATOR);
-        setLine(1, " ");
-        setLine(3, "  ");
-        setLine(6, "   ");
-        setLine(10, "    ");
 
         player.setScoreboard(scoreboard);
     }
@@ -55,18 +51,17 @@ public class PlayerBoard {
     public void update(Player player, String currency1, String currency2, String serverAddress) {
         syncRoleTeams();
 
-        setLine(2,  " " + fetchRole(player));
-
-        setLine(4,  " §e" + currency1 + "  §f" + fetchBalance(player, currency1));
-        setLine(5,  " §b" + currency2 + "  §f" + fetchBalance(player, currency2));
-
         int kills  = player.getStatistic(Statistic.PLAYER_KILLS);
         int deaths = player.getStatistic(Statistic.DEATHS);
-        setLine(7,  " §aKills  §f" + kills);
-        setLine(8,  " §cDeaths  §f" + deaths);
-        setLine(9,  " §dPlaytime  §f" + formatPlaytime(player.getStatistic(Statistic.PLAY_ONE_MINUTE)));
 
-        setLine(11, " §8" + serverAddress);
+        setLine(1, " " + fetchRole(player));
+        setLine(2, " §e" + currency1 + "  §f" + fetchBalance(player, currency1));
+        setLine(3, " §b" + currency2 + "  §f" + fetchBalance(player, currency2));
+        setLine(4, " §aKills  §f" + kills);
+        setLine(5, " §cDeaths  §f" + deaths);
+        setLine(6, " §dPlaytime  §f" + formatPlaytime(player.getStatistic(Statistic.PLAY_ONE_MINUTE)));
+        setLine(7, " ");
+        setLine(8, " §8" + serverAddress);
     }
 
     public void remove(Player player) {
