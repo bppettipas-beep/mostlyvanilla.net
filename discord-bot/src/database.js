@@ -29,6 +29,99 @@ db.exec(`
     );
 `);
 
+// ── Ticket migrations (no-op if columns already exist or table absent) ─────────
+try { db.exec('ALTER TABLE ticket_config ADD COLUMN support_role_ids TEXT'); } catch {}
+try { db.exec('ALTER TABLE ticket_questions ADD COLUMN category_id TEXT'); } catch {}
+try { db.exec('ALTER TABLE ticket_questions ADD COLUMN support_role_ids TEXT'); } catch {}
+
+db.exec(`
+    CREATE TABLE IF NOT EXISTS ticket_config (
+        guild_id         TEXT PRIMARY KEY,
+        category_id      TEXT,
+        log_channel_id   TEXT,
+        support_role_id  TEXT,
+        support_role_ids TEXT,
+        panel_channel_id TEXT,
+        panel_message_id TEXT,
+        next_ticket_num  INTEGER DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS tickets (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id   TEXT NOT NULL,
+        channel_id TEXT NOT NULL UNIQUE,
+        ticket_num INTEGER NOT NULL,
+        owner_id   TEXT NOT NULL,
+        claimed_by TEXT,
+        status     TEXT DEFAULT 'open',
+        reason     TEXT,
+        created_at INTEGER DEFAULT (strftime('%s','now')),
+        closed_at  INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS ticket_members (
+        ticket_id INTEGER REFERENCES tickets(id) ON DELETE CASCADE,
+        user_id   TEXT NOT NULL,
+        PRIMARY KEY (ticket_id, user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS ticket_questions (
+        guild_id         TEXT NOT NULL,
+        prefix           TEXT NOT NULL,
+        questions        TEXT NOT NULL DEFAULT '[]',
+        category_id      TEXT,
+        support_role_ids TEXT,
+        PRIMARY KEY (guild_id, prefix)
+    );
+`);
+
+const ticketConfig = {
+    get: db.prepare('SELECT * FROM ticket_config WHERE guild_id = ?'),
+    upsert: db.prepare(`
+        INSERT INTO ticket_config (guild_id, category_id, log_channel_id, support_role_id,
+            support_role_ids, panel_channel_id, panel_message_id, next_ticket_num)
+        VALUES (@guild_id, @category_id, @log_channel_id, @support_role_id,
+            @support_role_ids, @panel_channel_id, @panel_message_id, @next_ticket_num)
+        ON CONFLICT(guild_id) DO UPDATE SET
+            category_id      = COALESCE(excluded.category_id, category_id),
+            log_channel_id   = COALESCE(excluded.log_channel_id, log_channel_id),
+            support_role_id  = COALESCE(excluded.support_role_id, support_role_id),
+            support_role_ids = COALESCE(excluded.support_role_ids, support_role_ids),
+            panel_channel_id = COALESCE(excluded.panel_channel_id, panel_channel_id),
+            panel_message_id = COALESCE(excluded.panel_message_id, panel_message_id),
+            next_ticket_num  = COALESCE(excluded.next_ticket_num, next_ticket_num)
+    `),
+    bumpTicketNum: db.prepare('UPDATE ticket_config SET next_ticket_num = next_ticket_num + 1 WHERE guild_id = ?'),
+};
+
+function getSupportRoleIds(cfg) {
+    if (cfg?.support_role_ids) {
+        try { return JSON.parse(cfg.support_role_ids); } catch {}
+    }
+    if (cfg?.support_role_id) return [cfg.support_role_id];
+    return [];
+}
+
+const ticketQuestions = {
+    get: db.prepare('SELECT * FROM ticket_questions WHERE guild_id = ? AND prefix = ?'),
+    upsert: db.prepare(`
+        INSERT INTO ticket_questions (guild_id, prefix, questions, category_id, support_role_ids)
+        VALUES (@guild_id, @prefix, @questions, @category_id, @support_role_ids)
+        ON CONFLICT(guild_id, prefix) DO UPDATE SET
+            questions        = COALESCE(excluded.questions, questions),
+            category_id      = excluded.category_id,
+            support_role_ids = excluded.support_role_ids
+    `),
+};
+
+const tickets = {
+    create:       db.prepare('INSERT INTO tickets (guild_id, channel_id, ticket_num, owner_id, reason) VALUES (@guild_id, @channel_id, @ticket_num, @owner_id, @reason)'),
+    getByChannel: db.prepare('SELECT * FROM tickets WHERE channel_id = ?'),
+    getById:      db.prepare('SELECT * FROM tickets WHERE id = ?'),
+    listOpen:     db.prepare("SELECT * FROM tickets WHERE guild_id = ? AND status = 'open'"),
+    update:       db.prepare('UPDATE tickets SET status = @status, claimed_by = @claimed_by, closed_at = @closed_at WHERE id = @id'),
+};
+
 const stmts = {
     insertCode: db.prepare(
         'INSERT OR REPLACE INTO pending_codes (code, mc_uuid, mc_name, created_at, expires_at) VALUES (?, ?, ?, ?, ?)'
@@ -78,4 +171,8 @@ module.exports = {
     getSetting: (key) => stmts.getSetting.get(key)?.value ?? null,
     setSetting: (key, value) => stmts.setSetting.run(key, value),
     deleteSetting: (key) => stmts.deleteSetting.run(key),
+    ticketConfig,
+    getSupportRoleIds,
+    ticketQuestions,
+    tickets,
 };
