@@ -1,0 +1,2 @@
+# How long (in seconds) before a request or confirmation expires
+request-timeout-seconds: 60
