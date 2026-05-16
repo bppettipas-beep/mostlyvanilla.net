@@ -16,10 +16,12 @@ import java.util.UUID;
 public class PlayerBoard {
 
     private static final String[] ENTRIES = {
-        "§0§r", "§1§r", "§2§r", "§3§r", "§4§r", "§5§r", "§6§r",
-        "§7§r", "§8§r", "§9§r", "§a§r", "§b§r", "§c§r", "§d§r"
+        "§0§r", "§1§r", "§2§r", "§3§r", "§4§r", "§5§r",
+        "§6§r", "§7§r", "§8§r", "§9§r", "§a§r", "§b§r"
     };
     private static final int LINES = ENTRIES.length;
+
+    private static final String SEPARATOR = "§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬";
 
     private final Scoreboard scoreboard;
     @SuppressWarnings("deprecation")
@@ -31,6 +33,7 @@ public class PlayerBoard {
         scoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
         objective  = scoreboard.registerNewObjective("mv_sb", "dummy", "");
         objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+        objective.setDisplayName(BoardManager.TITLE);
 
         for (int i = 0; i < LINES; i++) {
             Team team = scoreboard.registerNewTeam("line" + i);
@@ -38,36 +41,32 @@ public class PlayerBoard {
             objective.getScore(ENTRIES[i]).setScore(LINES - 1 - i);
             teams[i] = team;
         }
+
+        // Static lines that never change
+        setLine(0, SEPARATOR);
+        setLine(1, " ");
+        setLine(3, "  ");
+        setLine(6, "   ");
+        setLine(10, "    ");
+
         player.setScoreboard(scoreboard);
     }
 
-    @SuppressWarnings("deprecation")
-    public void update(Player player, String title, String sep,
-                       boolean fullUpdate, String currency1, String currency2,
-                       String serverAddress) {
-        objective.setDisplayName(title);
-        setLine(0, sep);
-
-        if (!fullUpdate) return;
-
+    public void update(Player player, String currency1, String currency2, String serverAddress) {
         syncRoleTeams();
 
-        setLine(1,  " ");
         setLine(2,  " " + fetchRole(player));
-        setLine(3,  "  ");
-        setLine(4,  " §e" + currency1);
-        setLine(5,  "  §7» §a" + fetchBalance(player, currency1));
-        setLine(6,  " §2" + currency2);
-        setLine(7,  "  §7» §a" + fetchBalance(player, currency2));
-        setLine(8,  "   ");
+
+        setLine(4,  " §e" + currency1 + "  §f" + fetchBalance(player, currency1));
+        setLine(5,  " §b" + currency2 + "  §f" + fetchBalance(player, currency2));
 
         int kills  = player.getStatistic(Statistic.PLAYER_KILLS);
         int deaths = player.getStatistic(Statistic.DEATHS);
-        setLine(9,  " §7Kills  §a" + kills);
-        setLine(10, " §7Deaths  §c" + deaths);
-        setLine(11, " §7Playtime  §f" + formatPlaytime(player.getStatistic(Statistic.PLAY_ONE_MINUTE)));
-        setLine(12, "    ");
-        setLine(13, " §8" + serverAddress);
+        setLine(7,  " §aKills  §f" + kills);
+        setLine(8,  " §cDeaths  §f" + deaths);
+        setLine(9,  " §dPlaytime  §f" + formatPlaytime(player.getStatistic(Statistic.PLAY_ONE_MINUTE)));
+
+        setLine(11, " §8" + serverAddress);
     }
 
     public void remove(Player player) {
@@ -85,7 +84,6 @@ public class PlayerBoard {
             Object rm = rolesPlugin.getClass().getMethod("getRoleManager").invoke(rolesPlugin);
             if (rm == null) return "§7Member";
 
-            // Full gradient/colored prefix via getPrefixLegacy
             try {
                 String prefixLegacy = (String) rm.getClass()
                         .getMethod("getPrefixLegacy", UUID.class)
@@ -93,7 +91,6 @@ public class PlayerBoard {
                 if (prefixLegacy != null && !prefixLegacy.isBlank()) return prefixLegacy.trim();
             } catch (Exception ignored) {}
 
-            // Fallback: extract color + capitalize role name
             String roleName = (String) rm.getClass()
                     .getMethod("getPlayerRole", UUID.class)
                     .invoke(rm, player.getUniqueId());
@@ -123,13 +120,11 @@ public class PlayerBoard {
     }
 
     private String fetchBalance(Player player, String currency) {
-        // Try PAPI first
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
             String result = PlaceholderAPI.setPlaceholders(
                     player, "%economy_balance_" + currency.toLowerCase() + "%");
             if (result != null && !result.startsWith("%")) return result;
         }
-        // Fallback: call MostlyVanillaEconomy directly via reflection
         try {
             Plugin eco = Bukkit.getPluginManager().getPlugin("MostlyVanillaEconomy");
             if (eco != null) {
@@ -147,11 +142,6 @@ public class PlayerBoard {
 
     // ── Role team sync ────────────────────────────────────
 
-    /**
-     * Copies all mv_ teams from the main scoreboard into this player's custom scoreboard.
-     * This is required so that tab-list sorting by role weight works even when the player
-     * is on a custom scoreboard (which would otherwise hide the main scoreboard's teams).
-     */
     private void syncRoleTeams() {
         Scoreboard main = Bukkit.getScoreboardManager().getMainScoreboard();
         Set<String> seen = new HashSet<>();
@@ -175,7 +165,6 @@ public class PlayerBoard {
             for (String e : dstEntries) { if (!srcEntries.contains(e)) dst.removeEntry(e); }
         }
 
-        // Remove any stale mv_ teams that no longer exist on main
         for (Team t : new HashSet<>(scoreboard.getTeams())) {
             if (t.getName().startsWith("mv_") && !seen.contains(t.getName())) t.unregister();
         }

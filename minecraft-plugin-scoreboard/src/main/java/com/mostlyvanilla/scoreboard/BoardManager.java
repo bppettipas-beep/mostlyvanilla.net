@@ -13,51 +13,25 @@ import java.util.UUID;
 
 public class BoardManager {
 
-    private static final String[] TITLE_FRAMES = {
-        "§a§lM§2§lO§a§lS§2§lT§a§lL§2§lY §a§lV§2§lA§a§lN§2§lI§a§lL§2§lL§a§lA",
-        "§2§lM§a§lO§2§lS§a§lT§2§lL§a§lY §2§lV§a§lA§2§lN§a§lI§2§lL§a§lL§2§lA",
-        "§f§lMOSTLY VANILLA",
-        "§a§lM§2§lO§a§lS§2§lT§a§lL§2§lY §a§lV§2§lA§a§lN§2§lI§a§lL§2§lL§a§lA",
-        "§2§lM§a§lO§2§lS§a§lT§2§lL§a§lY §2§lV§a§lA§2§lN§a§lI§2§lL§a§lL§2§lA",
-        "§f§lMOSTLY VANILLA"
-    };
-
-    private static final String[] SEP_FRAMES = {
-        "§2▬▬▬▬▬§a▬▬▬▬▬▬▬▬▬▬▬",
-        "§a▬▬§2▬▬▬▬▬§a▬▬▬▬▬▬▬▬",
-        "§a▬▬▬▬▬§2▬▬▬▬▬§a▬▬▬▬▬",
-        "§a▬▬▬▬▬▬▬▬▬▬§2▬▬▬▬▬§a▬",
-        "§a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬§2▬▬",
-        "§a▬▬▬▬▬▬▬▬▬▬§2▬▬▬▬▬§a▬",
-        "§a▬▬▬▬▬§2▬▬▬▬▬§a▬▬▬▬▬",
-        "§a▬▬§2▬▬▬▬▬§a▬▬▬▬▬▬▬▬"
-    };
+    static final String TITLE = "§a§lMOSTLY VANILLA";
 
     private final Plugin plugin;
     private String currency1;
     private String currency2;
     private final String serverAddress;
-    private final int sepAnimInterval;
-    private final int titleAnimInterval;
     private final int dataRefreshInterval;
 
     private final Map<UUID, PlayerBoard> boards = new HashMap<>();
     private final Set<UUID> hidden = new HashSet<>();
 
     private BukkitTask task;
-    private int titleFrame = 0;
-    private int sepFrame   = 0;
-    private int titleTick  = 0;
-    private int sepTick    = 0;
-    private int dataTick   = 0;
+    private int dataTick = 0;
 
     public BoardManager(Plugin plugin) {
         this.plugin              = plugin;
         this.currency1           = plugin.getConfig().getString("currency-1", "diamonds");
         this.currency2           = plugin.getConfig().getString("currency-2", "emeralds");
         this.serverAddress       = plugin.getConfig().getString("server-address", "mostlyvanilla.net");
-        this.sepAnimInterval     = plugin.getConfig().getInt("separator-anim-interval", 3);
-        this.titleAnimInterval   = plugin.getConfig().getInt("title-anim-interval", 8);
         this.dataRefreshInterval = plugin.getConfig().getInt("data-refresh-interval", 40);
     }
 
@@ -75,27 +49,14 @@ public class BoardManager {
     }
 
     private void tick() {
-        sepTick++;
-        titleTick++;
         dataTick++;
-
-        boolean advanceSep   = sepTick   >= sepAnimInterval;
-        boolean advanceTitle = titleTick >= titleAnimInterval;
-        boolean refreshData  = dataTick  >= dataRefreshInterval;
-
-        if (advanceSep)   { sepTick   = 0; sepFrame   = (sepFrame   + 1) % SEP_FRAMES.length; }
-        if (advanceTitle) { titleTick = 0; titleFrame = (titleFrame + 1) % TITLE_FRAMES.length; }
-        if (refreshData)  { dataTick  = 0; }
-
-        if (!advanceSep && !advanceTitle && !refreshData) return;
-
-        String title = TITLE_FRAMES[titleFrame];
-        String sep   = SEP_FRAMES[sepFrame];
+        if (dataTick < dataRefreshInterval) return;
+        dataTick = 0;
 
         for (Map.Entry<UUID, PlayerBoard> entry : boards.entrySet()) {
             Player player = Bukkit.getPlayer(entry.getKey());
             if (player == null || !player.isOnline()) continue;
-            entry.getValue().update(player, title, sep, refreshData, currency1, currency2, serverAddress);
+            entry.getValue().update(player, currency1, currency2, serverAddress);
         }
     }
 
@@ -103,8 +64,7 @@ public class BoardManager {
         if (hidden.contains(player.getUniqueId())) return;
         PlayerBoard board = new PlayerBoard(player);
         boards.put(player.getUniqueId(), board);
-        board.update(player, TITLE_FRAMES[titleFrame], SEP_FRAMES[sepFrame],
-                true, currency1, currency2, serverAddress);
+        board.update(player, currency1, currency2, serverAddress);
     }
 
     public void removePlayer(Player player) {
@@ -135,7 +95,6 @@ public class BoardManager {
             plugin.getConfig().set("currency-2", name);
         }
         plugin.saveConfig();
-        // Trigger a data refresh on the very next tick
         dataTick = dataRefreshInterval;
     }
 
