@@ -19,12 +19,10 @@ public class MostlyVanillaVerify extends JavaPlugin {
             getConfig().getString("api-secret", "")
         );
 
-        var discordCmd = getCommand("discord");
-        if (discordCmd != null) discordCmd.setExecutor(new DiscordCommand(this));
+        var linkCmd = getCommand("link");
+        if (linkCmd != null) linkCmd.setExecutor(new DiscordCommand(this));
 
-        if (getConfig().getBoolean("remind-on-join", true)) {
-            getServer().getPluginManager().registerEvents(new PlayerJoinListener(this), this);
-        }
+        getServer().getPluginManager().registerEvents(new PlayerJoinListener(this), this);
 
         getLogger().info("MostlyVanillaVerify enabled.");
     }

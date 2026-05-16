@@ -6,7 +6,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
-import net.md_5.bungee.api.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -16,12 +15,9 @@ import org.bukkit.scheduler.BukkitRunnable;
 public class DiscordCommand implements CommandExecutor {
 
     private final MostlyVanillaVerify plugin;
-    private final String prefix;
 
     public DiscordCommand(MostlyVanillaVerify plugin) {
         this.plugin = plugin;
-        this.prefix = ChatColor.translateAlternateColorCodes('&',
-            plugin.getConfig().getString("messages.prefix", "&a[MostlyVanilla]&r "));
     }
 
     @Override
@@ -31,13 +27,13 @@ public class DiscordCommand implements CommandExecutor {
             return true;
         }
 
-        player.sendMessage(prefix + ChatColor.GREEN + "Contacting the Discord bot...");
-
         new BukkitRunnable() {
             @Override
             public void run() {
                 if (plugin.getApiClient().isVerified(player.getUniqueId().toString())) {
-                    runSync(() -> player.sendMessage(prefix + ChatColor.GREEN + "Your Minecraft account is already linked to Discord!"));
+                    runSync(() -> player.sendMessage(
+                        Component.text("Your Minecraft account is already linked to Discord!", NamedTextColor.GREEN)
+                    ));
                     return;
                 }
 
@@ -46,9 +42,9 @@ public class DiscordCommand implements CommandExecutor {
 
                 runSync(() -> {
                     if (result.success()) {
-                        sendVerificationMessage(player, result, prefix);
+                        sendVerificationMessage(player, result);
                     } else {
-                        player.sendMessage(prefix + ChatColor.RED + "Could not reach the Discord bot. Try again in a moment.");
+                        player.sendMessage(Component.text("Could not reach the Discord bot. Try again in a moment.", NamedTextColor.RED));
                         plugin.getLogger().warning("Code request failed for " + player.getName() + ": " + result.error());
                     }
                 });
@@ -64,33 +60,33 @@ public class DiscordCommand implements CommandExecutor {
         return true;
     }
 
-    public static void sendVerificationMessage(Player player, ApiClient.CodeResult result, String prefix) {
-        player.sendMessage("");
-        player.sendMessage(prefix + ChatColor.GREEN + "══════ Discord Verification ══════");
+    public static void sendVerificationMessage(Player player, ApiClient.CodeResult result) {
+        player.sendMessage(Component.empty());
+        player.sendMessage(Component.text("━━━━━━━━━ Discord Verification ━━━━━━━━━", NamedTextColor.GREEN, TextDecoration.BOLD));
 
         if (result.inviteUrl() != null) {
-            player.sendMessage(prefix + ChatColor.WHITE + "Join our Discord server:");
+            player.sendMessage(Component.empty());
+            player.sendMessage(Component.text("  Join our Discord server:", NamedTextColor.WHITE));
             player.sendMessage(
-                Component.text(prefix + "  ")
+                Component.text("  ")
                     .append(Component.text(result.inviteUrl())
                         .color(NamedTextColor.AQUA)
                         .decorate(TextDecoration.UNDERLINED)
                         .clickEvent(ClickEvent.openUrl(result.inviteUrl())))
-                    .append(Component.text(" (click to open)", NamedTextColor.DARK_GRAY))
+                    .append(Component.text("  (click to open)", NamedTextColor.DARK_GRAY))
             );
-            player.sendMessage("");
         }
 
-        player.sendMessage(prefix + ChatColor.WHITE + "Then DM the bot this code:");
+        player.sendMessage(Component.empty());
+        player.sendMessage(Component.text("  Then DM the bot this code:", NamedTextColor.WHITE));
         player.sendMessage(
-            Component.text(prefix + "  ")
-                .append(Component.text(result.code())
-                    .color(NamedTextColor.GREEN)
-                    .decorate(TextDecoration.BOLD))
+            Component.text("  " + result.code())
+                .color(NamedTextColor.GREEN)
+                .decorate(TextDecoration.BOLD)
         );
-        player.sendMessage("");
-        player.sendMessage(prefix + ChatColor.RED + "This invite and code expire in 10 minutes.");
-        player.sendMessage(prefix + ChatColor.GREEN + "══════════════════════════════════");
-        player.sendMessage("");
+        player.sendMessage(Component.empty());
+        player.sendMessage(Component.text("  Expires in 10 minutes.", NamedTextColor.RED));
+        player.sendMessage(Component.text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", NamedTextColor.GREEN, TextDecoration.BOLD));
+        player.sendMessage(Component.empty());
     }
 }

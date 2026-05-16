@@ -7,7 +7,6 @@ authors:
   - MostlyVanilla
 
 commands:
-  discord:
-    description: Get your Discord verification code
-    usage: /discord
-    aliases: [verify, link]
+  link:
+    description: Link your Minecraft account to Discord
+    usage: /link
