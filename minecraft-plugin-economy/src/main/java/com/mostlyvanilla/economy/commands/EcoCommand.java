@@ -39,6 +39,7 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
             case "reset":    return handleReset(sender, args);
             case "list":     return handleList(sender);
             case "top":      return handleTop(sender, args);
+            case "setmain":  return handleSetMain(sender, args);
             default:
                 sendHelp(sender);
                 return true;
@@ -209,6 +210,21 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    // /eco setmain <currency>
+    private boolean handleSetMain(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage("§cUsage: /eco setmain <currency>");
+            return true;
+        }
+        if (economy.setMainCurrency(args[1])) {
+            sender.sendMessage("§aMain currency set to §e" + args[1].toLowerCase()
+                    + "§a. §7(/balance and /baltop will now default to it.)");
+        } else {
+            sender.sendMessage("§cCurrency §e" + args[1] + " §cdoes not exist.");
+        }
+        return true;
+    }
+
     // /eco list
     private boolean handleList(CommandSender sender) {
         Set<String> currencies = economy.getCurrencies();
@@ -259,6 +275,7 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§e/eco reset <player> <currency>         §7Reset balance to 0");
         sender.sendMessage("§e/eco list                              §7List all currencies");
         sender.sendMessage("§e/eco top <currency>                    §7Top 10 richest players");
+        sender.sendMessage("§e/eco setmain <currency>                §7Set the default currency");
     }
 
     @Override
@@ -267,7 +284,7 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 1) {
             return filterPrefix(Arrays.asList(
-                    "create", "delete", "give", "take", "set", "balance", "reset", "list", "top"
+                    "create", "delete", "give", "take", "set", "balance", "reset", "list", "top", "setmain"
             ), args[0]);
         }
 
@@ -277,6 +294,7 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
             switch (sub) {
                 case "delete":
                 case "top":
+                case "setmain":
                     return filterPrefix(new ArrayList<>(economy.getCurrencies()), args[1]);
                 case "give":
                 case "take":

@@ -13,11 +13,9 @@ public class EconomyManager {
     private final MostlyVanillaEconomy plugin;
     private final File dataFolder;
 
-    // All registered currency names (lowercase)
     private final Set<String> currencies = new HashSet<>();
-
-    // currencyName -> (playerUUID -> balance)
     private final Map<String, Map<UUID, Double>> balances = new HashMap<>();
+    private String mainCurrency = null;
 
     public EconomyManager(MostlyVanillaEconomy plugin) {
         this.plugin = plugin;
@@ -34,6 +32,7 @@ public class EconomyManager {
             FileConfiguration config = YamlConfiguration.loadConfiguration(currenciesFile);
             List<String> list = config.getStringList("currencies");
             currencies.addAll(list);
+            mainCurrency = config.getString("main", null);
         }
 
         for (String currency : currencies) {
@@ -66,6 +65,7 @@ public class EconomyManager {
         File file = new File(plugin.getDataFolder(), "currencies.yml");
         FileConfiguration config = new YamlConfiguration();
         config.set("currencies", new ArrayList<>(currencies));
+        if (mainCurrency != null) config.set("main", mainCurrency);
         try {
             config.save(file);
         } catch (IOException e) {
@@ -103,6 +103,7 @@ public class EconomyManager {
         if (!currencies.contains(key)) return false;
         currencies.remove(key);
         balances.remove(key);
+        if (key.equals(mainCurrency)) mainCurrency = null;
         File file = new File(dataFolder, key + ".yml");
         if (file.exists()) file.delete();
         saveCurrencyList();
@@ -115,6 +116,20 @@ public class EconomyManager {
 
     public Set<String> getCurrencies() {
         return Collections.unmodifiableSet(currencies);
+    }
+
+    // --- Main currency ---
+
+    public String getMainCurrency() {
+        return mainCurrency;
+    }
+
+    public boolean setMainCurrency(String name) {
+        String key = name.toLowerCase();
+        if (!currencies.contains(key)) return false;
+        mainCurrency = key;
+        saveCurrencyList();
+        return true;
     }
 
     // --- Balance operations ---
@@ -134,9 +149,6 @@ public class EconomyManager {
         setBalance(uuid, currency, getBalance(uuid, currency) + amount);
     }
 
-    /**
-     * Returns false if the player doesn't have enough balance.
-     */
     public boolean takeBalance(UUID uuid, String currency, double amount) {
         double current = getBalance(uuid, currency);
         if (current < amount) return false;

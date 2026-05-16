@@ -7,7 +7,7 @@ description: Custom multi-currency economy plugin
 commands:
   eco:
     description: Economy admin commands
-    usage: /eco <create|delete|give|take|set|balance|list|top|reset>
+    usage: /eco <create|delete|give|take|set|balance|list|top|reset|setmain>
     permission: economy.admin
   balance:
     description: Check your balance
@@ -18,6 +18,10 @@ commands:
     description: Pay another player
     usage: /pay <player> <currency> <amount>
     permission: economy.pay
+  baltop:
+    description: View the richest players leaderboard
+    usage: /baltop [currency]
+    permission: economy.baltop
 
 permissions:
   economy.admin:
@@ -28,4 +32,7 @@ permissions:
     default: true
   economy.pay:
     description: Transfer currency to other players with /pay
+    default: true
+  economy.baltop:
+    description: Open the baltop GUI with /baltop
     default: true

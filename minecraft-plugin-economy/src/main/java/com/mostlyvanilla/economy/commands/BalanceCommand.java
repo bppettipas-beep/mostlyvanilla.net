@@ -34,10 +34,16 @@ public class BalanceCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 0) {
-            sender.sendMessage("§6§lYour Balances:");
-            for (String currency : currencies) {
-                double bal = economy.getBalance(player.getUniqueId(), currency);
-                sender.sendMessage("  §e" + currency + "§7: §a" + EcoCommand.fmt(bal));
+            String main = economy.getMainCurrency();
+            if (main != null) {
+                double bal = economy.getBalance(player.getUniqueId(), main);
+                sender.sendMessage("§aYour §e" + main + " §abalance: §e" + EcoCommand.fmt(bal));
+            } else {
+                sender.sendMessage("§6§lYour Balances:");
+                for (String currency : currencies) {
+                    double bal = economy.getBalance(player.getUniqueId(), currency);
+                    sender.sendMessage("  §e" + currency + "§7: §a" + EcoCommand.fmt(bal));
+                }
             }
         } else {
             String currency = args[0];

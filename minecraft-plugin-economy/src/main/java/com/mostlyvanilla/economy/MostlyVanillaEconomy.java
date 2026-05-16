@@ -1,8 +1,10 @@
 package com.mostlyvanilla.economy;
 
 import com.mostlyvanilla.economy.commands.BalanceCommand;
+import com.mostlyvanilla.economy.commands.BaltopCommand;
 import com.mostlyvanilla.economy.commands.EcoCommand;
 import com.mostlyvanilla.economy.commands.PayCommand;
+import com.mostlyvanilla.economy.gui.BaltopGui;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class MostlyVanillaEconomy extends JavaPlugin {
@@ -13,6 +15,8 @@ public class MostlyVanillaEconomy extends JavaPlugin {
     public void onEnable() {
         economyManager = new EconomyManager(this);
         economyManager.load();
+
+        BaltopGui baltopGui = new BaltopGui(economyManager, this);
 
         EcoCommand ecoCommand = new EcoCommand(economyManager);
         getCommand("eco").setExecutor(ecoCommand);
@@ -25,6 +29,10 @@ public class MostlyVanillaEconomy extends JavaPlugin {
         PayCommand payCommand = new PayCommand(economyManager);
         getCommand("pay").setExecutor(payCommand);
         getCommand("pay").setTabCompleter(payCommand);
+
+        BaltopCommand baltopCommand = new BaltopCommand(economyManager, baltopGui);
+        getCommand("baltop").setExecutor(baltopCommand);
+        getCommand("baltop").setTabCompleter(baltopCommand);
 
         getLogger().info("MostlyVanillaEconomy enabled!");
     }
