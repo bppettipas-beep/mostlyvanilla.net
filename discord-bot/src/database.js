@@ -22,6 +22,11 @@ db.exec(`
         mc_name     TEXT    NOT NULL,
         verified_at INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS settings (
+        key   TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    );
 `);
 
 const stmts = {
@@ -46,6 +51,15 @@ const stmts = {
     cleanupExpired: db.prepare(
         'DELETE FROM pending_codes WHERE expires_at <= ?'
     ),
+    getSetting: db.prepare(
+        'SELECT value FROM settings WHERE key = ?'
+    ),
+    setSetting: db.prepare(
+        'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)'
+    ),
+    deleteSetting: db.prepare(
+        'DELETE FROM settings WHERE key = ?'
+    ),
 };
 
 module.exports = {
@@ -61,4 +75,7 @@ module.exports = {
     getByDiscord: (discordId) => stmts.getByDiscord.get(discordId),
     getByMinecraft: (uuid) => stmts.getByMinecraft.get(uuid),
     cleanupExpired: () => stmts.cleanupExpired.run(Date.now()),
+    getSetting: (key) => stmts.getSetting.get(key)?.value ?? null,
+    setSetting: (key, value) => stmts.setSetting.run(key, value),
+    deleteSetting: (key) => stmts.deleteSetting.run(key),
 };
