@@ -3,6 +3,7 @@ package com.mostlyvanilla.roles.listeners;
 import com.mostlyvanilla.roles.MostlyVanillaRoles;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -21,7 +22,9 @@ public class ChatListener implements Listener {
         String prefix = plugin.getRoleManager().getPrefix(event.getPlayer().getUniqueId());
         if (prefix == null) return;
 
-        Component prefixComponent = LegacyComponentSerializer.legacyAmpersand().deserialize(prefix);
+        Component prefixComponent = prefix.contains("<")
+            ? MiniMessage.miniMessage().deserialize(prefix)
+            : LegacyComponentSerializer.legacyAmpersand().deserialize(prefix);
 
         event.renderer((source, sourceDisplayName, message, viewer) ->
             prefixComponent
