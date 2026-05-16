@@ -30,10 +30,6 @@ async function sendWelcomeMessage(member, mcName) {
         .setTitle(`Welcome to ${member.guild.name}!`)
         .setDescription(text)
         .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
-        .addFields(
-            { name: 'Minecraft IGN', value: mcName,               inline: true },
-            { name: 'Member',        value: member.user.username,  inline: true },
-        )
         .setFooter({ text: FOOTER })
         .setTimestamp();
 
