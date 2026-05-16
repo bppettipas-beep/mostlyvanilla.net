@@ -66,26 +66,25 @@ public class DiscordCommand implements CommandExecutor {
 
         if (result.inviteUrl() != null) {
             player.sendMessage(Component.empty());
-            player.sendMessage(Component.text("  Join our Discord server:", NamedTextColor.WHITE));
+            player.sendMessage(Component.text("Join our Discord server:", NamedTextColor.WHITE));
             player.sendMessage(
-                Component.text("  ")
-                    .append(Component.text(result.inviteUrl())
-                        .color(NamedTextColor.AQUA)
-                        .decorate(TextDecoration.UNDERLINED)
-                        .clickEvent(ClickEvent.openUrl(result.inviteUrl())))
+                Component.text(result.inviteUrl())
+                    .color(NamedTextColor.AQUA)
+                    .decorate(TextDecoration.UNDERLINED)
+                    .clickEvent(ClickEvent.openUrl(result.inviteUrl()))
                     .append(Component.text("  (click to open)", NamedTextColor.DARK_GRAY))
             );
         }
 
         player.sendMessage(Component.empty());
-        player.sendMessage(Component.text("  Then DM the bot this code:", NamedTextColor.WHITE));
+        player.sendMessage(Component.text("Then DM the bot this code:", NamedTextColor.WHITE));
         player.sendMessage(
-            Component.text("  " + result.code())
+            Component.text(result.code())
                 .color(NamedTextColor.GREEN)
                 .decorate(TextDecoration.BOLD)
         );
         player.sendMessage(Component.empty());
-        player.sendMessage(Component.text("  Expires in 10 minutes.", NamedTextColor.RED));
+        player.sendMessage(Component.text("Expires in 10 minutes.", NamedTextColor.RED));
         player.sendMessage(Component.text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", NamedTextColor.GREEN, TextDecoration.BOLD));
         player.sendMessage(Component.empty());
     }

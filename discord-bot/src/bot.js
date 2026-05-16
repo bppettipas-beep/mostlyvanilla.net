@@ -26,7 +26,7 @@ const client = new Client({
 
 client.once(Events.ClientReady, async (c) => {
     console.log(`[Bot] Ready as ${c.user.tag}`);
-    c.user.setActivity('Mostly Vanilla | /discord', { type: ActivityType.Watching });
+    c.user.setActivity('Mostly Vanilla | /link', { type: ActivityType.Watching });
 
     try {
         const rest = new REST().setToken(process.env.DISCORD_TOKEN);
@@ -115,7 +115,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
                 .setDescription(
                     `**Optionally link your Minecraft account:**\n` +
                     `> 1. Join the **Mostly Vanilla** Minecraft server\n` +
-                    `> 2. Run \`/discord\` in-game to get a 6-character code\n` +
+                    `> 2. Run \`/link\` in-game to get a 6-character code\n` +
                     `> 3. DM that code to me\n\n` +
                     `Linking is optional but gives you the verified role!`
                 )
@@ -150,7 +150,7 @@ client.on(Events.MessageCreate, async (message) => {
                 .setTitle('Invalid Code')
                 .setDescription(
                     'Codes are exactly **6 characters** (letters and numbers).\n\n' +
-                    'Run `/discord` on the Mostly Vanilla Minecraft server to get your code.'
+                    'Run `/link` on the Mostly Vanilla Minecraft server to get your code.'
                 )
                 .setFooter({ text: FOOTER }),
         ]});
@@ -164,7 +164,7 @@ client.on(Events.MessageCreate, async (message) => {
                 .setTitle('Code Not Found or Expired')
                 .setDescription(
                     'That code is invalid, already used, or has expired.\n\n' +
-                    'Run `/discord` in Minecraft again to get a fresh code.'
+                    'Run `/link` in Minecraft again to get a fresh code.'
                 )
                 .setFooter({ text: FOOTER }),
         ]});
