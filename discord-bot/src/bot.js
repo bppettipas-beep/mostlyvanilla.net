@@ -6,6 +6,7 @@ const {
 const db = require('./database');
 const { data: welcomeData, execute: welcomeExecute, sendWelcomeMessage } = require('./commands/welcome');
 const { data: joinRoleData, execute: joinRoleExecute } = require('./commands/joinrole');
+const { data: embedData,   execute: embedExecute }   = require('./commands/embed');
 
 const COLOR_GREEN      = 0x2ECC71;
 const COLOR_DARK_GREEN = 0x27AE60;
@@ -29,7 +30,7 @@ client.once(Events.ClientReady, async (c) => {
         const rest = new REST().setToken(process.env.DISCORD_TOKEN);
         await rest.put(
             Routes.applicationGuildCommands(c.user.id, process.env.GUILD_ID),
-            { body: [welcomeData.toJSON(), joinRoleData.toJSON()] }
+            { body: [welcomeData.toJSON(), joinRoleData.toJSON(), embedData.toJSON()] }
         );
         console.log('[Bot] Slash commands registered');
     } catch (err) {
@@ -44,6 +45,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     if (interaction.commandName === 'joinrole') {
         await joinRoleExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+    }
+    if (interaction.commandName === 'embed') {
+        await embedExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
     }
 });
 
