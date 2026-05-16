@@ -3,7 +3,7 @@ version: '${project.version}'
 main: com.mostlyvanilla.scoreboard.MostlyVanillaScoreboard
 api-version: '1.20'
 description: Custom animated sidebar scoreboard for Mostly Vanilla
-softdepend: [PlaceholderAPI, LuckPerms]
+softdepend: [PlaceholderAPI, MostlyVanillaRoles]
 
 commands:
   sb:
