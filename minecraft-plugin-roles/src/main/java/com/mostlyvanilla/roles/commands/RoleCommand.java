@@ -4,6 +4,8 @@ import com.mostlyvanilla.roles.MostlyVanillaRoles;
 import com.mostlyvanilla.roles.RoleManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -236,6 +238,69 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
                 }
             }
 
+            case "testall" -> {
+                Map<String, String> allRoles = rm.getRoles();
+                if (allRoles.isEmpty()) {
+                    sender.sendMessage(Component.text("No roles exist.", NamedTextColor.YELLOW));
+                    return true;
+                }
+                sender.sendMessage(Component.text("━━━ Role Preview ━━━", NamedTextColor.GREEN));
+                for (Map.Entry<String, String> entry : allRoles.entrySet()) {
+                    String prefix = entry.getValue();
+                    Component prefixComp = prefix.contains("<")
+                        ? MiniMessage.miniMessage().deserialize(prefix)
+                        : LegacyComponentSerializer.legacyAmpersand().deserialize(prefix);
+                    sender.sendMessage(
+                        prefixComp
+                            .append(Component.text(" ").decoration(TextDecoration.BOLD, TextDecoration.State.FALSE))
+                            .append(Component.text(entry.getKey())
+                                .decoration(TextDecoration.BOLD, TextDecoration.State.FALSE)
+                                .color(NamedTextColor.WHITE))
+                    );
+                }
+            }
+
+            case "commandblock" -> {
+                if (args.length < 3) {
+                    sender.sendMessage(Component.text("Usage: /role commandblock <role> <command>", NamedTextColor.RED));
+                    return true;
+                }
+                String roleName = args[1].toLowerCase();
+                String cmd = args[2].toLowerCase().replace("/", "");
+                if (rm.blockCommand(roleName, cmd)) {
+                    sender.sendMessage(Component.text("Blocked /" + cmd + " for role " + roleName + ".", NamedTextColor.GREEN));
+                } else {
+                    sender.sendMessage(Component.text("Role '" + roleName + "' does not exist.", NamedTextColor.RED));
+                }
+            }
+
+            case "commandblockall" -> {
+                if (args.length < 2) {
+                    sender.sendMessage(Component.text("Usage: /role commandblockall <role>", NamedTextColor.RED));
+                    return true;
+                }
+                String roleName = args[1].toLowerCase();
+                if (rm.setBlockAll(roleName)) {
+                    sender.sendMessage(Component.text("All commands blocked for role " + roleName + ". Use /role commandallow to whitelist specific commands.", NamedTextColor.GREEN));
+                } else {
+                    sender.sendMessage(Component.text("Role '" + roleName + "' does not exist.", NamedTextColor.RED));
+                }
+            }
+
+            case "commandallow" -> {
+                if (args.length < 3) {
+                    sender.sendMessage(Component.text("Usage: /role commandallow <role> <command>", NamedTextColor.RED));
+                    return true;
+                }
+                String roleName = args[1].toLowerCase();
+                String cmd = args[2].toLowerCase().replace("/", "");
+                if (rm.allowCommand(roleName, cmd)) {
+                    sender.sendMessage(Component.text("Allowed /" + cmd + " for role " + roleName + ".", NamedTextColor.GREEN));
+                } else {
+                    sender.sendMessage(Component.text("Role '" + roleName + "' does not exist.", NamedTextColor.RED));
+                }
+            }
+
             default -> sendUsage(sender);
         }
 
@@ -247,14 +312,14 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("mostlyvanilla.roles.admin")) return List.of();
 
         if (args.length == 1) {
-            return filter(List.of("create", "delete", "assign", "remove", "list", "info", "join", "setweight", "link", "unlink", "links"), args[0]);
+            return filter(List.of("create", "delete", "assign", "remove", "list", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "link", "unlink", "links"), args[0]);
         }
 
         RoleManager rm = plugin.getRoleManager();
 
         if (args.length == 2) {
             return switch (args[0].toLowerCase()) {
-                case "delete", "join", "setweight", "link", "unlink" -> filter(new ArrayList<>(rm.getRoleNames()), args[1]);
+                case "delete", "join", "setweight", "link", "unlink", "commandblockall", "commandblock", "commandallow" -> filter(new ArrayList<>(rm.getRoleNames()), args[1]);
                 case "assign", "remove", "info" -> filter(
                     Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList()), args[1]
                 );
@@ -287,5 +352,9 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("  /role link <role> <discord-id>", NamedTextColor.WHITE).append(Component.text("Link a game role to a Discord role", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role unlink <role>           ", NamedTextColor.WHITE).append(Component.text("Remove Discord role link", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role links                   ", NamedTextColor.WHITE).append(Component.text("List all role links", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role testall                 ", NamedTextColor.WHITE).append(Component.text("Preview all role prefixes in chat", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role commandblock <r> <cmd>  ", NamedTextColor.WHITE).append(Component.text("Block a command for a role", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role commandblockall <role>  ", NamedTextColor.WHITE).append(Component.text("Block all commands for a role", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role commandallow <r> <cmd>  ", NamedTextColor.WHITE).append(Component.text("Allow/unblock a command for a role", NamedTextColor.GRAY)));
     }
 }

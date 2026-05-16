@@ -31,9 +31,14 @@ public class RoleManager {
     private final Map<String, String>  roleLinks   = new HashMap<>(); // gameRole → discordRoleId
     private String joinRole = null;
 
+    private final Map<String, Set<String>> blockedCmds  = new HashMap<>(); // role → blocked prefixes
+    private final Map<String, Set<String>> allowedCmds  = new HashMap<>(); // role → allowed prefixes (block-all exceptions)
+    private final Set<String>              blockAllRoles = new HashSet<>(); // roles with all commands blocked
+
     private File rolesFile;
     private File playersFile;
     private File linksFile;
+    private File cmdBlocksFile;
     private Scoreboard scoreboard;
 
     private static final String TEAM_PREFIX = "mv_";
@@ -47,13 +52,15 @@ public class RoleManager {
     }
 
     public void load() {
-        rolesFile   = new File(plugin.getDataFolder(), "roles.yml");
-        playersFile = new File(plugin.getDataFolder(), "players.yml");
-        linksFile   = new File(plugin.getDataFolder(), "links.yml");
+        rolesFile     = new File(plugin.getDataFolder(), "roles.yml");
+        playersFile   = new File(plugin.getDataFolder(), "players.yml");
+        linksFile     = new File(plugin.getDataFolder(), "links.yml");
+        cmdBlocksFile = new File(plugin.getDataFolder(), "command-blocks.yml");
 
         createIfAbsent(rolesFile);
         createIfAbsent(playersFile);
         createIfAbsent(linksFile);
+        createIfAbsent(cmdBlocksFile);
 
         // Load roles
         YamlConfiguration rc = YamlConfiguration.loadConfiguration(rolesFile);
@@ -82,6 +89,18 @@ public class RoleManager {
         if (lc.isConfigurationSection("links")) {
             for (String gameRole : lc.getConfigurationSection("links").getKeys(false)) {
                 roleLinks.put(gameRole, lc.getString("links." + gameRole));
+            }
+        }
+
+        // Load command blocks
+        YamlConfiguration cc = YamlConfiguration.loadConfiguration(cmdBlocksFile);
+        if (cc.isConfigurationSection("roles")) {
+            for (String roleName : cc.getConfigurationSection("roles").getKeys(false)) {
+                if (cc.getBoolean("roles." + roleName + ".block-all", false)) blockAllRoles.add(roleName);
+                List<String> blocked = cc.getStringList("roles." + roleName + ".blocked");
+                if (!blocked.isEmpty()) blockedCmds.put(roleName, new HashSet<>(blocked));
+                List<String> allowed = cc.getStringList("roles." + roleName + ".allowed");
+                if (!allowed.isEmpty()) allowedCmds.put(roleName, new HashSet<>(allowed));
             }
         }
 
@@ -132,6 +151,19 @@ public class RoleManager {
         YamlConfiguration c = new YamlConfiguration();
         for (Map.Entry<String, String> e : roleLinks.entrySet()) c.set("links." + e.getKey(), e.getValue());
         save(c, linksFile);
+    }
+
+    private void saveCmdBlocks() {
+        YamlConfiguration c = new YamlConfiguration();
+        Set<String> allRoles = new HashSet<>(blockedCmds.keySet());
+        allRoles.addAll(allowedCmds.keySet());
+        allRoles.addAll(blockAllRoles);
+        for (String role : allRoles) {
+            c.set("roles." + role + ".block-all", blockAllRoles.contains(role));
+            c.set("roles." + role + ".blocked", new ArrayList<>(blockedCmds.getOrDefault(role, Set.of())));
+            c.set("roles." + role + ".allowed", new ArrayList<>(allowedCmds.getOrDefault(role, Set.of())));
+        }
+        save(c, cmdBlocksFile);
     }
 
     private void save(YamlConfiguration c, File f) {
@@ -199,10 +231,14 @@ public class RoleManager {
         playerRoles.values().removeIf(r -> r.equals(name));
         if (name.equals(joinRole)) joinRole = null;
         roleLinks.remove(name);
+        blockedCmds.remove(name);
+        allowedCmds.remove(name);
+        blockAllRoles.remove(name);
         removeTeam(name);
         saveRoles();
         savePlayers();
         saveLinks();
+        saveCmdBlocks();
         return true;
     }
 
@@ -243,6 +279,55 @@ public class RoleManager {
                 () -> syncToDiscord(uuid, roleName, false));
         }
         return true;
+    }
+
+    // ── Command blocking ─────────────────────────────────────────────────────
+
+    public boolean blockCommand(String roleName, String cmd) {
+        if (!roles.containsKey(roleName)) return false;
+        blockedCmds.computeIfAbsent(roleName, k -> new HashSet<>()).add(cmd.toLowerCase());
+        saveCmdBlocks();
+        return true;
+    }
+
+    public boolean setBlockAll(String roleName) {
+        if (!roles.containsKey(roleName)) return false;
+        blockAllRoles.add(roleName);
+        saveCmdBlocks();
+        return true;
+    }
+
+    public boolean allowCommand(String roleName, String cmd) {
+        if (!roles.containsKey(roleName)) return false;
+        String c = cmd.toLowerCase();
+        if (blockAllRoles.contains(roleName)) {
+            allowedCmds.computeIfAbsent(roleName, k -> new HashSet<>()).add(c);
+        } else {
+            Set<String> blocked = blockedCmds.get(roleName);
+            if (blocked != null) blocked.remove(c);
+        }
+        saveCmdBlocks();
+        return true;
+    }
+
+    public boolean isCommandBlocked(String roleName, String input) {
+        if (roleName == null || input == null) return false;
+        String cmd = input.toLowerCase();
+        if (cmd.startsWith("/")) cmd = cmd.substring(1);
+        if (blockAllRoles.contains(roleName)) {
+            for (String a : allowedCmds.getOrDefault(roleName, Set.of())) {
+                if (cmdMatches(a, cmd)) return false;
+            }
+            return true;
+        }
+        for (String b : blockedCmds.getOrDefault(roleName, Set.of())) {
+            if (cmdMatches(b, cmd)) return true;
+        }
+        return false;
+    }
+
+    private boolean cmdMatches(String prefix, String input) {
+        return input.equals(prefix) || input.startsWith(prefix + " ");
     }
 
     // ── Role links ───────────────────────────────────────────────────────────
