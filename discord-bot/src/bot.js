@@ -6,7 +6,7 @@ const {
 const db = require('./database');
 const { data: welcomeData, execute: welcomeExecute, sendWelcomeMessage } = require('./commands/welcome');
 const { data: joinRoleData, execute: joinRoleExecute } = require('./commands/joinrole');
-const { data: embedData,   execute: embedExecute }   = require('./commands/embed');
+const { data: embedData, execute: embedExecute, handleInteraction: embedHandleInteraction, handleModalSubmit: embedHandleModalSubmit } = require('./commands/embed');
 
 const COLOR_GREEN      = 0x2ECC71;
 const COLOR_DARK_GREEN = 0x27AE60;
@@ -39,15 +39,30 @@ client.once(Events.ClientReady, async (c) => {
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
-    if (!interaction.isChatInputCommand()) return;
-    if (interaction.commandName === 'welcome') {
-        await welcomeExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+    if (interaction.isChatInputCommand()) {
+        if (interaction.commandName === 'welcome') {
+            await welcomeExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        }
+        if (interaction.commandName === 'joinrole') {
+            await joinRoleExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        }
+        if (interaction.commandName === 'embed') {
+            await embedExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        }
+        return;
     }
-    if (interaction.commandName === 'joinrole') {
-        await joinRoleExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+
+    if (interaction.isButton() || interaction.isStringSelectMenu()) {
+        if (interaction.customId.startsWith('embed_')) {
+            await embedHandleInteraction(interaction).catch(err => console.error('[Bot] Embed interaction error:', err.message));
+        }
+        return;
     }
-    if (interaction.commandName === 'embed') {
-        await embedExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+
+    if (interaction.isModalSubmit()) {
+        if (interaction.customId.startsWith('embed_')) {
+            await embedHandleModalSubmit(interaction).catch(err => console.error('[Bot] Embed modal error:', err.message));
+        }
     }
 });
 
