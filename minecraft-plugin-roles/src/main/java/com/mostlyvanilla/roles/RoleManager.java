@@ -25,9 +25,10 @@ import java.util.*;
 public class RoleManager {
 
     private final MostlyVanillaRoles plugin;
-    private final Map<String, String> roles       = new LinkedHashMap<>();
-    private final Map<UUID, String>   playerRoles = new HashMap<>();
-    private final Map<String, String> roleLinks   = new HashMap<>(); // gameRole → discordRoleId
+    private final Map<String, String>  roles       = new LinkedHashMap<>();
+    private final Map<String, Integer> roleWeights = new HashMap<>();
+    private final Map<UUID, String>    playerRoles = new HashMap<>();
+    private final Map<String, String>  roleLinks   = new HashMap<>(); // gameRole → discordRoleId
     private String joinRole = null;
 
     private File rolesFile;
@@ -60,6 +61,7 @@ public class RoleManager {
         if (rc.isConfigurationSection("roles")) {
             for (String name : rc.getConfigurationSection("roles").getKeys(false)) {
                 roles.put(name, rc.getString("roles." + name + ".prefix", ""));
+                roleWeights.put(name, rc.getInt("roles." + name + ".weight", 50));
             }
         }
 
@@ -113,7 +115,10 @@ public class RoleManager {
     private void saveRoles() {
         YamlConfiguration c = new YamlConfiguration();
         if (joinRole != null) c.set("join-role", joinRole);
-        for (Map.Entry<String, String> e : roles.entrySet()) c.set("roles." + e.getKey() + ".prefix", e.getValue());
+        for (Map.Entry<String, String> e : roles.entrySet()) {
+            c.set("roles." + e.getKey() + ".prefix", e.getValue());
+            c.set("roles." + e.getKey() + ".weight", roleWeights.getOrDefault(e.getKey(), 50));
+        }
         save(c, rolesFile);
     }
 
@@ -137,7 +142,8 @@ public class RoleManager {
     // ── Scoreboard teams ─────────────────────────────────────────────────────
 
     private String teamName(String roleName) {
-        String full = TEAM_PREFIX + roleName;
+        int w = roleWeights.getOrDefault(roleName, 50);
+        String full = String.format("mv_%02d_%s", w, roleName);
         return full.length() > 16 ? full.substring(0, 16) : full;
     }
 
@@ -181,6 +187,7 @@ public class RoleManager {
 
     public void createRole(String name, String prefix) {
         roles.put(name, prefix);
+        roleWeights.putIfAbsent(name, 50);
         setupTeam(name, prefix);
         saveRoles();
     }
@@ -188,6 +195,7 @@ public class RoleManager {
     public boolean deleteRole(String name) {
         if (!roles.containsKey(name)) return false;
         roles.remove(name);
+        roleWeights.remove(name);
         playerRoles.values().removeIf(r -> r.equals(name));
         if (name.equals(joinRole)) joinRole = null;
         roleLinks.remove(name);
@@ -195,6 +203,18 @@ public class RoleManager {
         saveRoles();
         savePlayers();
         saveLinks();
+        return true;
+    }
+
+    public boolean setWeight(String roleName, int weight) {
+        if (!roles.containsKey(roleName)) return false;
+        removeTeam(roleName);                          // remove old team name (uses current weight)
+        roleWeights.put(roleName, weight);             // update weight
+        setupTeam(roleName, roles.get(roleName));      // register new team name
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (roleName.equals(playerRoles.get(p.getUniqueId()))) syncPlayerTeam(p);
+        }
+        saveRoles();
         return true;
     }
 

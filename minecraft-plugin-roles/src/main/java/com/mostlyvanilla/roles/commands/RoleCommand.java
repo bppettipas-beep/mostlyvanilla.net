@@ -147,6 +147,30 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
                 }
             }
 
+            case "setweight" -> {
+                if (args.length < 3) {
+                    sender.sendMessage(Component.text("Usage: /role setweight <role> <weight>", NamedTextColor.RED));
+                    sender.sendMessage(Component.text("Lower weight = higher in tab list (1 = top, 99 = bottom)", NamedTextColor.GRAY));
+                    return true;
+                }
+                String roleName = args[1].toLowerCase();
+                int weight;
+                try {
+                    weight = Integer.parseInt(args[2]);
+                    if (weight < 1 || weight > 99) throw new NumberFormatException();
+                } catch (NumberFormatException e) {
+                    sender.sendMessage(Component.text("Weight must be a number between 1 and 99.", NamedTextColor.RED));
+                    return true;
+                }
+                if (rm.setWeight(roleName, weight)) {
+                    sender.sendMessage(Component.text("Set weight of ", NamedTextColor.GREEN)
+                        .append(Component.text(roleName, NamedTextColor.WHITE))
+                        .append(Component.text(" to " + weight + ".", NamedTextColor.GREEN)));
+                } else {
+                    sender.sendMessage(Component.text("Role '" + roleName + "' does not exist.", NamedTextColor.RED));
+                }
+            }
+
             case "link" -> {
                 if (args.length < 3) {
                     sender.sendMessage(Component.text("Usage: /role link <game-role> <discord-role-id>", NamedTextColor.RED));
@@ -223,14 +247,14 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("mostlyvanilla.roles.admin")) return List.of();
 
         if (args.length == 1) {
-            return filter(List.of("create", "delete", "assign", "remove", "list", "info", "join", "link", "unlink", "links"), args[0]);
+            return filter(List.of("create", "delete", "assign", "remove", "list", "info", "join", "setweight", "link", "unlink", "links"), args[0]);
         }
 
         RoleManager rm = plugin.getRoleManager();
 
         if (args.length == 2) {
             return switch (args[0].toLowerCase()) {
-                case "delete", "join", "link", "unlink" -> filter(new ArrayList<>(rm.getRoleNames()), args[1]);
+                case "delete", "join", "setweight", "link", "unlink" -> filter(new ArrayList<>(rm.getRoleNames()), args[1]);
                 case "assign", "remove", "info" -> filter(
                     Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList()), args[1]
                 );
