@@ -34,7 +34,16 @@ public class MostlyVanillaEconomy extends JavaPlugin {
         getCommand("baltop").setExecutor(baltopCommand);
         getCommand("baltop").setTabCompleter(baltopCommand);
 
+        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            registerPlaceholders();
+            getLogger().info("PlaceholderAPI found — economy placeholders registered.");
+        }
+
         getLogger().info("MostlyVanillaEconomy enabled!");
+    }
+
+    private void registerPlaceholders() {
+        new EconomyExpansion(economyManager).register();
     }
 
     @Override

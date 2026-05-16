@@ -1,0 +1,78 @@
+# -------------------------------------------------------
+#   Mostly Vanilla — TAB Scoreboard
+#
+#   Requires:
+#     - TAB plugin (https://github.com/NEZNAMY/TAB)
+#     - PlaceholderAPI
+#     - MostlyVanillaEconomy plugin (provides %economy_* placeholders)
+#
+#   To install:
+#     1. Replace the 'scoreboard' block in plugins/TAB/config.yml
+#        with the block below.
+#     2. Merge the 'animations' block into plugins/TAB/animations.yml
+#        (add sb_title and sb_separator entries).
+#     3. Set a main currency in-game: /eco setmain <currency>
+#     4. Reload TAB: /tab reload
+#
+#   Toggle command in-game: /sb
+# -------------------------------------------------------
+
+# ── Paste into plugins/TAB/config.yml ──────────────────
+scoreboard:
+  enabled: true
+  toggle-command: /sb
+  remember-toggle-choice: true
+  hidden-by-default: false
+  delay-on-join-milliseconds: 500
+  scoreboards:
+    default:
+      title: "%animation:sb_title%"
+      display-condition: "ALWAYS"
+      lines:
+        - "%animation:sb_separator%"
+        - "   &a&lMostly Vanilla"
+        - "%animation:sb_separator%"
+        - " "
+        - " &a&lBalance"
+        - "  &e%economy_balance%"
+        - "  &2%economy_currency%"
+        - "  "
+        - " &a&lWorld"
+        - "  &f%world%"
+        - "   "
+        - " &a&lPing"
+        - "  &f%ping%&8ms"
+        - "    "
+        - " &7mc.mostlyvanilla.net"
+
+
+# ── Merge into plugins/TAB/animations.yml ──────────────
+#
+# animations:
+#   sb_title:
+#     change-interval: 400
+#     texts:
+#       - "&a&lM&2&lO&a&lS&2&lT&a&lL&2&lY &a&lV&2&lA&a&lN&2&lI&a&lL&2&lL&a&lA"
+#       - "&2&lM&a&lO&2&lS&a&lT&2&lL&a&lY &2&lV&a&lA&2&lN&a&lI&2&lL&a&lL&2&lA"
+#       - "&f&lMOSTLY VANILLA"
+#       - "&a&lM&2&lO&a&lS&2&lT&a&lL&2&lY &a&lV&2&lA&a&lN&2&lI&a&lL&2&lL&a&lA"
+#       - "&2&lM&a&lO&2&lS&a&lT&2&lL&a&lY &2&lV&a&lA&2&lN&a&lI&2&lL&a&lL&2&lA"
+#       - "&f&lMOSTLY VANILLA"
+#
+#   sb_separator:
+#     change-interval: 55
+#     texts:
+#       - "&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬▬"
+#       - "&a▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬"
+#       - "&a▬▬▬▬▬▬▬▬&2▬▬▬▬▬&a▬▬"
+#       - "&a▬▬▬▬▬▬▬▬▬▬▬▬▬&2▬▬▬▬"
+#       - "&a▬▬▬▬▬▬▬▬&2▬▬▬▬▬&a▬▬"
+#       - "&a▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬"
+#       - "&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬▬"
+
+
+# ── PlaceholderAPI placeholders (from MostlyVanillaEconomy) ──
+#
+#   %economy_balance%            Balance for the main currency
+#   %economy_currency%           Name of the main currency
+#   %economy_balance_<name>%     Balance for a specific currency (e.g. %economy_balance_diamonds%)

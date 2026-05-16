@@ -13,8 +13,8 @@ header-footer:
       footer:
         - "%animation:separator%"
         - " "
-        - " %animation:online_dot% &7Players %animation:arrow_pulse% &f%online%&7/&f%max%      &7Vanilla 1.20.4"
-        - " &7mc.mostlyvanilla.net    %animation:discord_spin%"
+        - " %animation:online_dot% &7Online: &f%online%&7/&f45"
+        - " &7mostlyvanilla.net"
         - " "
         - "%animation:separator%"
 
@@ -73,22 +73,31 @@ bossbar:
 
 # https://github.com/NEZNAMY/TAB/wiki/Feature-guide:-Scoreboard
 scoreboard:
-  enabled: false
+  enabled: true
   toggle-command: /sb
-  remember-toggle-choice: false
+  remember-toggle-choice: true
   hidden-by-default: false
-  delay-on-join-milliseconds: 0
+  delay-on-join-milliseconds: 500
   scoreboards:
-    scoreboard:
-      title: "&a&lMostly Vanilla"
+    default:
+      title: "%animation:sb_title%"
+      display-condition: "ALWAYS"
       lines:
-        - "&7%date%"
-        - "&6Online:"
-        - "* &eOnline&7: &f%online%"
-        - "* &eWorld&7: &f%world%"
-        - ""
-        - "&6Personal Info:"
-        - "* &bPing&7: &f%ping%&8ms"
+        - "%animation:sb_separator%"
+        - "   &a&lMostly Vanilla"
+        - "%animation:sb_separator%"
+        - " "
+        - " &a&lBalance"
+        - "  &e%economy_balance%"
+        - "  &2%economy_currency%"
+        - "  "
+        - " &a&lWorld"
+        - "  &f%world%"
+        - "   "
+        - " &a&lPing"
+        - "  &f%ping%&8ms"
+        - "    "
+        - " &7mc.mostlyvanilla.net"
 
 # https://github.com/NEZNAMY/TAB/wiki/Feature-guide:-Layout
 layout:

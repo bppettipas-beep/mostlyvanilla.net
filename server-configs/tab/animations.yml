@@ -39,14 +39,30 @@ animations:
       - "&a*"
       - "&2*"
 
-  discord_spin:
-    change-interval: 400
-    texts:
-      - "&a>> &fdiscord.gg/mostlyvanilla"
-      - "&2>> &fdiscord.gg/mostlyvanilla"
-
   arrow_pulse:
     change-interval: 500
     texts:
       - "&a>>"
       - "&2>>"
+
+  # ── Scoreboard ────────────────────────────────────────
+  sb_title:
+    change-interval: 400
+    texts:
+      - "&a&lM&2&lO&a&lS&2&lT&a&lL&2&lY &a&lV&2&lA&a&lN&2&lI&a&lL&2&lL&a&lA"
+      - "&2&lM&a&lO&2&lS&a&lT&2&lL&a&lY &2&lV&a&lA&2&lN&a&lI&2&lL&a&lL&2&lA"
+      - "&f&lMOSTLY VANILLA"
+      - "&a&lM&2&lO&a&lS&2&lT&a&lL&2&lY &a&lV&2&lA&a&lN&2&lI&a&lL&2&lL&a&lA"
+      - "&2&lM&a&lO&2&lS&a&lT&2&lL&a&lY &2&lV&a&lA&2&lN&a&lI&2&lL&a&lL&2&lA"
+      - "&f&lMOSTLY VANILLA"
+
+  sb_separator:
+    change-interval: 55
+    texts:
+      - "&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬▬"
+      - "&a▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬"
+      - "&a▬▬▬▬▬▬▬▬&2▬▬▬▬▬&a▬▬"
+      - "&a▬▬▬▬▬▬▬▬▬▬▬▬▬&2▬▬▬▬"
+      - "&a▬▬▬▬▬▬▬▬&2▬▬▬▬▬&a▬▬"
+      - "&a▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬"
+      - "&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬▬"
