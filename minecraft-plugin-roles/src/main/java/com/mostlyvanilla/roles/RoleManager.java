@@ -341,9 +341,11 @@ public class RoleManager {
         roleLinks.put(gameRole, discordRoleId);
         saveLinks();
         // Register link with bot
+        int weight = roleWeights.getOrDefault(gameRole, 50);
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () ->
             postJson("/api/role-links",
-                String.format("{\"game_role\":\"%s\",\"discord_role_id\":\"%s\"}", gameRole, discordRoleId))
+                String.format("{\"game_role\":\"%s\",\"discord_role_id\":\"%s\",\"weight\":%d}",
+                    gameRole, discordRoleId, weight))
         );
         return true;
     }
@@ -398,11 +400,14 @@ public class RoleManager {
                         try {
                             UUID uuid = UUID.fromString(uuidStr);
                             if ("assign".equals(action) && roleExists(gameRole)) {
-                                // Update directly without triggering Discord sync (avoid loop)
                                 playerRoles.put(uuid, gameRole);
                                 Player online = Bukkit.getPlayer(uuid);
                                 if (online != null) syncPlayerTeam(online);
                                 savePlayers();
+                                // After assigning, upgrade to highest Discord role if one exists
+                                new BukkitRunnable() {
+                                    @Override public void run() { syncFromDiscord(uuid); }
+                                }.runTaskAsynchronously(plugin);
                             } else if ("remove".equals(action) && gameRole.equals(playerRoles.get(uuid))) {
                                 playerRoles.remove(uuid);
                                 Player online = Bukkit.getPlayer(uuid);
@@ -418,6 +423,56 @@ public class RoleManager {
         } catch (Exception e) {
             plugin.getLogger().warning("[RoleSync] Failed to parse pending roles: " + e.getMessage());
         }
+    }
+
+    /**
+     * Queries the bot for all Discord roles the player currently holds, finds the
+     * highest-priority (lowest weight) linked game role among them, and assigns it.
+     * Must be called from an async thread.
+     */
+    public void syncFromDiscord(UUID mcUuid) {
+        String body = getJson("/api/discord-roles/" + mcUuid);
+        if (body == null || body.isBlank() || body.equals("[]")) return;
+
+        List<String> discordRoleIds = parseJsonStringArray(body);
+        if (discordRoleIds.isEmpty()) return;
+
+        String bestRole  = null;
+        int    bestWeight = Integer.MAX_VALUE;
+        for (Map.Entry<String, String> link : roleLinks.entrySet()) {
+            if (discordRoleIds.contains(link.getValue())) {
+                int w = roleWeights.getOrDefault(link.getKey(), 50);
+                if (w < bestWeight) { bestWeight = w; bestRole = link.getKey(); }
+            }
+        }
+
+        if (bestRole == null) return;
+
+        final String roleToAssign = bestRole;
+        new BukkitRunnable() {
+            @Override public void run() {
+                if (roleToAssign.equals(playerRoles.get(mcUuid))) return;
+                playerRoles.put(mcUuid, roleToAssign);
+                Player online = Bukkit.getPlayer(mcUuid);
+                if (online != null) syncPlayerTeam(online);
+                savePlayers();
+                plugin.getLogger().info("[RoleSync] Assigned '" + roleToAssign + "' to " + mcUuid + " via Discord role sync.");
+            }
+        }.runTask(plugin);
+    }
+
+    /** Parses a JSON array of strings: ["a","b","c"] → List<String>. */
+    private static List<String> parseJsonStringArray(String json) {
+        List<String> result = new ArrayList<>();
+        json = json.trim();
+        if (!json.startsWith("[") || !json.endsWith("]")) return result;
+        json = json.substring(1, json.length() - 1).trim();
+        if (json.isBlank()) return result;
+        for (String part : json.split(",")) {
+            String s = part.trim().replaceAll("^\"|\"$", "");
+            if (!s.isBlank()) result.add(s);
+        }
+        return result;
     }
 
     // ── HTTP helpers ─────────────────────────────────────────────────────────

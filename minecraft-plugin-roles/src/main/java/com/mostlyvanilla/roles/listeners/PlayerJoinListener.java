@@ -25,15 +25,21 @@ public class PlayerJoinListener implements Listener {
             String joinRole = rm.getJoinRole();
             if (joinRole != null) rm.assignRole(uuid, joinRole);
         } else {
-            // Sync scoreboard team immediately, then TAB after 1 tick
             rm.syncPlayerTeam(player);
         }
 
-        // Re-sync TAB prefix after 1 tick to ensure TAB has finished its own join processing
+        // Re-sync TAB prefix after 1 tick
         new BukkitRunnable() {
             @Override public void run() {
                 if (player.isOnline()) rm.syncPlayerTeam(player);
             }
         }.runTaskLater(plugin, 1L);
+
+        // Async: query Discord roles and upgrade to highest linked role
+        new BukkitRunnable() {
+            @Override public void run() {
+                rm.syncFromDiscord(uuid);
+            }
+        }.runTaskAsynchronously(plugin);
     }
 }
