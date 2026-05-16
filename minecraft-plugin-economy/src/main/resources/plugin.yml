@@ -1,0 +1,31 @@
+name: MostlyVanillaEconomy
+version: '${project.version}'
+main: com.mostlyvanilla.economy.MostlyVanillaEconomy
+api-version: '1.20'
+description: Custom multi-currency economy plugin
+
+commands:
+  eco:
+    description: Economy admin commands
+    usage: /eco <create|delete|give|take|set|balance|list|top|reset>
+    permission: economy.admin
+  balance:
+    description: Check your balance
+    usage: /balance [currency]
+    permission: economy.balance
+    aliases: [bal, money]
+  pay:
+    description: Pay another player
+    usage: /pay <player> <currency> <amount>
+    permission: economy.pay
+
+permissions:
+  economy.admin:
+    description: Full access to /eco admin commands
+    default: op
+  economy.balance:
+    description: Check your own balance with /balance
+    default: true
+  economy.pay:
+    description: Transfer currency to other players with /pay
+    default: true
