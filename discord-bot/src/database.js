@@ -122,6 +122,55 @@ const tickets = {
     update:       db.prepare('UPDATE tickets SET status = @status, claimed_by = @claimed_by, closed_at = @closed_at WHERE id = @id'),
 };
 
+db.exec(`
+    CREATE TABLE IF NOT EXISTS staffapp_config (
+        guild_id         TEXT PRIMARY KEY,
+        log_channel_id   TEXT,
+        questions        TEXT DEFAULT '[]',
+        role_ids         TEXT DEFAULT '[]',
+        title            TEXT DEFAULT 'Staff Applications',
+        description      TEXT DEFAULT 'Click below to apply for a staff position.',
+        panel_channel_id TEXT,
+        panel_message_id TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS staffapp_applications (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id        TEXT NOT NULL,
+        user_id         TEXT NOT NULL,
+        applied_role_id TEXT NOT NULL,
+        answers         TEXT DEFAULT '[]',
+        status          TEXT DEFAULT 'pending',
+        log_message_id  TEXT,
+        reviewed_by     TEXT,
+        submitted_at    INTEGER DEFAULT (strftime('%s','now'))
+    );
+`);
+
+const staffappConfig = {
+    get: db.prepare('SELECT * FROM staffapp_config WHERE guild_id = ?'),
+    upsert: db.prepare(`
+        INSERT INTO staffapp_config (guild_id, log_channel_id, questions, role_ids, title, description, panel_channel_id, panel_message_id)
+        VALUES (@guild_id, @log_channel_id, @questions, @role_ids, @title, @description, @panel_channel_id, @panel_message_id)
+        ON CONFLICT(guild_id) DO UPDATE SET
+            log_channel_id   = excluded.log_channel_id,
+            questions        = excluded.questions,
+            role_ids         = excluded.role_ids,
+            title            = excluded.title,
+            description      = excluded.description,
+            panel_channel_id = excluded.panel_channel_id,
+            panel_message_id = excluded.panel_message_id
+    `),
+};
+
+const staffappApplications = {
+    create:        db.prepare('INSERT INTO staffapp_applications (guild_id, user_id, applied_role_id, answers) VALUES (@guild_id, @user_id, @applied_role_id, @answers)'),
+    getById:       db.prepare('SELECT * FROM staffapp_applications WHERE id = ?'),
+    getPending:    db.prepare("SELECT * FROM staffapp_applications WHERE guild_id = ? AND user_id = ? AND status = 'pending' LIMIT 1"),
+    updateStatus:  db.prepare('UPDATE staffapp_applications SET status = @status, reviewed_by = @reviewed_by WHERE id = @id'),
+    setLogMessage: db.prepare('UPDATE staffapp_applications SET log_message_id = @log_message_id WHERE id = @id'),
+};
+
 const stmts = {
     insertCode: db.prepare(
         'INSERT OR REPLACE INTO pending_codes (code, mc_uuid, mc_name, created_at, expires_at) VALUES (?, ?, ?, ?, ?)'
@@ -175,4 +224,6 @@ module.exports = {
     getSupportRoleIds,
     ticketQuestions,
     tickets,
+    staffappConfig,
+    staffappApplications,
 };
