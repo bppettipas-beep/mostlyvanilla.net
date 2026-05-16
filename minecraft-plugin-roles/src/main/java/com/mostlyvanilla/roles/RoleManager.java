@@ -190,6 +190,8 @@ public class RoleManager {
         Team team = scoreboard.getTeam(tName);
         if (team == null) team = scoreboard.registerNewTeam(tName);
         team.prefix(parsePrefix(prefix).append(Component.text(" ")));
+        team.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.ALWAYS);
+        team.setOption(Team.Option.COLLISION_RULE, Team.OptionStatus.NEVER);
     }
 
     private void removeTeam(String roleName) {
@@ -199,17 +201,19 @@ public class RoleManager {
 
     public void syncPlayerTeam(Player player) {
         String roleName = playerRoles.get(player.getUniqueId());
+        String playerName = player.getName();
 
-        Team current = scoreboard.getPlayerTeam(player);
-        if (current != null && current.getName().startsWith(TEAM_PREFIX)) current.removePlayer(player);
+        // Remove from any existing mv_ team by entry name (more reliable than getPlayerTeam)
+        for (Team t : scoreboard.getTeams()) {
+            if (t.getName().startsWith(TEAM_PREFIX) && t.hasEntry(playerName)) {
+                t.removeEntry(playerName);
+            }
+        }
 
         if (roleName != null) {
             Team team = scoreboard.getTeam(teamName(roleName));
-            if (team != null) team.addPlayer(player);
+            if (team != null) team.addEntry(playerName);
         }
-
-        String prefix = roleName != null ? roles.get(roleName) : null;
-        TabHook.setPrefix(player, prefix);
 
         TabManager tabMgr = plugin.getTabManager();
         if (tabMgr != null) tabMgr.updateTabName(player);
