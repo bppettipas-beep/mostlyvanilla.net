@@ -9,6 +9,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scoreboard.*;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 public class PlayerBoard {
@@ -47,6 +49,8 @@ public class PlayerBoard {
         setLine(0, sep);
 
         if (!fullUpdate) return;
+
+        syncRoleTeams();
 
         setLine(1,  " ");
         setLine(2,  " " + fetchRole(player));
@@ -139,6 +143,42 @@ public class PlayerBoard {
             }
         } catch (Exception ignored) {}
         return "0";
+    }
+
+    // ── Role team sync ────────────────────────────────────
+
+    /**
+     * Copies all mv_ teams from the main scoreboard into this player's custom scoreboard.
+     * This is required so that tab-list sorting by role weight works even when the player
+     * is on a custom scoreboard (which would otherwise hide the main scoreboard's teams).
+     */
+    private void syncRoleTeams() {
+        Scoreboard main = Bukkit.getScoreboardManager().getMainScoreboard();
+        Set<String> seen = new HashSet<>();
+
+        for (Team src : main.getTeams()) {
+            String name = src.getName();
+            if (!name.startsWith("mv_")) continue;
+            seen.add(name);
+
+            Team dst = scoreboard.getTeam(name);
+            if (dst == null) dst = scoreboard.registerNewTeam(name);
+
+            dst.prefix(src.prefix());
+            dst.suffix(src.suffix());
+            dst.setOption(Team.Option.NAME_TAG_VISIBILITY, src.getOption(Team.Option.NAME_TAG_VISIBILITY));
+            dst.setOption(Team.Option.COLLISION_RULE, src.getOption(Team.Option.COLLISION_RULE));
+
+            Set<String> srcEntries = src.getEntries();
+            Set<String> dstEntries = new HashSet<>(dst.getEntries());
+            for (String e : srcEntries) { if (!dstEntries.contains(e)) dst.addEntry(e); }
+            for (String e : dstEntries) { if (!srcEntries.contains(e)) dst.removeEntry(e); }
+        }
+
+        // Remove any stale mv_ teams that no longer exist on main
+        for (Team t : new HashSet<>(scoreboard.getTeams())) {
+            if (t.getName().startsWith("mv_") && !seen.contains(t.getName())) t.unregister();
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────
