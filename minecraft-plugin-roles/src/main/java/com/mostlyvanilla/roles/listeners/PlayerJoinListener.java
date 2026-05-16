@@ -17,12 +17,15 @@ public class PlayerJoinListener implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         RoleManager rm = plugin.getRoleManager();
-        String joinRole = rm.getJoinRole();
-        if (joinRole == null) return;
-
         var uuid = event.getPlayer().getUniqueId();
+
         if (rm.getPlayerRole(uuid) == null) {
-            rm.assignRole(uuid, joinRole);
+            // New player — assign join role if configured
+            String joinRole = rm.getJoinRole();
+            if (joinRole != null) rm.assignRole(uuid, joinRole); // also syncs team
+        } else {
+            // Returning player — sync them to their scoreboard team
+            rm.syncPlayerTeam(event.getPlayer());
         }
     }
 }

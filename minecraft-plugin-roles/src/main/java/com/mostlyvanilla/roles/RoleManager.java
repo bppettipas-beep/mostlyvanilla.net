@@ -1,6 +1,13 @@
 package com.mostlyvanilla.roles;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
+import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scoreboard.Team;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,6 +22,10 @@ public class RoleManager {
 
     private File rolesFile;
     private File playersFile;
+    private Scoreboard scoreboard;
+
+    // Team names are limited to 16 chars; prefix with "mv_" to avoid conflicts
+    private static final String TEAM_PREFIX = "mv_";
 
     public RoleManager(MostlyVanillaRoles plugin) {
         this.plugin = plugin;
@@ -40,13 +51,24 @@ public class RoleManager {
         if (playersConfig.isConfigurationSection("players")) {
             for (String uuidStr : playersConfig.getConfigurationSection("players").getKeys(false)) {
                 try {
-                    UUID uuid     = UUID.fromString(uuidStr);
-                    String role   = playersConfig.getString("players." + uuidStr);
+                    UUID uuid   = UUID.fromString(uuidStr);
+                    String role = playersConfig.getString("players." + uuidStr);
                     if (role != null && roles.containsKey(role)) {
                         playerRoles.put(uuid, role);
                     }
                 } catch (IllegalArgumentException ignored) {}
             }
+        }
+
+        // Set up scoreboard teams for all roles
+        scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
+        for (Map.Entry<String, String> entry : roles.entrySet()) {
+            setupTeam(entry.getKey(), entry.getValue());
+        }
+
+        // Sync any online players (e.g. after a reload)
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            syncPlayerTeam(player);
         }
 
         plugin.getLogger().info("Loaded " + roles.size() + " role(s), " + playerRoles.size() + " assignment(s).");
@@ -56,6 +78,44 @@ public class RoleManager {
         if (!file.exists()) {
             try { file.createNewFile(); }
             catch (IOException e) { plugin.getLogger().warning("Could not create " + file.getName()); }
+        }
+    }
+
+    private String teamName(String roleName) {
+        String full = TEAM_PREFIX + roleName;
+        return full.length() > 16 ? full.substring(0, 16) : full;
+    }
+
+    private Component parsePrefix(String prefix) {
+        return prefix.contains("<")
+            ? MiniMessage.miniMessage().deserialize(prefix)
+            : LegacyComponentSerializer.legacyAmpersand().deserialize(prefix);
+    }
+
+    private void setupTeam(String roleName, String prefix) {
+        String tName = teamName(roleName);
+        Team team = scoreboard.getTeam(tName);
+        if (team == null) team = scoreboard.registerNewTeam(tName);
+        team.prefix(parsePrefix(prefix).append(Component.text(" ")));
+    }
+
+    private void removeTeam(String roleName) {
+        Team team = scoreboard.getTeam(teamName(roleName));
+        if (team != null) team.unregister();
+    }
+
+    public void syncPlayerTeam(Player player) {
+        String roleName = playerRoles.get(player.getUniqueId());
+
+        // Remove from any existing mv_ team first
+        Team current = scoreboard.getPlayerTeam(player);
+        if (current != null && current.getName().startsWith(TEAM_PREFIX)) {
+            current.removePlayer(player);
+        }
+
+        if (roleName != null) {
+            Team team = scoreboard.getTeam(teamName(roleName));
+            if (team != null) team.addPlayer(player);
         }
     }
 
@@ -83,6 +143,7 @@ public class RoleManager {
 
     public void createRole(String name, String prefix) {
         roles.put(name, prefix);
+        setupTeam(name, prefix);
         saveRoles();
     }
 
@@ -91,6 +152,7 @@ public class RoleManager {
         roles.remove(name);
         playerRoles.values().removeIf(r -> r.equals(name));
         if (name.equals(joinRole)) joinRole = null;
+        removeTeam(name);
         saveRoles();
         savePlayers();
         return true;
@@ -99,6 +161,8 @@ public class RoleManager {
     public boolean assignRole(UUID uuid, String roleName) {
         if (!roles.containsKey(roleName)) return false;
         playerRoles.put(uuid, roleName);
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null) syncPlayerTeam(player);
         savePlayers();
         return true;
     }
@@ -106,6 +170,8 @@ public class RoleManager {
     public boolean removePlayerRole(UUID uuid) {
         if (!playerRoles.containsKey(uuid)) return false;
         playerRoles.remove(uuid);
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null) syncPlayerTeam(player);
         savePlayers();
         return true;
     }
