@@ -1,20 +1,22 @@
 # https://github.com/NEZNAMY/TAB/wiki/Feature-guide:-Header-&-Footer
 header-footer:
   enabled: true
-  header:
-    - "%animation:separator%"
-    - " "
-    - "%animation:mv_title%"
-    - "%animation:taglines%"
-    - " "
-    - "%animation:separator%"
-  footer:
-    - "%animation:separator%"
-    - " "
-    - " %animation:online_dot% &7Players %animation:arrow_pulse% &f%online%&7/&f%max%      &7Vanilla 1.20.4"
-    - " &7mc.mostlyvanilla.net    %animation:discord_spin%"
-    - " "
-    - "%animation:separator%"
+  designs:
+    default:
+      header:
+        - "%animation:separator%"
+        - " "
+        - "%animation:mv_title%"
+        - "%animation:taglines%"
+        - " "
+        - "%animation:separator%"
+      footer:
+        - "%animation:separator%"
+        - " "
+        - " %animation:online_dot% &7Players %animation:arrow_pulse% &f%online%&7/&f%max%      &7Vanilla 1.20.4"
+        - " &7mc.mostlyvanilla.net    %animation:discord_spin%"
+        - " "
+        - "%animation:separator%"
 
 # https://github.com/NEZNAMY/TAB/wiki/Feature-guide:-Tablist-name-formatting
 tablist-name-formatting:

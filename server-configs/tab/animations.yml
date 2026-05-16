@@ -1,7 +1,7 @@
 animations:
 
   separator:
-    change-interval: 65
+    change-interval: 50
     texts:
       - "&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
       - "&a▬▬▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
@@ -13,7 +13,7 @@ animations:
       - "&a▬▬▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
 
   mv_title:
-    change-interval: 280
+    change-interval: 300
     texts:
       - "&a&l* &a&lM&2&lO&a&lS&2&lT&a&lL&2&lY &a&lV&2&lA&a&lN&2&lI&a&lL&2&lL&a&lA &a&l*"
       - "&2&l* &2&lM&a&lO&2&lS&a&lT&2&lL&a&lY &2&lV&a&lA&2&lN&a&lI&2&lL&a&lL&2&lA &2&l*"
