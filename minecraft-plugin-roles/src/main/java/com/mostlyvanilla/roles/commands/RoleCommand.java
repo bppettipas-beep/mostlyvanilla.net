@@ -147,6 +147,48 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
                 }
             }
 
+            case "link" -> {
+                if (args.length < 3) {
+                    sender.sendMessage(Component.text("Usage: /role link <game-role> <discord-role-id>", NamedTextColor.RED));
+                    return true;
+                }
+                String gameRole = args[1].toLowerCase();
+                String discordRoleId = args[2];
+                if (rm.linkRole(gameRole, discordRoleId)) {
+                    sender.sendMessage(Component.text("Linked ", NamedTextColor.GREEN)
+                        .append(Component.text(gameRole, NamedTextColor.WHITE))
+                        .append(Component.text(" → Discord role ", NamedTextColor.GREEN))
+                        .append(Component.text(discordRoleId, NamedTextColor.WHITE)));
+                } else {
+                    sender.sendMessage(Component.text("Role '" + gameRole + "' does not exist.", NamedTextColor.RED));
+                }
+            }
+
+            case "unlink" -> {
+                if (args.length < 2) {
+                    sender.sendMessage(Component.text("Usage: /role unlink <game-role>", NamedTextColor.RED));
+                    return true;
+                }
+                String gameRole = args[1].toLowerCase();
+                if (rm.unlinkRole(gameRole)) {
+                    sender.sendMessage(Component.text("Unlinked game role " + gameRole + " from Discord.", NamedTextColor.GREEN));
+                } else {
+                    sender.sendMessage(Component.text("Role '" + gameRole + "' has no Discord link.", NamedTextColor.RED));
+                }
+            }
+
+            case "links" -> {
+                Map<String, String> links = rm.getRoleLinks();
+                if (links.isEmpty()) {
+                    sender.sendMessage(Component.text("No role links configured.", NamedTextColor.YELLOW));
+                    return true;
+                }
+                sender.sendMessage(Component.text("━━━ Role Links ━━━", NamedTextColor.GREEN));
+                for (Map.Entry<String, String> e : links.entrySet()) {
+                    sender.sendMessage(Component.text("  " + e.getKey() + " → " + e.getValue(), NamedTextColor.GRAY));
+                }
+            }
+
             case "join" -> {
                 if (args.length < 2) {
                     String current = rm.getJoinRole();
@@ -181,14 +223,14 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("mostlyvanilla.roles.admin")) return List.of();
 
         if (args.length == 1) {
-            return filter(List.of("create", "delete", "assign", "remove", "list", "info", "join"), args[0]);
+            return filter(List.of("create", "delete", "assign", "remove", "list", "info", "join", "link", "unlink", "links"), args[0]);
         }
 
         RoleManager rm = plugin.getRoleManager();
 
         if (args.length == 2) {
             return switch (args[0].toLowerCase()) {
-                case "delete", "join"  -> filter(new ArrayList<>(rm.getRoleNames()), args[1]);
+                case "delete", "join", "link", "unlink" -> filter(new ArrayList<>(rm.getRoleNames()), args[1]);
                 case "assign", "remove", "info" -> filter(
                     Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList()), args[1]
                 );
@@ -218,5 +260,8 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("  /role list                    ", NamedTextColor.WHITE).append(Component.text("List all roles", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role info <player>           ", NamedTextColor.WHITE).append(Component.text("See a player's role", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role join <role|disable>     ", NamedTextColor.WHITE).append(Component.text("Set the auto-assigned join role", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role link <role> <discord-id>", NamedTextColor.WHITE).append(Component.text("Link a game role to a Discord role", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role unlink <role>           ", NamedTextColor.WHITE).append(Component.text("Remove Discord role link", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role links                   ", NamedTextColor.WHITE).append(Component.text("List all role links", NamedTextColor.GRAY)));
     }
 }

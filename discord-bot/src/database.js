@@ -171,6 +171,41 @@ const staffappApplications = {
     setLogMessage: db.prepare('UPDATE staffapp_applications SET log_message_id = @log_message_id WHERE id = @id'),
 };
 
+db.exec(`
+    CREATE TABLE IF NOT EXISTS role_links (
+        game_role       TEXT PRIMARY KEY,
+        discord_role_id TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS pending_game_roles (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        mc_uuid    TEXT    NOT NULL,
+        game_role  TEXT    NOT NULL,
+        action     TEXT    NOT NULL,
+        created_at INTEGER DEFAULT (strftime('%s','now'))
+    );
+`);
+
+const roleLinkStmts = {
+    get:           db.prepare('SELECT * FROM role_links WHERE game_role = ?'),
+    getByDiscord:  db.prepare('SELECT * FROM role_links WHERE discord_role_id = ?'),
+    getAll:        db.prepare('SELECT * FROM role_links'),
+    set:           db.prepare('INSERT OR REPLACE INTO role_links (game_role, discord_role_id) VALUES (?, ?)'),
+    delete:        db.prepare('DELETE FROM role_links WHERE game_role = ?'),
+};
+
+const pendingRoleStmts = {
+    add:      db.prepare('INSERT INTO pending_game_roles (mc_uuid, game_role, action) VALUES (?, ?, ?)'),
+    getAll:   db.prepare('SELECT * FROM pending_game_roles ORDER BY id'),
+    clearAll: db.prepare('DELETE FROM pending_game_roles'),
+};
+
+const drainPending = db.transaction(() => {
+    const rows = pendingRoleStmts.getAll.all();
+    pendingRoleStmts.clearAll.run();
+    return rows;
+});
+
 const stmts = {
     insertCode: db.prepare(
         'INSERT OR REPLACE INTO pending_codes (code, mc_uuid, mc_name, created_at, expires_at) VALUES (?, ?, ?, ?, ?)'
@@ -226,4 +261,15 @@ module.exports = {
     tickets,
     staffappConfig,
     staffappApplications,
+    roleLinks: {
+        get:          (gameRole)       => roleLinkStmts.get.get(gameRole),
+        getByDiscord: (discordRoleId)  => roleLinkStmts.getByDiscord.get(discordRoleId),
+        getAll:       ()               => roleLinkStmts.getAll.all(),
+        set:          (gameRole, id)   => roleLinkStmts.set.run(gameRole, id),
+        delete:       (gameRole)       => roleLinkStmts.delete.run(gameRole),
+    },
+    pendingGameRoles: {
+        add:      (mcUuid, gameRole, action) => pendingRoleStmts.add.run(mcUuid, gameRole, action),
+        drainAll: () => drainPending(),
+    },
 };

@@ -74,6 +74,52 @@ app.get('/api/verified/:uuid', requireSecret, (req, res) => {
     res.json({ verified: !!row, data: row ?? null });
 });
 
+// Called by the Minecraft plugin when /role link is used
+app.post('/api/role-links', requireSecret, (req, res) => {
+    const { game_role, discord_role_id } = req.body;
+    if (!game_role || !discord_role_id) return res.status(400).json({ error: 'Missing game_role or discord_role_id' });
+    db.roleLinks.set(game_role, discord_role_id);
+    console.log(`[API] Role link set: ${game_role} → ${discord_role_id}`);
+    res.json({ success: true });
+});
+
+// Called by the Minecraft plugin when /role unlink is used
+app.delete('/api/role-links/:gameRole', requireSecret, (req, res) => {
+    db.roleLinks.delete(req.params.gameRole);
+    console.log(`[API] Role link removed: ${req.params.gameRole}`);
+    res.json({ success: true });
+});
+
+// Called by the Minecraft plugin to add/remove a Discord role from a user
+app.post('/api/discord-role/assign', requireSecret, async (req, res) => {
+    const { discord_user_id, discord_role_id, assign } = req.body;
+    if (!discord_user_id || !discord_role_id) return res.status(400).json({ error: 'Missing fields' });
+    try {
+        const guild = client.guilds.cache.get(process.env.GUILD_ID);
+        if (!guild) return res.status(503).json({ error: 'Guild not available' });
+        const member = await guild.members.fetch(discord_user_id).catch(() => null);
+        if (!member) return res.status(404).json({ error: 'Member not in guild' });
+        const role = guild.roles.cache.get(discord_role_id);
+        if (!role) return res.status(404).json({ error: 'Role not found' });
+        if (assign) {
+            await member.roles.add(role);
+        } else {
+            await member.roles.remove(role);
+        }
+        console.log(`[API] ${assign ? 'Assigned' : 'Removed'} Discord role ${role.name} for ${member.user.tag}`);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[API] discord-role/assign error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Polled by the Minecraft plugin every poll-interval seconds
+app.get('/api/pending-game-roles', requireSecret, (req, res) => {
+    const rows = db.pendingGameRoles.drainAll();
+    res.json(rows);
+});
+
 module.exports = {
     startApi(port) {
         app.listen(port, () => console.log(`[API] Listening on port ${port}`));

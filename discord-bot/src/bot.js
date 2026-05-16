@@ -139,6 +139,31 @@ client.on(Events.GuildMemberAdd, async (member) => {
     }
 });
 
+client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
+    const addedRoles   = newMember.roles.cache.filter(r => !oldMember.roles.cache.has(r.id));
+    const removedRoles = oldMember.roles.cache.filter(r => !newMember.roles.cache.has(r.id));
+    if (addedRoles.size === 0 && removedRoles.size === 0) return;
+
+    const verified = db.getByDiscord(newMember.id);
+    if (!verified) return;
+
+    for (const [id] of addedRoles) {
+        const link = db.roleLinks.getByDiscord(id);
+        if (link) {
+            db.pendingGameRoles.add(verified.mc_uuid, link.game_role, 'assign');
+            console.log(`[Bot] Queued assign ${link.game_role} for ${verified.mc_name}`);
+        }
+    }
+
+    for (const [id] of removedRoles) {
+        const link = db.roleLinks.getByDiscord(id);
+        if (link) {
+            db.pendingGameRoles.add(verified.mc_uuid, link.game_role, 'remove');
+            console.log(`[Bot] Queued remove ${link.game_role} for ${verified.mc_name}`);
+        }
+    }
+});
+
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || message.guild) return;
 
