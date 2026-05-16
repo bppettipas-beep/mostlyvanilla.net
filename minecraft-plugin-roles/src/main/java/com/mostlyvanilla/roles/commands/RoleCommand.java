@@ -1,0 +1,198 @@
+package com.mostlyvanilla.roles.commands;
+
+import com.mostlyvanilla.roles.MostlyVanillaRoles;
+import com.mostlyvanilla.roles.RoleManager;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import org.bukkit.Bukkit;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.Player;
+
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+public class RoleCommand implements CommandExecutor, TabCompleter {
+
+    private final MostlyVanillaRoles plugin;
+
+    public RoleCommand(MostlyVanillaRoles plugin) {
+        this.plugin = plugin;
+    }
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!sender.hasPermission("mostlyvanilla.roles.admin")) {
+            sender.sendMessage(Component.text("You don't have permission to use this command.", NamedTextColor.RED));
+            return true;
+        }
+
+        if (args.length == 0) {
+            sendUsage(sender);
+            return true;
+        }
+
+        RoleManager rm = plugin.getRoleManager();
+
+        switch (args[0].toLowerCase()) {
+
+            case "create" -> {
+                if (args.length < 3) {
+                    sender.sendMessage(Component.text("Usage: /role create <name> <prefix>", NamedTextColor.RED));
+                    sender.sendMessage(Component.text("Tip: use & for color codes, e.g. &c[Admin]&r", NamedTextColor.GRAY));
+                    return true;
+                }
+                String name   = args[1].toLowerCase();
+                String prefix = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
+                rm.createRole(name, prefix);
+                sender.sendMessage(
+                    Component.text("Created role ", NamedTextColor.GREEN)
+                        .append(Component.text(name, NamedTextColor.WHITE))
+                        .append(Component.text(" with prefix ", NamedTextColor.GREEN))
+                        .append(LegacyComponentSerializer.legacyAmpersand().deserialize(prefix))
+                );
+            }
+
+            case "delete" -> {
+                if (args.length < 2) {
+                    sender.sendMessage(Component.text("Usage: /role delete <name>", NamedTextColor.RED));
+                    return true;
+                }
+                String name = args[1].toLowerCase();
+                if (rm.deleteRole(name)) {
+                    sender.sendMessage(Component.text("Deleted role " + name + ".", NamedTextColor.GREEN));
+                } else {
+                    sender.sendMessage(Component.text("Role '" + name + "' does not exist.", NamedTextColor.RED));
+                }
+            }
+
+            case "assign" -> {
+                if (args.length < 3) {
+                    sender.sendMessage(Component.text("Usage: /role assign <player> <role>", NamedTextColor.RED));
+                    return true;
+                }
+                Player target = Bukkit.getPlayer(args[1]);
+                if (target == null) {
+                    sender.sendMessage(Component.text("Player '" + args[1] + "' is not online.", NamedTextColor.RED));
+                    return true;
+                }
+                String roleName = args[2].toLowerCase();
+                if (rm.assignRole(target.getUniqueId(), roleName)) {
+                    sender.sendMessage(Component.text("Assigned role " + roleName + " to " + target.getName() + ".", NamedTextColor.GREEN));
+                    target.sendMessage(Component.text("You have been given the " + roleName + " role.", NamedTextColor.GREEN));
+                } else {
+                    sender.sendMessage(Component.text("Role '" + roleName + "' does not exist.", NamedTextColor.RED));
+                }
+            }
+
+            case "remove" -> {
+                if (args.length < 2) {
+                    sender.sendMessage(Component.text("Usage: /role remove <player>", NamedTextColor.RED));
+                    return true;
+                }
+                Player target = Bukkit.getPlayer(args[1]);
+                if (target == null) {
+                    sender.sendMessage(Component.text("Player '" + args[1] + "' is not online.", NamedTextColor.RED));
+                    return true;
+                }
+                if (rm.removePlayerRole(target.getUniqueId())) {
+                    sender.sendMessage(Component.text("Removed role from " + target.getName() + ".", NamedTextColor.GREEN));
+                    target.sendMessage(Component.text("Your role has been removed.", NamedTextColor.YELLOW));
+                } else {
+                    sender.sendMessage(Component.text(target.getName() + " doesn't have a role.", NamedTextColor.RED));
+                }
+            }
+
+            case "list" -> {
+                Map<String, String> roles = rm.getRoles();
+                if (roles.isEmpty()) {
+                    sender.sendMessage(Component.text("No roles exist yet. Use /role create to make one.", NamedTextColor.YELLOW));
+                    return true;
+                }
+                sender.sendMessage(Component.text("━━━ Roles (" + roles.size() + ") ━━━", NamedTextColor.GREEN));
+                for (Map.Entry<String, String> entry : roles.entrySet()) {
+                    sender.sendMessage(
+                        Component.text("  " + entry.getKey() + " — ", NamedTextColor.GRAY)
+                            .append(LegacyComponentSerializer.legacyAmpersand().deserialize(entry.getValue()))
+                    );
+                }
+            }
+
+            case "info" -> {
+                if (args.length < 2) {
+                    sender.sendMessage(Component.text("Usage: /role info <player>", NamedTextColor.RED));
+                    return true;
+                }
+                Player target = Bukkit.getPlayer(args[1]);
+                if (target == null) {
+                    sender.sendMessage(Component.text("Player '" + args[1] + "' is not online.", NamedTextColor.RED));
+                    return true;
+                }
+                String roleName = rm.getPlayerRole(target.getUniqueId());
+                if (roleName == null) {
+                    sender.sendMessage(Component.text(target.getName() + " has no role.", NamedTextColor.YELLOW));
+                } else {
+                    String prefix = rm.getPrefix(target.getUniqueId());
+                    sender.sendMessage(
+                        Component.text(target.getName() + ": ", NamedTextColor.WHITE)
+                            .append(Component.text(roleName + " ", NamedTextColor.GRAY))
+                            .append(LegacyComponentSerializer.legacyAmpersand().deserialize(prefix))
+                    );
+                }
+            }
+
+            default -> sendUsage(sender);
+        }
+
+        return true;
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
+        if (!sender.hasPermission("mostlyvanilla.roles.admin")) return List.of();
+
+        if (args.length == 1) {
+            return filter(List.of("create", "delete", "assign", "remove", "list", "info"), args[0]);
+        }
+
+        RoleManager rm = plugin.getRoleManager();
+
+        if (args.length == 2) {
+            return switch (args[0].toLowerCase()) {
+                case "delete"          -> filter(new ArrayList<>(rm.getRoleNames()), args[1]);
+                case "assign", "remove", "info" -> filter(
+                    Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList()), args[1]
+                );
+                default -> List.of();
+            };
+        }
+
+        if (args.length == 3 && args[0].equalsIgnoreCase("assign")) {
+            return filter(new ArrayList<>(rm.getRoleNames()), args[2]);
+        }
+
+        return List.of();
+    }
+
+    private List<String> filter(List<String> options, String input) {
+        return options.stream()
+            .filter(o -> o.toLowerCase().startsWith(input.toLowerCase()))
+            .collect(Collectors.toList());
+    }
+
+    private void sendUsage(CommandSender sender) {
+        sender.sendMessage(Component.text("━━━ /role ━━━", NamedTextColor.GREEN));
+        sender.sendMessage(Component.text("  /role create <name> <prefix>  ", NamedTextColor.WHITE).append(Component.text("Create a role", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role delete <name>           ", NamedTextColor.WHITE).append(Component.text("Delete a role", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role assign <player> <role>  ", NamedTextColor.WHITE).append(Component.text("Give a player a role", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role remove <player>         ", NamedTextColor.WHITE).append(Component.text("Remove a player's role", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role list                    ", NamedTextColor.WHITE).append(Component.text("List all roles", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role info <player>           ", NamedTextColor.WHITE).append(Component.text("See a player's role", NamedTextColor.GRAY)));
+    }
+}
