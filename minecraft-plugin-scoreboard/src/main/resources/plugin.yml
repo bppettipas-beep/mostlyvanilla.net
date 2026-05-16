@@ -1,0 +1,18 @@
+name: MostlyVanillaScoreboard
+version: '${project.version}'
+main: com.mostlyvanilla.scoreboard.MostlyVanillaScoreboard
+api-version: '1.20'
+description: Custom animated sidebar scoreboard for Mostly Vanilla
+softdepend: [PlaceholderAPI, LuckPerms]
+
+commands:
+  sb:
+    description: Toggle your scoreboard on or off
+    usage: /sb
+    permission: scoreboard.use
+    aliases: [scoreboard, togglesb]
+
+permissions:
+  scoreboard.use:
+    description: Toggle the scoreboard
+    default: true

@@ -6,6 +6,7 @@ on:
     paths:
       - 'minecraft-plugin-verify/**'
       - 'minecraft-plugin-economy/**'
+      - 'minecraft-plugin-scoreboard/**'
   workflow_dispatch:
 
 jobs:
@@ -49,4 +50,25 @@ jobs:
         with:
           name: MostlyVanillaEconomy
           path: minecraft-plugin-economy/target/mostly-vanilla-economy-*.jar
+          retention-days: 30
+
+  build-scoreboard:
+    name: Build Scoreboard Plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build with Maven
+        run: mvn -f minecraft-plugin-scoreboard/pom.xml package -DskipTests
+
+      - name: Upload jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: MostlyVanillaScoreboard
+          path: minecraft-plugin-scoreboard/target/mostly-vanilla-scoreboard-*.jar
           retention-days: 30

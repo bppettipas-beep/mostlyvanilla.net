@@ -1,0 +1,22 @@
+# -------------------------------------------------------
+#   MostlyVanilla Scoreboard Configuration
+# -------------------------------------------------------
+
+# The two currencies to display — must match names created with /eco create
+currency-1: diamonds
+currency-2: emeralds
+
+# How often player data refreshes (kills, deaths, playtime, balance)
+# In ticks — 20 ticks = 1 second
+data-refresh-interval: 40
+
+# How fast the separator wave animates (in ticks per frame)
+# Lower = faster. 3 ticks ≈ 150ms per frame
+separator-anim-interval: 3
+
+# How fast the title animates (in ticks per frame)
+# 8 ticks ≈ 400ms per frame
+title-anim-interval: 8
+
+# Footer line — shown at the bottom of the scoreboard
+server-address: mc.mostlyvanilla.net
