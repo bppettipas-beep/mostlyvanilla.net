@@ -5,13 +5,12 @@ const {
 } = require('discord.js');
 const db = require('./database');
 const { data: welcomeData, execute: welcomeExecute, sendWelcomeMessage } = require('./commands/welcome');
+const { data: joinRoleData, execute: joinRoleExecute } = require('./commands/joinrole');
 
 const COLOR_GREEN      = 0x2ECC71;
 const COLOR_DARK_GREEN = 0x27AE60;
 const COLOR_RED        = 0xE74C3C;
 const FOOTER           = 'Mostly Vanilla • Verification';
-
-const pendingKicks = new Map();
 
 const client = new Client({
     intents: [
@@ -26,12 +25,11 @@ client.once(Events.ClientReady, async (c) => {
     console.log(`[Bot] Ready as ${c.user.tag}`);
     c.user.setActivity('Mostly Vanilla | /discord', { type: ActivityType.Watching });
 
-    // Register slash commands with the guild
     try {
         const rest = new REST().setToken(process.env.DISCORD_TOKEN);
         await rest.put(
             Routes.applicationGuildCommands(c.user.id, process.env.GUILD_ID),
-            { body: [welcomeData.toJSON()] }
+            { body: [welcomeData.toJSON(), joinRoleData.toJSON()] }
         );
         console.log('[Bot] Slash commands registered');
     } catch (err) {
@@ -39,49 +37,50 @@ client.once(Events.ClientReady, async (c) => {
     }
 });
 
-// Handle slash commands
 client.on(Events.InteractionCreate, async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
     if (interaction.commandName === 'welcome') {
-        await welcomeExecute(interaction).catch(err => {
-            console.error('[Bot] Command error:', err.message);
-        });
+        await welcomeExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+    }
+    if (interaction.commandName === 'joinrole') {
+        await joinRoleExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
     }
 });
 
 client.on(Events.GuildMemberAdd, async (member) => {
+    // Assign join role immediately
+    await grantJoinRole(member);
+
+    // Send welcome message right away
     const existing = db.getByDiscord(member.id);
+    await sendWelcomeMessage(member, existing?.mc_name ?? null);
+
+    // If already verified, also grant the verified role
     if (existing) {
         await grantVerifiedRole(member, existing.mc_name);
         return;
     }
 
-    const kickMinutes = parseInt(process.env.KICK_TIMEOUT_MINUTES) || 15;
-
-    const instructions =
-        `**To get access you must link your Minecraft account:**\n` +
-        `> 1. Join the **Mostly Vanilla** Minecraft server\n` +
-        `> 2. Run \`/discord\` in-game to receive a 6-character code\n` +
-        `> 3. DM that code to me\n\n` +
-        `You have **${kickMinutes} minutes** before you will be removed from the server.`;
-
-    await postInVerifyChannel(member, instructions, kickMinutes);
-
+    // DM optional MC linking instructions (no kick threat)
     try {
         await member.send({ embeds: [
             new EmbedBuilder()
                 .setColor(COLOR_GREEN)
                 .setTitle('Welcome to Mostly Vanilla!')
                 .setThumbnail(member.guild.iconURL({ dynamic: true }))
-                .setDescription(instructions)
+                .setDescription(
+                    `**Optionally link your Minecraft account:**\n` +
+                    `> 1. Join the **Mostly Vanilla** Minecraft server\n` +
+                    `> 2. Run \`/discord\` in-game to get a 6-character code\n` +
+                    `> 3. DM that code to me\n\n` +
+                    `Linking is optional but gives you the verified role!`
+                )
                 .setFooter({ text: FOOTER })
                 .setTimestamp(),
         ]});
     } catch {
         // DMs disabled
     }
-
-    scheduleKick(member, kickMinutes);
 });
 
 client.on(Events.MessageCreate, async (message) => {
@@ -141,16 +140,11 @@ client.on(Events.MessageCreate, async (message) => {
     db.deleteCode(code);
     console.log(`[Bot] Verified ${message.author.tag} as ${pending.mc_name}`);
 
-    cancelKick(message.author.id);
-
     const guild = client.guilds.cache.get(process.env.GUILD_ID);
     if (guild) {
         try {
             const member = await guild.members.fetch(message.author.id).catch(() => null);
-            if (member) {
-                await grantVerifiedRole(member, pending.mc_name);
-                await sendWelcomeMessage(member, pending.mc_name);
-            }
+            if (member) await grantVerifiedRole(member, pending.mc_name);
         } catch (err) {
             console.error('[Bot] Post-verify error:', err.message);
         }
@@ -162,11 +156,11 @@ client.on(Events.MessageCreate, async (message) => {
             .setTitle('Verification Complete!')
             .setDescription(
                 `You've been verified as **${pending.mc_name}**.\n` +
-                `You now have full access to the **Mostly Vanilla** Discord!`
+                `You now have the verified role on **Mostly Vanilla** Discord!`
             )
             .addFields(
-                { name: 'Minecraft IGN', value: pending.mc_name,          inline: true },
-                { name: 'Discord',       value: message.author.username,   inline: true },
+                { name: 'Minecraft IGN', value: pending.mc_name,        inline: true },
+                { name: 'Discord',       value: message.author.username, inline: true },
             )
             .setFooter({ text: FOOTER })
             .setTimestamp(),
@@ -175,61 +169,17 @@ client.on(Events.MessageCreate, async (message) => {
 
 // --- Helpers ---
 
-async function postInVerifyChannel(member, instructions, kickMinutes) {
-    const channelId = process.env.VERIFY_CHANNEL_ID;
-    if (!channelId) return;
-    const channel = member.guild.channels.cache.get(channelId);
-    if (!channel) { console.warn('[Bot] VERIFY_CHANNEL_ID not found'); return; }
+async function grantJoinRole(member) {
+    const roleId = db.getSetting('join_role_id');
+    if (!roleId) return;
+    const role = member.guild.roles.cache.get(roleId);
+    if (!role) { console.warn('[Bot] join_role_id not found in guild'); return; }
+    if (member.roles.cache.has(role.id)) return;
     try {
-        await channel.send({
-            content: `<@${member.id}>`,
-            embeds: [
-                new EmbedBuilder()
-                    .setColor(COLOR_GREEN)
-                    .setTitle('Verification Required')
-                    .setDescription(instructions)
-                    .setFooter({ text: FOOTER })
-                    .setTimestamp(),
-            ],
-        });
+        await member.roles.add(role);
+        console.log(`[Bot] Granted join role to ${member.user.tag}`);
     } catch (err) {
-        console.error('[Bot] Failed to post in verify channel:', err.message);
-    }
-}
-
-function scheduleKick(member, kickMinutes) {
-    cancelKick(member.id);
-    const timeout = setTimeout(async () => {
-        pendingKicks.delete(member.id);
-        if (db.getByDiscord(member.id)) return;
-        try {
-            const freshMember = await member.guild.members.fetch(member.id).catch(() => null);
-            if (!freshMember) return;
-            await freshMember.kick('Did not verify Minecraft account within the time limit');
-            console.log(`[Bot] Kicked ${member.user.tag} — verification timeout`);
-            try {
-                await member.send({ embeds: [
-                    new EmbedBuilder()
-                        .setColor(COLOR_RED)
-                        .setTitle('Removed from Mostly Vanilla')
-                        .setDescription(
-                            `You were removed for not verifying your Minecraft account within **${kickMinutes} minutes**.\n\n` +
-                            `You're welcome to rejoin — just make sure to run \`/discord\` in-game first to get your code ready.`
-                        )
-                        .setFooter({ text: FOOTER }),
-                ]});
-            } catch { }
-        } catch (err) {
-            console.error('[Bot] Failed to kick unverified member:', err.message);
-        }
-    }, kickMinutes * 60_000);
-    pendingKicks.set(member.id, timeout);
-}
-
-function cancelKick(userId) {
-    if (pendingKicks.has(userId)) {
-        clearTimeout(pendingKicks.get(userId));
-        pendingKicks.delete(userId);
+        console.error('[Bot] Failed to grant join role:', err.message);
     }
 }
 

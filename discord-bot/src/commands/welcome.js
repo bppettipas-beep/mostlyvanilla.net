@@ -9,9 +9,9 @@ const DARK_GREEN = 0x27AE60;
 const RED        = 0xE74C3C;
 const FOOTER     = 'Mostly Vanilla • Welcome';
 
-const DEFAULT_MESSAGE = 'Welcome to **{server}**, {user}! Your Minecraft account **{mcname}** is now linked. Enjoy your stay!';
+const DEFAULT_MESSAGE = 'Welcome to **{server}**, {user}! Glad to have you here!';
 
-async function sendWelcomeMessage(member, mcName) {
+async function sendWelcomeMessage(member, mcName = null) {
     const channelId = db.getSetting('welcome_channel_id');
     if (!channelId) return;
 
@@ -22,7 +22,7 @@ async function sendWelcomeMessage(member, mcName) {
     const text = template
         .replace(/{user}/g,     member.toString())
         .replace(/{username}/g, member.user.username)
-        .replace(/{mcname}/g,   mcName)
+        .replace(/{mcname}/g,   mcName ?? '')
         .replace(/{server}/g,   member.guild.name);
 
     const embed = new EmbedBuilder()
@@ -57,7 +57,7 @@ const data = new SlashCommandBuilder()
         .setDescription('Set the welcome message text')
         .addStringOption(o => o
             .setName('message')
-            .setDescription('Placeholders: {user} {username} {mcname} {server}')
+            .setDescription('Placeholders: {user} {username} {server} {mcname} (only set if member has linked their MC account)')
             .setRequired(true)))
     .addSubcommand(s => s
         .setName('test')
