@@ -1,0 +1,34 @@
+name: MostlyVanillaGm
+version: ${project.version}
+main: com.mostlyvanilla.gm.MostlyVanillaGm
+api-version: '1.20'
+description: Gamemode shortcut commands for Mostly Vanilla
+
+commands:
+  gm:
+    description: Gamemode commands
+    usage: /gm
+  gmc:
+    description: Switch to Creative mode
+    usage: /gmc [player]
+    permission: mv.gm
+  gms:
+    description: Switch to Survival mode
+    usage: /gms [player]
+    permission: mv.gm
+  gmsp:
+    description: Switch to Spectator mode
+    usage: /gmsp [player]
+    permission: mv.gm
+  gma:
+    description: Switch to Adventure mode
+    usage: /gma [player]
+    permission: mv.gm
+
+permissions:
+  mv.gm:
+    description: Use gamemode shortcut commands on yourself
+    default: op
+  mv.gm.other:
+    description: Change another player's gamemode
+    default: op
