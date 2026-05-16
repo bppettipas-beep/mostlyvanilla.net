@@ -5,6 +5,7 @@ import com.mostlyvanilla.roles.RoleManager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.scheduler.BukkitRunnable;
 
 public class PlayerJoinListener implements Listener {
 
@@ -17,15 +18,22 @@ public class PlayerJoinListener implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         RoleManager rm = plugin.getRoleManager();
-        var uuid = event.getPlayer().getUniqueId();
+        var player = event.getPlayer();
+        var uuid   = player.getUniqueId();
 
         if (rm.getPlayerRole(uuid) == null) {
-            // New player — assign join role if configured
             String joinRole = rm.getJoinRole();
-            if (joinRole != null) rm.assignRole(uuid, joinRole); // also syncs team
+            if (joinRole != null) rm.assignRole(uuid, joinRole);
         } else {
-            // Returning player — sync them to their scoreboard team
-            rm.syncPlayerTeam(event.getPlayer());
+            // Sync scoreboard team immediately, then TAB after 1 tick
+            rm.syncPlayerTeam(player);
         }
+
+        // Re-sync TAB prefix after 1 tick to ensure TAB has finished its own join processing
+        new BukkitRunnable() {
+            @Override public void run() {
+                if (player.isOnline()) rm.syncPlayerTeam(player);
+            }
+        }.runTaskLater(plugin, 1L);
     }
 }

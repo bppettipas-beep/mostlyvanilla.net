@@ -117,6 +117,10 @@ public class RoleManager {
             Team team = scoreboard.getTeam(teamName(roleName));
             if (team != null) team.addPlayer(player);
         }
+
+        // Also update TAB if installed
+        String prefix = roleName != null ? roles.get(roleName) : null;
+        TabHook.setPrefix(player, prefix);
     }
 
     private void saveRoles() {
