@@ -357,7 +357,7 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
         return result;
     }
 
-    static String fmt(double amount) {
+    public static String fmt(double amount) {
         if (amount == Math.floor(amount) && !Double.isInfinite(amount)) {
             return String.valueOf((long) amount);
         }
