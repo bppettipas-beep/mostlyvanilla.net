@@ -7,6 +7,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,12 +20,21 @@ public class RequestManager {
     // Keyed by target UUID — waiting for target to accept/deny
     private final Map<UUID, TpaRequest> pendingRequest = new HashMap<>();
 
+    private final JavaPlugin plugin;
     private final long expireMs;
+    private final int countdownSeconds;
+    private final boolean cancelOnMove;
+    private final double maxMoveDistance;
 
     private static final Component BAR = Component.text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━", NamedTextColor.DARK_GRAY);
 
-    public RequestManager(long expireSeconds) {
-        this.expireMs = expireSeconds * 1000L;
+    public RequestManager(JavaPlugin plugin, long expireSeconds, int countdownSeconds,
+                          boolean cancelOnMove, double maxMoveDistance) {
+        this.plugin          = plugin;
+        this.expireMs        = expireSeconds * 1000L;
+        this.countdownSeconds = countdownSeconds;
+        this.cancelOnMove    = cancelOnMove;
+        this.maxMoveDistance = maxMoveDistance;
     }
 
     // ── Initiate ─────────────────────────────────────────────────────────────
@@ -113,20 +123,32 @@ public class RequestManager {
             return;
         }
 
-        if (req.getType() == TpaRequest.Type.TPA) {
-            requester.teleport(target.getLocation());
-            requester.sendMessage(Component.text("Teleported to ", NamedTextColor.GREEN)
-                .append(Component.text(target.getName(), NamedTextColor.YELLOW))
+        Player mover = req.getType() == TpaRequest.Type.TPA ? requester : target;
+        Player dest  = req.getType() == TpaRequest.Type.TPA ? target   : requester;
+
+        target.sendMessage(Component.text("Request accepted.", NamedTextColor.GREEN));
+        requester.sendMessage(Component.text(target.getName(), NamedTextColor.YELLOW)
+            .append(Component.text(" accepted your request.", NamedTextColor.GREEN)));
+
+        if (countdownSeconds <= 0) {
+            mover.teleport(dest.getLocation());
+            mover.sendMessage(Component.text("Teleported to ", NamedTextColor.GREEN)
+                .append(Component.text(dest.getName(), NamedTextColor.YELLOW))
                 .append(Component.text(".", NamedTextColor.GREEN)));
-            target.sendMessage(Component.text(requester.getName(), NamedTextColor.YELLOW)
+            dest.sendMessage(Component.text(mover.getName(), NamedTextColor.YELLOW)
                 .append(Component.text(" teleported to you.", NamedTextColor.GREEN)));
         } else {
-            target.teleport(requester.getLocation());
-            target.sendMessage(Component.text("Teleported to ", NamedTextColor.GREEN)
-                .append(Component.text(requester.getName(), NamedTextColor.YELLOW))
-                .append(Component.text(".", NamedTextColor.GREEN)));
-            requester.sendMessage(Component.text(target.getName(), NamedTextColor.YELLOW)
-                .append(Component.text(" teleported to you.", NamedTextColor.GREEN)));
+            if (cancelOnMove) {
+                mover.sendMessage(Component.text("Don't move! Teleporting in ", NamedTextColor.YELLOW)
+                    .append(Component.text(countdownSeconds + "s", NamedTextColor.WHITE))
+                    .append(Component.text("...", NamedTextColor.YELLOW)));
+            } else {
+                mover.sendMessage(Component.text("Teleporting in ", NamedTextColor.YELLOW)
+                    .append(Component.text(countdownSeconds + "s", NamedTextColor.WHITE))
+                    .append(Component.text("...", NamedTextColor.YELLOW)));
+            }
+            new CountdownTask(mover, dest, countdownSeconds, cancelOnMove, maxMoveDistance)
+                .runTaskTimer(plugin, 0L, 20L);
         }
     }
 

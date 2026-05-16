@@ -12,8 +12,11 @@ public class MostlyVanillaTpa extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
-        long expireSeconds = getConfig().getLong("request-timeout-seconds", 60);
-        requestManager = new RequestManager(expireSeconds);
+        long   expireSeconds    = getConfig().getLong("request-timeout-seconds", 60);
+        int    countdownSeconds = getConfig().getInt("countdown-seconds", 3);
+        boolean cancelOnMove   = getConfig().getBoolean("cancel-on-move", true);
+        double maxMoveDistance  = getConfig().getDouble("max-move-distance", 5.0);
+        requestManager = new RequestManager(this, expireSeconds, countdownSeconds, cancelOnMove, maxMoveDistance);
 
         TpaCommand tpaCmd = new TpaCommand(requestManager);
         TpaResponseCommand respCmd = new TpaResponseCommand(requestManager);

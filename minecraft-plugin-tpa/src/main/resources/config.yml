@@ -1,2 +1,13 @@
 # How long (in seconds) before a request or confirmation expires
 request-timeout-seconds: 60
+
+# Countdown duration shown on the action bar before teleporting (0 = instant)
+countdown-seconds: 3
+
+# If true, any movement instantly cancels the teleport during the countdown
+cancel-on-move: true
+
+# Only used when cancel-on-move is false
+# Maximum blocks the player can move before the teleport is cancelled
+# Set to 0 for no distance limit
+max-move-distance: 5.0
