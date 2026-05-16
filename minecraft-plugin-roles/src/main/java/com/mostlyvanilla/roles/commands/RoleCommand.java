@@ -147,6 +147,29 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
                 }
             }
 
+            case "join" -> {
+                if (args.length < 2) {
+                    String current = rm.getJoinRole();
+                    sender.sendMessage(Component.text("Join role: ", NamedTextColor.GREEN)
+                        .append(current != null
+                            ? Component.text(current, NamedTextColor.WHITE)
+                            : Component.text("none", NamedTextColor.GRAY)));
+                    sender.sendMessage(Component.text("Usage: /role join <role|disable>", NamedTextColor.GRAY));
+                    return true;
+                }
+                if (args[1].equalsIgnoreCase("disable")) {
+                    rm.clearJoinRole();
+                    sender.sendMessage(Component.text("Join role disabled. New players will not be given a role automatically.", NamedTextColor.YELLOW));
+                } else {
+                    String roleName = args[1].toLowerCase();
+                    if (rm.setJoinRole(roleName)) {
+                        sender.sendMessage(Component.text("New players will automatically receive the " + roleName + " role.", NamedTextColor.GREEN));
+                    } else {
+                        sender.sendMessage(Component.text("Role '" + roleName + "' does not exist.", NamedTextColor.RED));
+                    }
+                }
+            }
+
             default -> sendUsage(sender);
         }
 
@@ -158,14 +181,14 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("mostlyvanilla.roles.admin")) return List.of();
 
         if (args.length == 1) {
-            return filter(List.of("create", "delete", "assign", "remove", "list", "info"), args[0]);
+            return filter(List.of("create", "delete", "assign", "remove", "list", "info", "join"), args[0]);
         }
 
         RoleManager rm = plugin.getRoleManager();
 
         if (args.length == 2) {
             return switch (args[0].toLowerCase()) {
-                case "delete"          -> filter(new ArrayList<>(rm.getRoleNames()), args[1]);
+                case "delete", "join"  -> filter(new ArrayList<>(rm.getRoleNames()), args[1]);
                 case "assign", "remove", "info" -> filter(
                     Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList()), args[1]
                 );
@@ -194,5 +217,6 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("  /role remove <player>         ", NamedTextColor.WHITE).append(Component.text("Remove a player's role", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role list                    ", NamedTextColor.WHITE).append(Component.text("List all roles", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role info <player>           ", NamedTextColor.WHITE).append(Component.text("See a player's role", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role join <role|disable>     ", NamedTextColor.WHITE).append(Component.text("Set the auto-assigned join role", NamedTextColor.GRAY)));
     }
 }

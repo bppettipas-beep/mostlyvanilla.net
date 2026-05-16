@@ -11,6 +11,7 @@ public class RoleManager {
     private final MostlyVanillaRoles plugin;
     private final Map<String, String> roles = new LinkedHashMap<>();
     private final Map<UUID, String> playerRoles = new HashMap<>();
+    private String joinRole = null;
 
     private File rolesFile;
     private File playersFile;
@@ -27,6 +28,7 @@ public class RoleManager {
         createIfAbsent(playersFile);
 
         YamlConfiguration rolesConfig = YamlConfiguration.loadConfiguration(rolesFile);
+        joinRole = rolesConfig.getString("join-role", null);
         if (rolesConfig.isConfigurationSection("roles")) {
             for (String name : rolesConfig.getConfigurationSection("roles").getKeys(false)) {
                 String prefix = rolesConfig.getString("roles." + name + ".prefix", "");
@@ -59,6 +61,7 @@ public class RoleManager {
 
     private void saveRoles() {
         YamlConfiguration config = new YamlConfiguration();
+        if (joinRole != null) config.set("join-role", joinRole);
         for (Map.Entry<String, String> e : roles.entrySet()) {
             config.set("roles." + e.getKey() + ".prefix", e.getValue());
         }
@@ -87,6 +90,7 @@ public class RoleManager {
         if (!roles.containsKey(name)) return false;
         roles.remove(name);
         playerRoles.values().removeIf(r -> r.equals(name));
+        if (name.equals(joinRole)) joinRole = null;
         saveRoles();
         savePlayers();
         return true;
@@ -113,6 +117,20 @@ public class RoleManager {
 
     public String getPlayerRole(UUID uuid) {
         return playerRoles.get(uuid);
+    }
+
+    public String getJoinRole() { return joinRole; }
+
+    public boolean setJoinRole(String name) {
+        if (!roles.containsKey(name)) return false;
+        joinRole = name;
+        saveRoles();
+        return true;
+    }
+
+    public void clearJoinRole() {
+        joinRole = null;
+        saveRoles();
     }
 
     public boolean roleExists(String name) {
