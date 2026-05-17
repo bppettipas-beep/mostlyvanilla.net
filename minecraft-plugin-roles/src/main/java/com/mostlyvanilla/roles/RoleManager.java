@@ -33,6 +33,7 @@ public class RoleManager {
     private String staffRole         = null;
     private String flyRole           = null;
     private String announcementRole  = null;
+    private String muteRole          = null;
 
     private final Map<String, Set<String>> blockedCmds  = new HashMap<>(); // role → blocked prefixes
     private final Map<String, Set<String>> allowedCmds  = new HashMap<>(); // role → allowed prefixes (block-all exceptions)
@@ -71,6 +72,7 @@ public class RoleManager {
         staffRole        = rc.getString("staff-role",        null);
         flyRole          = rc.getString("fly-role",          null);
         announcementRole = rc.getString("announcement-role", null);
+        muteRole         = rc.getString("mute-role",         null);
         if (rc.isConfigurationSection("roles")) {
             for (String name : rc.getConfigurationSection("roles").getKeys(false)) {
                 roles.put(name, rc.getString("roles." + name + ".prefix", ""));
@@ -143,6 +145,7 @@ public class RoleManager {
         if (staffRole        != null) c.set("staff-role",        staffRole);
         if (flyRole          != null) c.set("fly-role",          flyRole);
         if (announcementRole != null) c.set("announcement-role", announcementRole);
+        if (muteRole         != null) c.set("mute-role",         muteRole);
         for (Map.Entry<String, String> e : roles.entrySet()) {
             c.set("roles." + e.getKey() + ".prefix", e.getValue());
             c.set("roles." + e.getKey() + ".weight", roleWeights.getOrDefault(e.getKey(), 50));
@@ -618,6 +621,25 @@ public class RoleManager {
     }
 
     public void clearJoinRole() { joinRole = null; saveRoles(); }
+
+    public boolean setMuteRole(String name) {
+        if (!roles.containsKey(name)) return false;
+        muteRole = name; saveRoles(); return true;
+    }
+
+    public void clearMuteRole() { muteRole = null; saveRoles(); }
+
+    public String getMuteRole() { return muteRole; }
+
+    public boolean canUseMute(UUID uuid) {
+        if (muteRole == null) return false;
+        Integer threshold = roleWeights.get(muteRole);
+        if (threshold == null) return false;
+        String playerRole = playerRoles.get(uuid);
+        if (playerRole == null) return false;
+        Integer playerWeight = roleWeights.get(playerRole);
+        return playerWeight != null && playerWeight <= threshold;
+    }
 
     public boolean setAnnouncementRole(String name) {
         if (!roles.containsKey(name)) return false;

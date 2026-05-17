@@ -13,14 +13,18 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.Inventory;
 
+import java.util.UUID;
+
 public class StaffListener implements Listener {
 
     private final StaffManager manager;
     private final WipeManager  wipeManager;
+    private final MuteManager  muteManager;
 
-    public StaffListener(StaffManager manager, WipeManager wipeManager) {
+    public StaffListener(StaffManager manager, WipeManager wipeManager, MuteManager muteManager) {
         this.manager     = manager;
         this.wipeManager = wipeManager;
+        this.muteManager = muteManager;
     }
 
     @EventHandler
@@ -47,10 +51,21 @@ public class StaffListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onChat(AsyncChatEvent e) {
-        if (manager.isMuted(e.getPlayer().getUniqueId())) {
-            e.setCancelled(true);
-            e.getPlayer().sendMessage(Component.text("You are muted and cannot chat.", NamedTextColor.RED));
+        UUID uuid = e.getPlayer().getUniqueId();
+        if (!muteManager.isMuted(uuid)) return;
+        e.setCancelled(true);
+        MuteManager.MuteEntry mute = muteManager.getMute(uuid);
+        Component msg = Component.text("You are muted and cannot chat.", NamedTextColor.RED);
+        if (mute != null) {
+            msg = msg
+                .append(Component.newline())
+                .append(Component.text("Reason: ", NamedTextColor.GRAY))
+                .append(Component.text(mute.reason(), NamedTextColor.WHITE))
+                .append(Component.newline())
+                .append(Component.text("Expires: ", NamedTextColor.GRAY))
+                .append(Component.text(MuteManager.formatRemaining(mute.expiresAt()), NamedTextColor.WHITE));
         }
+        e.getPlayer().sendMessage(msg);
     }
 
     @EventHandler(priority = EventPriority.HIGH)

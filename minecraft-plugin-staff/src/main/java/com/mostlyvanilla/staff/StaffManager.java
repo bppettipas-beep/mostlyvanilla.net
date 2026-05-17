@@ -17,9 +17,9 @@ import java.util.stream.Stream;
 
 public class StaffManager {
 
-    private final JavaPlugin plugin;
+    private final JavaPlugin   plugin;
+    private final MuteManager  muteManager;
 
-    private final Set<UUID> mutedPlayers  = new HashSet<>();
     private final Set<UUID> frozenPlayers = new HashSet<>();
 
     private final Map<Inventory, UUID>        staffPanels   = new HashMap<>();
@@ -48,13 +48,14 @@ public class StaffManager {
     private static final int C_CONFIRM = 11;
     private static final int C_CANCEL  = 15;
 
-    public StaffManager(JavaPlugin plugin) {
-        this.plugin = plugin;
+    public StaffManager(JavaPlugin plugin, MuteManager muteManager) {
+        this.plugin      = plugin;
+        this.muteManager = muteManager;
     }
 
     // ── State ─────────────────────────────────────────────────────────────────
 
-    public boolean isMuted(UUID uuid)  { return mutedPlayers.contains(uuid); }
+    public boolean isMuted(UUID uuid)  { return muteManager.isMuted(uuid); }
     public boolean isFrozen(UUID uuid) { return frozenPlayers.contains(uuid); }
 
     // ── GUI identification ────────────────────────────────────────────────────
@@ -104,7 +105,7 @@ public class StaffManager {
         inv.setItem(S_HEAD, head);
 
         boolean banned = target.isBanned();
-        boolean muted  = mutedPlayers.contains(target.getUniqueId());
+        boolean muted  = muteManager.isMuted(target.getUniqueId());
         boolean frozen = frozenPlayers.contains(target.getUniqueId());
 
         inv.setItem(S_KICK,   btn(Material.BARRIER,            "§cKick",      "§7Remove player from the server"));
@@ -234,13 +235,13 @@ public class StaffManager {
                 ok(staff, "Unbanned " + name + ".");
             }
             case MUTE -> {
-                mutedPlayers.add(data.targetUuid);
+                muteManager.mute(data.targetUuid, -1L, "Muted via staff panel.", staff.getName());
                 if (target != null)
                     target.sendMessage(Component.text("You have been muted.", NamedTextColor.RED));
                 ok(staff, "Muted " + name + ".");
             }
             case UNMUTE -> {
-                mutedPlayers.remove(data.targetUuid);
+                muteManager.unmute(data.targetUuid);
                 if (target != null)
                     target.sendMessage(Component.text("You have been unmuted.", NamedTextColor.GREEN));
                 ok(staff, "Unmuted " + name + ".");

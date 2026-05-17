@@ -12,8 +12,17 @@ commands:
   wipe:
     description: Wipe all data for a player (op only)
     usage: /wipe <player>
+  mute:
+    description: Mute a player for a duration
+    usage: /mute <player> <duration> [reason]
+  unmute:
+    description: Unmute a player
+    usage: /unmute <player>
 
 permissions:
   mv.staff:
     description: Access the staff panel
     default: true
+  mv.mute:
+    description: Use /mute and /unmute
+    default: false
