@@ -9,8 +9,10 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 
 import java.util.List;
+import java.util.UUID;
 
 public class StaffCommand implements CommandExecutor, TabCompleter {
 
@@ -28,6 +30,10 @@ public class StaffCommand implements CommandExecutor, TabCompleter {
         }
         if (!staff.hasPermission("mv.staff")) {
             staff.sendMessage(Component.text("You don't have permission.", NamedTextColor.RED));
+            return true;
+        }
+        if (!canUseStaff(staff.getUniqueId())) {
+            staff.sendMessage(Component.text("You don't have a high enough role to use the staff panel.", NamedTextColor.RED));
             return true;
         }
         if (args.length < 1) {
@@ -52,6 +58,17 @@ public class StaffCommand implements CommandExecutor, TabCompleter {
 
         manager.openStaffPanel(staff, target);
         return true;
+    }
+
+    private boolean canUseStaff(UUID uuid) {
+        Plugin rolesPlugin = Bukkit.getPluginManager().getPlugin("MostlyVanillaRoles");
+        if (rolesPlugin == null) return true;
+        try {
+            Object rm = rolesPlugin.getClass().getMethod("getRoleManager").invoke(rolesPlugin);
+            return (boolean) rm.getClass().getMethod("canUseStaff", UUID.class).invoke(rm, uuid);
+        } catch (Exception e) {
+            return true;
+        }
     }
 
     @Override

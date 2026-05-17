@@ -29,7 +29,8 @@ public class RoleManager {
     private final Map<String, Integer> roleWeights = new HashMap<>();
     private final Map<UUID, String>    playerRoles = new HashMap<>();
     private final Map<String, String>  roleLinks   = new HashMap<>(); // gameRole → discordRoleId
-    private String joinRole = null;
+    private String joinRole  = null;
+    private String staffRole = null;
 
     private final Map<String, Set<String>> blockedCmds  = new HashMap<>(); // role → blocked prefixes
     private final Map<String, Set<String>> allowedCmds  = new HashMap<>(); // role → allowed prefixes (block-all exceptions)
@@ -64,7 +65,8 @@ public class RoleManager {
 
         // Load roles
         YamlConfiguration rc = YamlConfiguration.loadConfiguration(rolesFile);
-        joinRole = rc.getString("join-role", null);
+        joinRole  = rc.getString("join-role", null);
+        staffRole = rc.getString("staff-role", null);
         if (rc.isConfigurationSection("roles")) {
             for (String name : rc.getConfigurationSection("roles").getKeys(false)) {
                 roles.put(name, rc.getString("roles." + name + ".prefix", ""));
@@ -133,7 +135,8 @@ public class RoleManager {
 
     private void saveRoles() {
         YamlConfiguration c = new YamlConfiguration();
-        if (joinRole != null) c.set("join-role", joinRole);
+        if (joinRole  != null) c.set("join-role",  joinRole);
+        if (staffRole != null) c.set("staff-role", staffRole);
         for (Map.Entry<String, String> e : roles.entrySet()) {
             c.set("roles." + e.getKey() + ".prefix", e.getValue());
             c.set("roles." + e.getKey() + ".weight", roleWeights.getOrDefault(e.getKey(), 50));
@@ -609,6 +612,27 @@ public class RoleManager {
     }
 
     public void clearJoinRole() { joinRole = null; saveRoles(); }
+
+    public boolean setStaffRole(String name) {
+        if (!roles.containsKey(name)) return false;
+        staffRole = name; saveRoles(); return true;
+    }
+
+    public void clearStaffRole() { staffRole = null; saveRoles(); }
+
+    public String getStaffRole() { return staffRole; }
+
+    /** Returns true if the player is allowed to use the staff panel.
+     *  If no staff-role is set, everyone is allowed. */
+    public boolean canUseStaff(UUID uuid) {
+        if (staffRole == null) return true;
+        Integer threshold = roleWeights.get(staffRole);
+        if (threshold == null) return true;
+        String playerRole = playerRoles.get(uuid);
+        if (playerRole == null) return false;
+        Integer playerWeight = roleWeights.get(playerRole);
+        return playerWeight != null && playerWeight <= threshold;
+    }
 
     public Map<String, Integer> getRoleWeights() { return Collections.unmodifiableMap(roleWeights); }
 }
