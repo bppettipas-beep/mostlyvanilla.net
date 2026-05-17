@@ -360,6 +360,31 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(Component.text("All command blocks cleared for ALL roles.", NamedTextColor.GREEN));
             }
 
+            case "addfly" -> {
+                if (args.length < 2) {
+                    String current = rm.getFlyRole();
+                    sender.sendMessage(Component.text("Fly role: ", NamedTextColor.GREEN)
+                        .append(current != null
+                            ? Component.text(current, NamedTextColor.WHITE)
+                            : Component.text("none (nobody gets /fly via role)", NamedTextColor.GRAY)));
+                    sender.sendMessage(Component.text("Usage: /role addfly <role|disable>", NamedTextColor.GRAY));
+                    return true;
+                }
+                if (args[1].equalsIgnoreCase("disable")) {
+                    rm.clearFlyRole();
+                    sender.sendMessage(Component.text("Fly role restriction removed — /fly is now permission-only.", NamedTextColor.YELLOW));
+                } else {
+                    String roleName = args[1].toLowerCase();
+                    if (rm.setFlyRole(roleName)) {
+                        sender.sendMessage(Component.text("Players with role ", NamedTextColor.GREEN)
+                            .append(Component.text(roleName, NamedTextColor.WHITE))
+                            .append(Component.text(" or higher priority can now use /fly.", NamedTextColor.GREEN)));
+                    } else {
+                        sender.sendMessage(Component.text("Role '" + roleName + "' does not exist.", NamedTextColor.RED));
+                    }
+                }
+            }
+
             case "addstaff" -> {
                 if (args.length < 2) {
                     String current = rm.getStaffRole();
@@ -396,14 +421,14 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("mostlyvanilla.roles.admin")) return List.of();
 
         if (args.length == 1) {
-            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "commandblockglobal", "commandblockallglobal", "commandallowglobal", "unblockallglobal", "addstaff", "link", "unlink", "links"), args[0]);
+            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "commandblockglobal", "commandblockallglobal", "commandallowglobal", "unblockallglobal", "addfly", "addstaff", "link", "unlink", "links"), args[0]);
         }
 
         RoleManager rm = plugin.getRoleManager();
 
         if (args.length == 2) {
             return switch (args[0].toLowerCase()) {
-                case "delete", "join", "setweight", "link", "unlink", "commandblockall", "commandblock", "commandallow", "unblockallcommands", "addstaff" ->
+                case "delete", "join", "setweight", "link", "unlink", "commandblockall", "commandblock", "commandallow", "unblockallcommands", "addstaff", "addfly" ->
                     filter(new ArrayList<>(rm.getRoleNames()), args[1]);
                 case "assign", "remove", "info" -> filter(
                     Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList()), args[1]
@@ -447,6 +472,7 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("  /role commandblockglobal <cmd>", NamedTextColor.WHITE).append(Component.text("Block a command for ALL roles", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role commandblockallglobal    ", NamedTextColor.WHITE).append(Component.text("Block ALL commands for ALL roles", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role unblockallglobal         ", NamedTextColor.WHITE).append(Component.text("Clear every command block on ALL roles", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role addfly <role|disable>    ", NamedTextColor.WHITE).append(Component.text("Set minimum role that can use /fly", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role addstaff <role|disable>  ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to use /staff", NamedTextColor.GRAY)));
     }
 }
