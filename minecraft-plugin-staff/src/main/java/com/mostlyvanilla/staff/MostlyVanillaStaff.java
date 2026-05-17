@@ -34,6 +34,7 @@ public class MostlyVanillaStaff extends JavaPlugin {
         getCommand("banreason").setExecutor(banReason);
         getCommand("banreason").setTabCompleter(banReason);
         getServer().getPluginManager().registerEvents(new StaffListener(manager, wipeManager, muteManager), this);
+        getServer().getPluginManager().registerEvents(new SpectatorVanishListener(this), this);
 
         getLogger().info("MostlyVanilla Staff enabled.");
     }
