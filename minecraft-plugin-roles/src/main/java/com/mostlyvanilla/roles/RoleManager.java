@@ -318,13 +318,25 @@ public class RoleManager {
         if (roleName == null || input == null) return false;
         String cmd = input.toLowerCase();
         if (cmd.startsWith("/")) cmd = cmd.substring(1);
-        if (blockAllRoles.contains(roleName)) {
-            for (String a : allowedCmds.getOrDefault(roleName, Set.of())) {
+
+        int playerWeight = roleWeights.getOrDefault(roleName, 50);
+
+        // Check the player's role AND every higher-priority role (lower weight).
+        // A block at any higher priority cascades down; an allow at any lower priority cascades up.
+        for (Map.Entry<String, Integer> e : roleWeights.entrySet()) {
+            if (e.getValue() <= playerWeight && isNetBlockedForRole(e.getKey(), cmd)) return true;
+        }
+        return false;
+    }
+
+    private boolean isNetBlockedForRole(String role, String cmd) {
+        if (blockAllRoles.contains(role)) {
+            for (String a : allowedCmds.getOrDefault(role, Set.of())) {
                 if (cmdMatches(a, cmd)) return false;
             }
             return true;
         }
-        for (String b : blockedCmds.getOrDefault(roleName, Set.of())) {
+        for (String b : blockedCmds.getOrDefault(role, Set.of())) {
             if (cmdMatches(b, cmd)) return true;
         }
         return false;
