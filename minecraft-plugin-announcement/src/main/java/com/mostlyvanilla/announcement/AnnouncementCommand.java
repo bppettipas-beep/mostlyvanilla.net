@@ -21,11 +21,15 @@ import java.util.UUID;
 
 public class AnnouncementCommand implements CommandExecutor, TabCompleter {
 
+    // Long stay so players have time to read multi-line wrapping
     private static final Title.Times TIMES = Title.Times.times(
-        Duration.ofMillis(300),
-        Duration.ofSeconds(5),
+        Duration.ofMillis(200),
+        Duration.ofSeconds(6),
         Duration.ofMillis(800)
     );
+
+    // Auto-split threshold: messages longer than this get split into title + subtitle
+    private static final int SPLIT_CHARS = 38;
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -35,35 +39,30 @@ public class AnnouncementCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 0) {
-            sender.sendMessage(Component.text("Usage: /announcement <message> [| subtitle]", NamedTextColor.RED));
-            sender.sendMessage(Component.text("  Colors: use & codes or <gradient:gold:yellow>MiniMessage</gradient>", NamedTextColor.GRAY));
-            sender.sendMessage(Component.text("  Subtitle: /announcement Big News | More details here", NamedTextColor.GRAY));
+            sender.sendMessage(Component.text("Usage: /announcement <message>", NamedTextColor.RED));
+            sender.sendMessage(Component.text("  Long messages auto-split across two screen lines.", NamedTextColor.GRAY));
+            sender.sendMessage(Component.text("  Use \\n to force a split: /announcement Line one \\n Line two", NamedTextColor.GRAY));
+            sender.sendMessage(Component.text("  Use & color codes or <gradient:gold:yellow>MiniMessage</gradient>", NamedTextColor.GRAY));
             return true;
         }
 
         String full = String.join(" ", args);
+        String[] lines = splitLines(full);
 
-        Component titleComp;
-        Component subtitleComp;
-
-        if (full.contains("|")) {
-            String[] parts = full.split("\\|", 2);
-            titleComp    = parse(parts[0].trim()).decorate(TextDecoration.BOLD);
-            subtitleComp = parse(parts[1].trim());
-        } else {
-            titleComp    = parse(full).decorate(TextDecoration.BOLD);
-            subtitleComp = Component.empty();
-        }
+        Component titleComp    = parse(lines[0]).decorate(TextDecoration.BOLD);
+        Component subtitleComp = lines[1].isEmpty() ? Component.empty() : parse(lines[1]).decorate(TextDecoration.BOLD);
 
         Title title = Title.title(titleComp, subtitleComp, TIMES);
 
-        // Sender name for the chat line
-        String senderName = (sender instanceof Player p) ? p.getName() : "Console";
-
+        // Chat fallback line shows the full raw text
         Component chatLine = Component.text()
             .append(Component.text("⚡ ", NamedTextColor.GOLD))
             .append(Component.text("[Announcement] ", NamedTextColor.GOLD).decorate(TextDecoration.BOLD))
-            .append(titleComp.decoration(TextDecoration.BOLD, TextDecoration.State.FALSE))
+            .append(parse(lines[0]).decoration(TextDecoration.BOLD, TextDecoration.State.FALSE))
+            .append(lines[1].isEmpty()
+                ? Component.empty()
+                : Component.text(" — ", NamedTextColor.DARK_GRAY)
+                    .append(parse(lines[1]).decoration(TextDecoration.BOLD, TextDecoration.State.FALSE)))
             .build();
 
         int count = 0;
@@ -74,9 +73,33 @@ public class AnnouncementCommand implements CommandExecutor, TabCompleter {
             count++;
         }
 
+        String senderName = (sender instanceof Player p) ? p.getName() : "Console";
         sender.sendMessage(Component.text("✔ Announcement sent to " + count + " player(s).", NamedTextColor.GREEN));
         Bukkit.getLogger().info("[Announcement] " + senderName + " broadcast: " + full);
         return true;
+    }
+
+    /** Splits the raw input into [titleText, subtitleText].
+     *  Priority: explicit \n > explicit | > auto-split at midpoint word boundary. */
+    private String[] splitLines(String full) {
+        if (full.contains("\\n")) {
+            String[] p = full.split("\\\\n", 2);
+            return new String[]{p[0].trim(), p[1].trim()};
+        }
+        if (full.contains("|")) {
+            String[] p = full.split("\\|", 2);
+            return new String[]{p[0].trim(), p[1].trim()};
+        }
+        if (full.length() > SPLIT_CHARS) {
+            int mid = full.length() / 2;
+            for (int d = 0; d <= mid; d++) {
+                if (mid + d < full.length() && full.charAt(mid + d) == ' ')
+                    return new String[]{full.substring(0, mid + d).trim(), full.substring(mid + d).trim()};
+                if (mid - d > 0 && full.charAt(mid - d) == ' ')
+                    return new String[]{full.substring(0, mid - d).trim(), full.substring(mid - d).trim()};
+            }
+        }
+        return new String[]{full, ""};
     }
 
     private Component parse(String text) {
