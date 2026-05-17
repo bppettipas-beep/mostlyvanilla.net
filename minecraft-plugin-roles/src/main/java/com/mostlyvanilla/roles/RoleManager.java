@@ -36,6 +36,7 @@ public class RoleManager {
     private String  flyRole           = null;
     private String  announcementRole  = null;
     private String  muteRole          = null;
+    private String  banRole           = null;
     private boolean nameColorMatch    = false;
 
     private final Map<String, Set<String>> blockedCmds  = new HashMap<>(); // role → blocked prefixes
@@ -76,6 +77,7 @@ public class RoleManager {
         flyRole          = rc.getString("fly-role",          null);
         announcementRole = rc.getString("announcement-role", null);
         muteRole         = rc.getString("mute-role",         null);
+        banRole          = rc.getString("ban-role",          null);
         nameColorMatch   = rc.getBoolean("name-color-match", false);
         if (rc.isConfigurationSection("roles")) {
             for (String name : rc.getConfigurationSection("roles").getKeys(false)) {
@@ -150,6 +152,7 @@ public class RoleManager {
         if (flyRole          != null) c.set("fly-role",          flyRole);
         if (announcementRole != null) c.set("announcement-role", announcementRole);
         if (muteRole         != null) c.set("mute-role",         muteRole);
+        if (banRole          != null) c.set("ban-role",          banRole);
         c.set("name-color-match", nameColorMatch);
         for (Map.Entry<String, String> e : roles.entrySet()) {
             c.set("roles." + e.getKey() + ".prefix", e.getValue());
@@ -652,6 +655,25 @@ public class RoleManager {
         if (muteRole == null) return false;
         Integer threshold = roleWeights.get(muteRole);
         if (threshold == null) return false;
+        String playerRole = playerRoles.get(uuid);
+        if (playerRole == null) return false;
+        Integer playerWeight = roleWeights.get(playerRole);
+        return playerWeight != null && playerWeight <= threshold;
+    }
+
+    public boolean setBanRole(String name) {
+        if (!roles.containsKey(name)) return false;
+        banRole = name; saveRoles(); return true;
+    }
+
+    public void clearBanRole() { banRole = null; saveRoles(); }
+
+    public String getBanRole() { return banRole; }
+
+    public boolean canUseBan(UUID uuid) {
+        if (banRole == null) return true; // unrestricted when no role set
+        Integer threshold = roleWeights.get(banRole);
+        if (threshold == null) return true;
         String playerRole = playerRoles.get(uuid);
         if (playerRole == null) return false;
         Integer playerWeight = roleWeights.get(playerRole);

@@ -10,10 +10,12 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.*;
 import java.util.stream.Stream;
+import java.util.UUID;
 
 public class StaffManager {
 
@@ -66,7 +68,7 @@ public class StaffManager {
     // ── Open ──────────────────────────────────────────────────────────────────
 
     public void openStaffPanel(Player staff, OfflinePlayer target) {
-        Inventory inv = buildStaffPanel(target);
+        Inventory inv = buildStaffPanel(staff, target);
         staffPanels.put(inv, target.getUniqueId());
         staff.openInventory(inv);
     }
@@ -79,7 +81,7 @@ public class StaffManager {
 
     // ── Build staff panel ─────────────────────────────────────────────────────
 
-    private Inventory buildStaffPanel(OfflinePlayer target) {
+    private Inventory buildStaffPanel(Player staff, OfflinePlayer target) {
         String name = target.getName() != null ? target.getName() : "Unknown";
 
         Inventory inv = Bukkit.createInventory(null, 36,
@@ -104,14 +106,17 @@ public class StaffManager {
         head.setItemMeta(sm);
         inv.setItem(S_HEAD, head);
 
-        boolean banned = target.isBanned();
-        boolean muted  = muteManager.isMuted(target.getUniqueId());
-        boolean frozen = frozenPlayers.contains(target.getUniqueId());
+        boolean banned  = target.isBanned();
+        boolean muted   = muteManager.isMuted(target.getUniqueId());
+        boolean frozen  = frozenPlayers.contains(target.getUniqueId());
+        boolean canBan  = canBan(staff.getUniqueId());
 
         inv.setItem(S_KICK,   btn(Material.BARRIER,            "§cKick",      "§7Remove player from the server"));
-        inv.setItem(S_BAN,    banned
-            ? btn(Material.LIME_CONCRETE,  "§aUnban",    "§7Lift the permanent ban")
-            : btn(Material.TNT,            "§4Ban",      "§7Permanently ban this player"));
+        inv.setItem(S_BAN,    !canBan
+            ? btn(Material.GRAY_STAINED_GLASS, "§7Ban / Unban", "§8No permission")
+            : banned
+                ? btn(Material.LIME_CONCRETE,  "§aUnban",    "§7Lift the permanent ban")
+                : btn(Material.TNT,            "§4Ban",      "§7Permanently ban this player"));
         inv.setItem(S_MUTE,   muted
             ? btn(Material.PAPER,          "§aUnmute",   "§7Allow player to chat again")
             : btn(Material.NAME_TAG,       "§eMute",     "§7Silence player in chat"));
@@ -224,6 +229,7 @@ public class StaffManager {
                 ok(staff, "Kicked " + name + ".");
             }
             case BAN -> {
+                if (!canBan(staff.getUniqueId())) { err(staff, "You don't have permission to ban players."); return; }
                 Bukkit.getBanList(BanList.Type.NAME)
                     .addBan(name, "Banned by " + staff.getName(), null, staff.getName());
                 if (target != null)
@@ -231,6 +237,7 @@ public class StaffManager {
                 ok(staff, "Banned " + name + ".");
             }
             case UNBAN -> {
+                if (!canBan(staff.getUniqueId())) { err(staff, "You don't have permission to unban players."); return; }
                 Bukkit.getBanList(BanList.Type.NAME).pardon(name);
                 ok(staff, "Unbanned " + name + ".");
             }
@@ -311,6 +318,17 @@ public class StaffManager {
     private static Component leg(String s) {
         return LegacyComponentSerializer.legacySection()
             .deserialize(s).decoration(TextDecoration.ITALIC, false);
+    }
+
+    // ── Permission helpers ────────────────────────────────────────────────────
+
+    private boolean canBan(UUID uuid) {
+        Plugin rolesPlugin = Bukkit.getPluginManager().getPlugin("MostlyVanillaRoles");
+        if (rolesPlugin == null) return true;
+        try {
+            Object rm = rolesPlugin.getClass().getMethod("getRoleManager").invoke(rolesPlugin);
+            return (boolean) rm.getClass().getMethod("canUseBan", UUID.class).invoke(rm, uuid);
+        } catch (Exception e) { return true; }
     }
 
     // ── Messaging ─────────────────────────────────────────────────────────────

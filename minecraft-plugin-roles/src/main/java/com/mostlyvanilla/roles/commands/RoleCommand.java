@@ -472,6 +472,31 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
                 }
             }
 
+            case "addban" -> {
+                if (args.length < 2) {
+                    String current = rm.getBanRole();
+                    sender.sendMessage(Component.text("Ban role: ", NamedTextColor.GREEN)
+                        .append(current != null
+                            ? Component.text(current, NamedTextColor.WHITE)
+                            : Component.text("none (everyone with /staff access can ban)", NamedTextColor.GRAY)));
+                    sender.sendMessage(Component.text("Usage: /role addban <role|disable>", NamedTextColor.GRAY));
+                    return true;
+                }
+                if (args[1].equalsIgnoreCase("disable")) {
+                    rm.clearBanRole();
+                    sender.sendMessage(Component.text("Ban role cleared — anyone with staff access can now ban.", NamedTextColor.YELLOW));
+                } else {
+                    String roleName = args[1].toLowerCase();
+                    if (rm.setBanRole(roleName)) {
+                        sender.sendMessage(Component.text("Only players with role ", NamedTextColor.GREEN)
+                            .append(Component.text(roleName, NamedTextColor.WHITE))
+                            .append(Component.text(" or higher priority can now ban players.", NamedTextColor.GREEN)));
+                    } else {
+                        sender.sendMessage(Component.text("Role '" + roleName + "' does not exist.", NamedTextColor.RED));
+                    }
+                }
+            }
+
             case "namecolormatch" -> {
                 boolean now = rm.toggleNameColorMatch();
                 sender.sendMessage(Component.text("Name color match: ", NamedTextColor.GREEN)
@@ -514,14 +539,14 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("mostlyvanilla.roles.admin")) return List.of();
 
         if (args.length == 1) {
-            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "commandblockglobal", "commandblockallglobal", "commandallowglobal", "unblockallglobal", "addmute", "addannouncement", "addfly", "addstaff", "gmmod", "gmadmin", "link", "unlink", "links", "namecolormatch"), args[0]);
+            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "commandblockglobal", "commandblockallglobal", "commandallowglobal", "unblockallglobal", "addmute", "addban", "addannouncement", "addfly", "addstaff", "gmmod", "gmadmin", "link", "unlink", "links", "namecolormatch"), args[0]);
         }
 
         RoleManager rm = plugin.getRoleManager();
 
         if (args.length == 2) {
             return switch (args[0].toLowerCase()) {
-                case "delete", "join", "setweight", "link", "unlink", "commandblockall", "commandblock", "commandallow", "unblockallcommands", "addstaff", "addfly", "addannouncement", "addmute", "gmmod", "gmadmin" ->
+                case "delete", "join", "setweight", "link", "unlink", "commandblockall", "commandblock", "commandallow", "unblockallcommands", "addstaff", "addfly", "addannouncement", "addmute", "addban", "gmmod", "gmadmin" ->
                     filter(new ArrayList<>(rm.getRoleNames()), args[1]);
                 case "assign", "remove", "info" -> filter(
                     Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList()), args[1]
@@ -571,6 +596,7 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("  /role gmadmin <role>           ", NamedTextColor.WHITE).append(Component.text("Allow all /gm* commands for a role", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role addfly <role|disable>    ", NamedTextColor.WHITE).append(Component.text("Set minimum role that can use /fly", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role addstaff <role|disable>  ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to use /staff", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role addban <role|disable>    ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to ban players", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role namecolormatch           ", NamedTextColor.WHITE).append(Component.text("Toggle: color player names in chat to match role color", NamedTextColor.GRAY)));
     }
 }
