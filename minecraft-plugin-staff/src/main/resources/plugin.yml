@@ -1,0 +1,16 @@
+name: MostlyVanillaStaff
+version: ${project.version}
+main: com.mostlyvanilla.staff.MostlyVanillaStaff
+api-version: '1.20'
+description: Staff management GUI panel for Mostly Vanilla
+
+commands:
+  staff:
+    description: Open the staff management panel for a player
+    usage: /staff <player>
+    permission: mv.staff
+
+permissions:
+  mv.staff:
+    description: Access the staff panel
+    default: op
