@@ -18,6 +18,12 @@ commands:
   unmute:
     description: Unmute a player
     usage: /unmute <player>
+  ban:
+    description: Ban a player with a preset or custom reason
+    usage: /ban <player> <reason>
+  banreason:
+    description: Manage preset ban reasons (op only)
+    usage: /banreason <add|remove|list>
 
 permissions:
   mv.staff:

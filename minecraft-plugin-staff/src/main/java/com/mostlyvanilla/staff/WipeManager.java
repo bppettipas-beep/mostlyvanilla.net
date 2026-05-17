@@ -112,6 +112,12 @@ public class WipeManager {
 
     // ── Execute wipe ──────────────────────────────────────────────────────────
 
+    /** Wipes a player directly without opening the confirmation GUI. */
+    public void directWipe(Player staff, OfflinePlayer target) {
+        String name = target.getName() != null ? target.getName() : "Unknown";
+        executeWipe(staff, new WipeData(staff.getUniqueId(), target.getUniqueId(), name, 2));
+    }
+
     private void executeWipe(Player staff, WipeData data) {
         UUID uuid   = data.targetUuid;
         String name = data.targetName;
