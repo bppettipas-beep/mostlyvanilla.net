@@ -26,36 +26,39 @@ public class TabManager implements Listener {
     // ── Animations (replicating animations.yml) ──────────────────────────────
 
     private static final String[] SEP = {
-        "&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬",
-        "&a▬▬▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬",
-        "&a▬▬▬▬▬▬▬▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬▬▬▬",
-        "&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬",
-        "&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬&2▬▬▬▬▬",
-        "&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬",
-        "&a▬▬▬▬▬▬▬▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬▬▬▬",
-        "&a▬▬▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+        "&2◆&2▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬&2▬▬▬▬&2◆",
+        "&2◆&a▬▬▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬&2▬&2◆",
+        "&2◆&a▬▬▬▬▬▬▬▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬&2▬▬&2◆",
+        "&2◆&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬&2▬▬&2◆",
+        "&2◆&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬&2▬▬▬▬▬▬▬▬&2◆",
+        "&2◆&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬&2▬▬&2◆",
+        "&2◆&a▬▬▬▬▬▬▬▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬&2▬▬&2◆",
+        "&2◆&a▬▬▬▬▬&2▬▬▬▬▬&a▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬&2▬&2◆"
     };
 
     private static final String[] TITLE = {
-        "&a&l* &a&lM&2&lO&a&lS&2&lT&a&lL&2&lY &a&lV&2&lA&a&lN&2&lI&a&lL&2&lL&a&lA &a&l*",
-        "&2&l* &2&lM&a&lO&2&lS&a&lT&2&lL&a&lY &2&lV&a&lA&2&lN&a&lI&2&lL&a&lL&2&lA &2&l*",
-        "&a&l* &a&lM&2&lO&a&lS&2&lT&a&lL&2&lY &a&lV&2&lA&a&lN&2&lI&a&lL&2&lL&a&lA &a&l*",
-        "&2&l* &2&lM&a&lO&2&lS&a&lT&2&lL&a&lY &2&lV&a&lA&2&lN&a&lI&2&lL&a&lL&2&lA &2&l*",
-        "&f&lMOSTLY VANILLA",
-        "&a&l> &a&lM&2&lO&a&lS&2&lT&a&lL&2&lY &a&lV&2&lA&a&lN&2&lI&a&lL&2&lL&a&lA &a&l<",
-        "&2&l> &2&lM&a&lO&2&lS&a&lT&2&lL&a&lY &2&lV&a&lA&2&lN&a&lI&2&lL&a&lL&2&lA &2&l<",
-        "&f&lMOSTLY VANILLA"
+        "&a&l✦ &a&lM&2&lO&a&lS&2&lT&a&lL&2&lY &a&lV&2&lA&a&lN&2&lI&a&lL&2&lL&a&lA &a&l✦",
+        "&2&l✦ &2&lM&a&lO&2&lS&a&lT&2&lL&a&lY &2&lV&a&lA&2&lN&a&lI&2&lL&a&lL&2&lA &2&l✦",
+        "&a&l✦ &a&lM&2&lO&a&lS&2&lT&a&lL&2&lY &a&lV&2&lA&a&lN&2&lI&a&lL&2&lL&a&lA &a&l✦",
+        "&2&l✦ &2&lM&a&lO&2&lS&a&lT&2&lL&a&lY &2&lV&a&lA&2&lN&a&lI&2&lL&a&lL&2&lA &2&l✦",
+        "&f&l★ MOSTLY VANILLA ★",
+        "&a&l❯ &a&lM&2&lO&a&lS&2&lT&a&lL&2&lY &a&lV&2&lA&a&lN&2&lI&a&lL&2&lL&a&lA &a&l❮",
+        "&2&l❯ &2&lM&a&lO&2&lS&a&lT&2&lL&a&lY &2&lV&a&lA&2&lN&a&lI&2&lL&a&lL&2&lA &2&l❮",
+        "&f&l★ MOSTLY VANILLA ★"
     };
 
     private static final String[] TAGLINES = {
-        "&7&o* Survival * Community * Vanilla *",
-        "&7&o* No nonsense. Just Minecraft. *",
-        "&7&o* Where every block matters. *",
-        "&7&o* Mostly vanilla, fully adventure. *",
-        "&7&o* Build. Explore. Survive. *"
+        "&7&o✦ Survival &8• &7&oCommunity &8• &7&oVanilla &7&o✦",
+        "&7&o★ No nonsense. Just Minecraft. ★",
+        "&7&o♦ Where every block matters. ♦",
+        "&7&o⚔ Build. Explore. Survive. ⚔",
+        "&7&o♥ The best vanilla experience. ♥",
+        "&7&o★ Mostly vanilla, fully adventure. ★",
+        "&7&o◆ Join the community today! ◆",
+        "&7&o✦ Every block tells a story. ✦"
     };
 
-    private static final String[] DOT = { "&a★", "&2★" };
+    private static final String[] DOT = { "&a★", "&2✦", "&a◆", "&2★" };
 
     // Intervals in ticks (1 tick ≈ 50 ms at 20 TPS)
     private static final int SEP_INT     = 1;   // 50 ms
@@ -162,8 +165,8 @@ public class TabManager implements Listener {
         String dot = DOT[(tick / DOT_INT) % DOT.length];
         return l(sep)
             .append(Component.newline()).append(Component.space())
-            .append(Component.newline()).append(l(" " + dot + " &7Online: &f" + online + "&7/&f45"))
-            .append(Component.newline()).append(l(" &7mostlyvanilla.net"))
+            .append(Component.newline()).append(l(" " + dot + " &7Players Online: &a" + online + " &8/ &f45"))
+            .append(Component.newline()).append(l(" &8▸ &7mostlyvanilla.net"))
             .append(Component.newline()).append(Component.space())
             .append(Component.newline()).append(l(sep));
     }

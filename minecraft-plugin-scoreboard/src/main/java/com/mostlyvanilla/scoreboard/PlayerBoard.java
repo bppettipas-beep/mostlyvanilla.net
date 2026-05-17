@@ -21,7 +21,7 @@ public class PlayerBoard {
     };
     private static final int LINES = ENTRIES.length;
 
-    private static final String SEPARATOR = "§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬";
+    private static final String SEPARATOR = "§2▬§a▬▬▬▬▬▬▬▬▬▬▬▬▬▬§2▬";
 
     private final Scoreboard scoreboard;
     @SuppressWarnings("deprecation")
@@ -55,13 +55,13 @@ public class PlayerBoard {
         int deaths = player.getStatistic(Statistic.DEATHS);
 
         setLine(1, " " + fetchRole(player));
-        setLine(2, " §e" + currency1 + "  §f" + fetchBalance(player, currency1));
-        setLine(3, " §b" + currency2 + "  §f" + fetchBalance(player, currency2));
-        setLine(4, " §aKills  §f" + kills);
-        setLine(5, " §cDeaths  §f" + deaths);
-        setLine(6, " §dPlaytime  §f" + formatPlaytime(player.getStatistic(Statistic.PLAY_ONE_MINUTE)));
-        setLine(7, " ");
-        setLine(8, " §8" + serverAddress);
+        setLine(2, " §e◆ §7" + currency1 + ": §f" + fetchBalance(player, currency1));
+        setLine(3, " §b◆ §7" + currency2 + ": §f" + fetchBalance(player, currency2));
+        setLine(4, " §c⚔ §7Kills: §f" + kills);
+        setLine(5, " §8☠ §7Deaths: §f" + deaths);
+        setLine(6, " §d⌛ §7Playtime: §f" + formatPlaytime(player.getStatistic(Statistic.PLAY_ONE_MINUTE)));
+        setLine(7, "  ");
+        setLine(8, " §8▸ §7" + serverAddress);
     }
 
     public void remove(Player player) {

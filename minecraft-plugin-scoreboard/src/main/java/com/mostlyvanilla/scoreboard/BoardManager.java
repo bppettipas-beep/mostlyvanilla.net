@@ -13,7 +13,7 @@ import java.util.UUID;
 
 public class BoardManager {
 
-    static final String TITLE = "§a§lMOSTLY VANILLA";
+    static final String TITLE = "§a§l✦ §f§lMOSTLY §a§lVANILLA §a§l✦";
 
     private final Plugin plugin;
     private String currency1;

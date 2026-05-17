@@ -330,6 +330,26 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
                 }
             }
 
+            case "commandblockglobal" -> {
+                if (args.length < 2) {
+                    sender.sendMessage(Component.text("Usage: /role commandblockglobal <command>", NamedTextColor.RED));
+                    return true;
+                }
+                String cmd = args[1].toLowerCase().replace("/", "");
+                rm.blockCommandGlobal(cmd);
+                sender.sendMessage(Component.text("Blocked /" + cmd + " for ALL roles.", NamedTextColor.GREEN));
+            }
+
+            case "commandblockallglobal" -> {
+                rm.blockAllCommandsGlobal();
+                sender.sendMessage(Component.text("All commands blocked for ALL roles. Use /role commandallow to whitelist per role.", NamedTextColor.GREEN));
+            }
+
+            case "unblockallglobal" -> {
+                rm.unblockAllCommandsGlobal();
+                sender.sendMessage(Component.text("All command blocks cleared for ALL roles.", NamedTextColor.GREEN));
+            }
+
             default -> sendUsage(sender);
         }
 
@@ -341,14 +361,15 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("mostlyvanilla.roles.admin")) return List.of();
 
         if (args.length == 1) {
-            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "link", "unlink", "links"), args[0]);
+            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "commandblockglobal", "commandblockallglobal", "unblockallglobal", "link", "unlink", "links"), args[0]);
         }
 
         RoleManager rm = plugin.getRoleManager();
 
         if (args.length == 2) {
             return switch (args[0].toLowerCase()) {
-                case "delete", "join", "setweight", "link", "unlink", "commandblockall", "commandblock", "commandallow", "unblockallcommands" -> filter(new ArrayList<>(rm.getRoleNames()), args[1]);
+                case "delete", "join", "setweight", "link", "unlink", "commandblockall", "commandblock", "commandallow", "unblockallcommands" ->
+                    filter(new ArrayList<>(rm.getRoleNames()), args[1]);
                 case "assign", "remove", "info" -> filter(
                     Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList()), args[1]
                 );
@@ -387,5 +408,8 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("  /role commandblockall <role>  ", NamedTextColor.WHITE).append(Component.text("Block all commands for a role", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role commandallow <r> <cmd>  ", NamedTextColor.WHITE).append(Component.text("Allow/unblock a command for a role", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role unblockallcommands <r>  ", NamedTextColor.WHITE).append(Component.text("Clear ALL command blocks for a role", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role commandblockglobal <cmd>", NamedTextColor.WHITE).append(Component.text("Block a command for ALL roles", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role commandblockallglobal    ", NamedTextColor.WHITE).append(Component.text("Block ALL commands for ALL roles", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role unblockallglobal         ", NamedTextColor.WHITE).append(Component.text("Clear every command block on ALL roles", NamedTextColor.GRAY)));
     }
 }

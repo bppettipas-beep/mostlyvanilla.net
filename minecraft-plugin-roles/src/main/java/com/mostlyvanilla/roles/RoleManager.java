@@ -310,6 +310,26 @@ public class RoleManager {
         return true;
     }
 
+    public void blockCommandGlobal(String cmd) {
+        String c = cmd.toLowerCase();
+        for (String roleName : roles.keySet()) {
+            blockedCmds.computeIfAbsent(roleName, k -> new HashSet<>()).add(c);
+        }
+        saveCmdBlocks();
+    }
+
+    public void blockAllCommandsGlobal() {
+        blockAllRoles.addAll(roles.keySet());
+        saveCmdBlocks();
+    }
+
+    public void unblockAllCommandsGlobal() {
+        blockAllRoles.clear();
+        blockedCmds.clear();
+        allowedCmds.clear();
+        saveCmdBlocks();
+    }
+
     public boolean allowCommand(String roleName, String cmd) {
         if (!roles.containsKey(roleName)) return false;
         String c = cmd.toLowerCase();
