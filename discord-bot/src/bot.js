@@ -9,7 +9,7 @@ const db = require('./database');
 const { data: welcomeData, execute: welcomeExecute, sendWelcomeMessage } = require('./commands/welcome');
 const { data: joinRoleData, execute: joinRoleExecute } = require('./commands/joinrole');
 const { data: embedData, execute: embedExecute, handleInteraction: embedHandleInteraction, handleModalSubmit: embedHandleModalSubmit } = require('./commands/embed');
-const { data: invitesData, execute: invitesExecute } = require('./commands/invites');
+const { data: invitesData, execute: invitesExecute, startLiveBoard } = require('./commands/invites');
 
 const COLOR_GREEN      = 0x2ECC71;
 const COLOR_DARK_GREEN = 0x27AE60;
@@ -40,6 +40,8 @@ client.once(Events.ClientReady, async (c) => {
     } catch (err) {
         console.error('[Bot] Failed to register commands:', err.message);
     }
+
+    startLiveBoard(c);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
