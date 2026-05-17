@@ -4,6 +4,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
@@ -29,11 +31,12 @@ public class RoleManager {
     private final Map<String, Integer> roleWeights = new HashMap<>();
     private final Map<UUID, String>    playerRoles = new HashMap<>();
     private final Map<String, String>  roleLinks   = new HashMap<>(); // gameRole → discordRoleId
-    private String joinRole          = null;
-    private String staffRole         = null;
-    private String flyRole           = null;
-    private String announcementRole  = null;
-    private String muteRole          = null;
+    private String  joinRole          = null;
+    private String  staffRole         = null;
+    private String  flyRole           = null;
+    private String  announcementRole  = null;
+    private String  muteRole          = null;
+    private boolean nameColorMatch    = false;
 
     private final Map<String, Set<String>> blockedCmds  = new HashMap<>(); // role → blocked prefixes
     private final Map<String, Set<String>> allowedCmds  = new HashMap<>(); // role → allowed prefixes (block-all exceptions)
@@ -73,6 +76,7 @@ public class RoleManager {
         flyRole          = rc.getString("fly-role",          null);
         announcementRole = rc.getString("announcement-role", null);
         muteRole         = rc.getString("mute-role",         null);
+        nameColorMatch   = rc.getBoolean("name-color-match", false);
         if (rc.isConfigurationSection("roles")) {
             for (String name : rc.getConfigurationSection("roles").getKeys(false)) {
                 roles.put(name, rc.getString("roles." + name + ".prefix", ""));
@@ -146,6 +150,7 @@ public class RoleManager {
         if (flyRole          != null) c.set("fly-role",          flyRole);
         if (announcementRole != null) c.set("announcement-role", announcementRole);
         if (muteRole         != null) c.set("mute-role",         muteRole);
+        c.set("name-color-match", nameColorMatch);
         for (Map.Entry<String, String> e : roles.entrySet()) {
             c.set("roles." + e.getKey() + ".prefix", e.getValue());
             c.set("roles." + e.getKey() + ".weight", roleWeights.getOrDefault(e.getKey(), 50));
@@ -713,4 +718,49 @@ public class RoleManager {
     }
 
     public Map<String, Integer> getRoleWeights() { return Collections.unmodifiableMap(roleWeights); }
+
+    // ── Name color match ─────────────────────────────────────────────────────
+
+    public boolean isNameColorMatch() { return nameColorMatch; }
+
+    public boolean toggleNameColorMatch() {
+        nameColorMatch = !nameColorMatch;
+        saveRoles();
+        return nameColorMatch;
+    }
+
+    /** Returns the first color found in the player's role prefix, or null. */
+    public TextColor extractRoleColor(UUID uuid) {
+        String legacy = getPrefixLegacy(uuid);
+        if (legacy == null) return null;
+        for (int i = 0; i < legacy.length() - 1; i++) {
+            if (legacy.charAt(i) == '§') {
+                NamedTextColor color = legacyCodeToColor(Character.toLowerCase(legacy.charAt(i + 1)));
+                if (color != null) return color;
+            }
+        }
+        return null;
+    }
+
+    private static NamedTextColor legacyCodeToColor(char c) {
+        return switch (c) {
+            case '0' -> NamedTextColor.BLACK;
+            case '1' -> NamedTextColor.DARK_BLUE;
+            case '2' -> NamedTextColor.DARK_GREEN;
+            case '3' -> NamedTextColor.DARK_AQUA;
+            case '4' -> NamedTextColor.DARK_RED;
+            case '5' -> NamedTextColor.DARK_PURPLE;
+            case '6' -> NamedTextColor.GOLD;
+            case '7' -> NamedTextColor.GRAY;
+            case '8' -> NamedTextColor.DARK_GRAY;
+            case '9' -> NamedTextColor.BLUE;
+            case 'a' -> NamedTextColor.GREEN;
+            case 'b' -> NamedTextColor.AQUA;
+            case 'c' -> NamedTextColor.RED;
+            case 'd' -> NamedTextColor.LIGHT_PURPLE;
+            case 'e' -> NamedTextColor.YELLOW;
+            case 'f' -> NamedTextColor.WHITE;
+            default  -> null;
+        };
+    }
 }

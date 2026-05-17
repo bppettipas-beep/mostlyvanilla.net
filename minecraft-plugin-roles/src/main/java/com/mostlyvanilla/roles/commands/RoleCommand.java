@@ -472,6 +472,12 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
                 }
             }
 
+            case "namecolormatch" -> {
+                boolean now = rm.toggleNameColorMatch();
+                sender.sendMessage(Component.text("Name color match: ", NamedTextColor.GREEN)
+                    .append(Component.text(now ? "ON" : "OFF", now ? NamedTextColor.GREEN : NamedTextColor.RED)));
+            }
+
             case "addstaff" -> {
                 if (args.length < 2) {
                     String current = rm.getStaffRole();
@@ -508,7 +514,7 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("mostlyvanilla.roles.admin")) return List.of();
 
         if (args.length == 1) {
-            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "commandblockglobal", "commandblockallglobal", "commandallowglobal", "unblockallglobal", "addmute", "addannouncement", "addfly", "addstaff", "gmmod", "gmadmin", "link", "unlink", "links"), args[0]);
+            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "commandblockglobal", "commandblockallglobal", "commandallowglobal", "unblockallglobal", "addmute", "addannouncement", "addfly", "addstaff", "gmmod", "gmadmin", "link", "unlink", "links", "namecolormatch"), args[0]);
         }
 
         RoleManager rm = plugin.getRoleManager();
@@ -565,5 +571,6 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("  /role gmadmin <role>           ", NamedTextColor.WHITE).append(Component.text("Allow all /gm* commands for a role", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role addfly <role|disable>    ", NamedTextColor.WHITE).append(Component.text("Set minimum role that can use /fly", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role addstaff <role|disable>  ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to use /staff", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role namecolormatch           ", NamedTextColor.WHITE).append(Component.text("Toggle: color player names in chat to match role color", NamedTextColor.GRAY)));
     }
 }
