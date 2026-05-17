@@ -360,6 +360,31 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(Component.text("All command blocks cleared for ALL roles.", NamedTextColor.GREEN));
             }
 
+            case "addannouncement" -> {
+                if (args.length < 2) {
+                    String current = rm.getAnnouncementRole();
+                    sender.sendMessage(Component.text("Announcement role: ", NamedTextColor.GREEN)
+                        .append(current != null
+                            ? Component.text(current, NamedTextColor.WHITE)
+                            : Component.text("none (ops only)", NamedTextColor.GRAY)));
+                    sender.sendMessage(Component.text("Usage: /role addannouncement <role|disable>", NamedTextColor.GRAY));
+                    return true;
+                }
+                if (args[1].equalsIgnoreCase("disable")) {
+                    rm.clearAnnouncementRole();
+                    sender.sendMessage(Component.text("Announcement role cleared — only ops can use /announcement.", NamedTextColor.YELLOW));
+                } else {
+                    String roleName = args[1].toLowerCase();
+                    if (rm.setAnnouncementRole(roleName)) {
+                        sender.sendMessage(Component.text("Players with role ", NamedTextColor.GREEN)
+                            .append(Component.text(roleName, NamedTextColor.WHITE))
+                            .append(Component.text(" or higher priority can now use /announcement.", NamedTextColor.GREEN)));
+                    } else {
+                        sender.sendMessage(Component.text("Role '" + roleName + "' does not exist.", NamedTextColor.RED));
+                    }
+                }
+            }
+
             case "addfly" -> {
                 if (args.length < 2) {
                     String current = rm.getFlyRole();
@@ -421,14 +446,14 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("mostlyvanilla.roles.admin")) return List.of();
 
         if (args.length == 1) {
-            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "commandblockglobal", "commandblockallglobal", "commandallowglobal", "unblockallglobal", "addfly", "addstaff", "link", "unlink", "links"), args[0]);
+            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "commandblockglobal", "commandblockallglobal", "commandallowglobal", "unblockallglobal", "addannouncement", "addfly", "addstaff", "link", "unlink", "links"), args[0]);
         }
 
         RoleManager rm = plugin.getRoleManager();
 
         if (args.length == 2) {
             return switch (args[0].toLowerCase()) {
-                case "delete", "join", "setweight", "link", "unlink", "commandblockall", "commandblock", "commandallow", "unblockallcommands", "addstaff", "addfly" ->
+                case "delete", "join", "setweight", "link", "unlink", "commandblockall", "commandblock", "commandallow", "unblockallcommands", "addstaff", "addfly", "addannouncement" ->
                     filter(new ArrayList<>(rm.getRoleNames()), args[1]);
                 case "assign", "remove", "info" -> filter(
                     Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList()), args[1]
@@ -472,6 +497,7 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("  /role commandblockglobal <cmd>", NamedTextColor.WHITE).append(Component.text("Block a command for ALL roles", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role commandblockallglobal    ", NamedTextColor.WHITE).append(Component.text("Block ALL commands for ALL roles", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role unblockallglobal         ", NamedTextColor.WHITE).append(Component.text("Clear every command block on ALL roles", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role addannouncement <r|dis>  ", NamedTextColor.WHITE).append(Component.text("Set minimum role for /announcement", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role addfly <role|disable>    ", NamedTextColor.WHITE).append(Component.text("Set minimum role that can use /fly", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role addstaff <role|disable>  ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to use /staff", NamedTextColor.GRAY)));
     }

@@ -29,9 +29,10 @@ public class RoleManager {
     private final Map<String, Integer> roleWeights = new HashMap<>();
     private final Map<UUID, String>    playerRoles = new HashMap<>();
     private final Map<String, String>  roleLinks   = new HashMap<>(); // gameRole → discordRoleId
-    private String joinRole  = null;
-    private String staffRole = null;
-    private String flyRole   = null;
+    private String joinRole          = null;
+    private String staffRole         = null;
+    private String flyRole           = null;
+    private String announcementRole  = null;
 
     private final Map<String, Set<String>> blockedCmds  = new HashMap<>(); // role → blocked prefixes
     private final Map<String, Set<String>> allowedCmds  = new HashMap<>(); // role → allowed prefixes (block-all exceptions)
@@ -66,9 +67,10 @@ public class RoleManager {
 
         // Load roles
         YamlConfiguration rc = YamlConfiguration.loadConfiguration(rolesFile);
-        joinRole  = rc.getString("join-role",  null);
-        staffRole = rc.getString("staff-role", null);
-        flyRole   = rc.getString("fly-role",   null);
+        joinRole         = rc.getString("join-role",         null);
+        staffRole        = rc.getString("staff-role",        null);
+        flyRole          = rc.getString("fly-role",          null);
+        announcementRole = rc.getString("announcement-role", null);
         if (rc.isConfigurationSection("roles")) {
             for (String name : rc.getConfigurationSection("roles").getKeys(false)) {
                 roles.put(name, rc.getString("roles." + name + ".prefix", ""));
@@ -137,9 +139,10 @@ public class RoleManager {
 
     private void saveRoles() {
         YamlConfiguration c = new YamlConfiguration();
-        if (joinRole  != null) c.set("join-role",  joinRole);
-        if (staffRole != null) c.set("staff-role", staffRole);
-        if (flyRole   != null) c.set("fly-role",   flyRole);
+        if (joinRole         != null) c.set("join-role",         joinRole);
+        if (staffRole        != null) c.set("staff-role",        staffRole);
+        if (flyRole          != null) c.set("fly-role",          flyRole);
+        if (announcementRole != null) c.set("announcement-role", announcementRole);
         for (Map.Entry<String, String> e : roles.entrySet()) {
             c.set("roles." + e.getKey() + ".prefix", e.getValue());
             c.set("roles." + e.getKey() + ".weight", roleWeights.getOrDefault(e.getKey(), 50));
@@ -615,6 +618,25 @@ public class RoleManager {
     }
 
     public void clearJoinRole() { joinRole = null; saveRoles(); }
+
+    public boolean setAnnouncementRole(String name) {
+        if (!roles.containsKey(name)) return false;
+        announcementRole = name; saveRoles(); return true;
+    }
+
+    public void clearAnnouncementRole() { announcementRole = null; saveRoles(); }
+
+    public String getAnnouncementRole() { return announcementRole; }
+
+    public boolean canUseAnnouncement(UUID uuid) {
+        if (announcementRole == null) return false;
+        Integer threshold = roleWeights.get(announcementRole);
+        if (threshold == null) return false;
+        String playerRole = playerRoles.get(uuid);
+        if (playerRole == null) return false;
+        Integer playerWeight = roleWeights.get(playerRole);
+        return playerWeight != null && playerWeight <= threshold;
+    }
 
     public boolean setFlyRole(String name) {
         if (!roles.containsKey(name)) return false;
