@@ -338,14 +338,26 @@ public class RoleManager {
     public void blockCommandGlobal(String cmd) {
         String c = cmd.toLowerCase();
         for (String roleName : roles.keySet()) {
-            blockedCmds.computeIfAbsent(roleName, k -> new HashSet<>()).add(c);
+            if (isLowPriorityRole(roleName))
+                blockedCmds.computeIfAbsent(roleName, k -> new HashSet<>()).add(c);
         }
         saveCmdBlocks();
     }
 
     public void blockAllCommandsGlobal() {
-        blockAllRoles.addAll(roles.keySet());
+        for (String roleName : roles.keySet()) {
+            if (isLowPriorityRole(roleName))
+                blockAllRoles.add(roleName);
+        }
         saveCmdBlocks();
+    }
+
+    /** Returns true for roles at or below the join role's weight (i.e. regular players, not staff). */
+    private boolean isLowPriorityRole(String roleName) {
+        if (joinRole == null) return true;
+        int joinWeight = roleWeights.getOrDefault(joinRole, 50);
+        int roleWeight = roleWeights.getOrDefault(roleName, 50);
+        return roleWeight >= joinWeight;
     }
 
     public void unblockAllCommandsGlobal() {
