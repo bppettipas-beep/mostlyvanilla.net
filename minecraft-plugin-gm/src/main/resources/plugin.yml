@@ -28,7 +28,7 @@ commands:
 permissions:
   mv.gm:
     description: Use gamemode shortcut commands on yourself
-    default: op
+    default: true
   mv.gm.other:
     description: Change another player's gamemode
     default: op
