@@ -46,6 +46,7 @@ public class WipeManager {
             "§c• Inventory & armor",
             "§c• Ender chest",
             "§c• Playtime & XP",
+            "§c• Kills & deaths",
             "",
             "§7Click §aYes, proceed §7to continue."));
         inv.setItem(SLOT_CONFIRM, plain(Material.LIME_STAINED_GLASS_PANE, "§a§l✔  Yes, proceed"));
@@ -71,6 +72,7 @@ public class WipeManager {
             "§c• Inventory & armor → §fempty",
             "§c• Ender chest → §fempty",
             "§c• Playtime & XP → §f0",
+            "§c• Kills & deaths → §f0",
             "",
             "§7Click §aWipe Everything §7to confirm."));
         inv.setItem(SLOT_CONFIRM, plain(Material.LIME_STAINED_GLASS_PANE, "§a§l✔  Wipe Everything"));
@@ -127,6 +129,8 @@ public class WipeManager {
             target.getInventory().setItemInOffHand(null);
             target.getEnderChest().clear();
             target.setStatistic(Statistic.PLAY_ONE_MINUTE, 0);
+            target.setStatistic(Statistic.PLAYER_KILLS, 0);
+            target.setStatistic(Statistic.DEATHS, 0);
             target.setLevel(0);
             target.setExp(0f);
             target.saveData();
