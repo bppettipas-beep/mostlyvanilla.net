@@ -16,9 +16,11 @@ import org.bukkit.inventory.Inventory;
 public class StaffListener implements Listener {
 
     private final StaffManager manager;
+    private final WipeManager  wipeManager;
 
-    public StaffListener(StaffManager manager) {
-        this.manager = manager;
+    public StaffListener(StaffManager manager, WipeManager wipeManager) {
+        this.manager     = manager;
+        this.wipeManager = wipeManager;
     }
 
     @EventHandler
@@ -26,19 +28,21 @@ public class StaffListener implements Listener {
         if (!(e.getWhoClicked() instanceof Player player)) return;
         Inventory top = e.getView().getTopInventory();
 
-        if (manager.isStaffPanel(top) || manager.isConfirmPanel(top)) {
+        if (manager.isStaffPanel(top) || manager.isConfirmPanel(top) || wipeManager.isWipePanel(top)) {
             e.setCancelled(true);
             // Only react to clicks inside the GUI, not the player's own inventory below
             if (e.getClickedInventory() == null || e.getClickedInventory() != top) return;
 
-            if (manager.isStaffPanel(top))   manager.handleStaffClick(player, top, e.getSlot());
-            else                             manager.handleConfirmClick(player, top, e.getSlot());
+            if (manager.isStaffPanel(top))         manager.handleStaffClick(player, top, e.getSlot());
+            else if (manager.isConfirmPanel(top))  manager.handleConfirmClick(player, top, e.getSlot());
+            else                                   wipeManager.handleClick(player, top, e.getSlot());
         }
     }
 
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent e) {
         manager.onInventoryClose(e.getInventory());
+        wipeManager.onInventoryClose(e.getInventory());
     }
 
     @EventHandler(priority = EventPriority.LOWEST)

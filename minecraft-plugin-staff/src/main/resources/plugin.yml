@@ -9,6 +9,9 @@ commands:
     description: Open the staff management panel for a player
     usage: /staff <player>
     permission: mv.staff
+  wipe:
+    description: Wipe all data for a player (op only)
+    usage: /wipe <player>
 
 permissions:
   mv.staff:
