@@ -301,6 +301,15 @@ public class RoleManager {
         return true;
     }
 
+    public boolean unblockAllCommands(String roleName) {
+        if (!roles.containsKey(roleName)) return false;
+        blockAllRoles.remove(roleName);
+        blockedCmds.remove(roleName);
+        allowedCmds.remove(roleName);
+        saveCmdBlocks();
+        return true;
+    }
+
     public boolean allowCommand(String roleName, String cmd) {
         if (!roles.containsKey(roleName)) return false;
         String c = cmd.toLowerCase();

@@ -16,4 +16,4 @@ commands:
 permissions:
   mv.staff:
     description: Access the staff panel
-    default: op
+    default: true
