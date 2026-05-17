@@ -1,0 +1,14 @@
+name: MostlyVanillaRtp
+version: ${project.version}
+main: com.mostlyvanilla.rtp.MostlyVanillaRtp
+api-version: '1.20'
+description: Random teleport plugin for Mostly Vanilla
+
+commands:
+  rtp:
+    description: Randomly teleport to a dimension
+    usage: /rtp
+  dimensiondisable:
+    description: Enable or disable a dimension for RTP
+    usage: /dimensiondisable <world>
+    permission: mostlyvanilla.rtp.admin

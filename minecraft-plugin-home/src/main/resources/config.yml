@@ -1,0 +1,14 @@
+# Default number of homes all players can set
+default-homes: 3
+
+# Seconds before teleporting (0 = instant)
+teleport-delay: 3
+
+# Cancel the teleport countdown if the player moves
+cancel-on-move: true
+
+# Per-role home limits – managed with /homerole <role> <amount>
+# Example:
+#   vip: 5
+#   admin: 10
+role-limits: {}

@@ -238,6 +238,22 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
                 }
             }
 
+            case "listweight" -> {
+                Map<String, Integer> weights = rm.getRoleWeights();
+                if (weights.isEmpty()) {
+                    sender.sendMessage(Component.text("No roles exist yet.", NamedTextColor.YELLOW));
+                    return true;
+                }
+                sender.sendMessage(Component.text("━━━ Role Weights ━━━", NamedTextColor.GREEN));
+                weights.entrySet().stream()
+                    .sorted(Map.Entry.comparingByValue())
+                    .forEach(e -> sender.sendMessage(
+                        Component.text("  " + e.getKey(), NamedTextColor.WHITE)
+                            .append(Component.text(" — weight: ", NamedTextColor.GRAY))
+                            .append(Component.text(String.valueOf(e.getValue()), NamedTextColor.YELLOW))
+                    ));
+            }
+
             case "testall" -> {
                 Map<String, String> allRoles = rm.getRoles();
                 if (allRoles.isEmpty()) {
@@ -325,7 +341,7 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("mostlyvanilla.roles.admin")) return List.of();
 
         if (args.length == 1) {
-            return filter(List.of("create", "delete", "assign", "remove", "list", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "link", "unlink", "links"), args[0]);
+            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "link", "unlink", "links"), args[0]);
         }
 
         RoleManager rm = plugin.getRoleManager();
@@ -360,6 +376,7 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("  /role assign <player> <role>  ", NamedTextColor.WHITE).append(Component.text("Give a player a role", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role remove <player>         ", NamedTextColor.WHITE).append(Component.text("Remove a player's role", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role list                    ", NamedTextColor.WHITE).append(Component.text("List all roles", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role listweight              ", NamedTextColor.WHITE).append(Component.text("List all roles sorted by weight", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role info <player>           ", NamedTextColor.WHITE).append(Component.text("See a player's role", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role join <role|disable>     ", NamedTextColor.WHITE).append(Component.text("Set the auto-assigned join role", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role link <role> <discord-id>", NamedTextColor.WHITE).append(Component.text("Link a game role to a Discord role", NamedTextColor.GRAY)));

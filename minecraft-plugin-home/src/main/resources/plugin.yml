@@ -1,0 +1,22 @@
+name: MostlyVanillaHome
+version: ${project.version}
+main: com.mostlyvanilla.home.MostlyVanillaHome
+api-version: '1.20'
+description: Home management plugin for Mostly Vanilla
+softdepend:
+  - MostlyVanillaRoles
+
+commands:
+  home:
+    description: Open your homes GUI
+    usage: /home
+  sethome:
+    description: Set a home at your current location
+    usage: /sethome [name]
+  delhome:
+    description: Delete a home
+    usage: /delhome <name>
+  homerole:
+    description: Set the home limit for a role
+    usage: /homerole <role> <amount>
+    permission: mostlyvanilla.home.admin

@@ -576,4 +576,6 @@ public class RoleManager {
     }
 
     public void clearJoinRole() { joinRole = null; saveRoles(); }
+
+    public Map<String, Integer> getRoleWeights() { return Collections.unmodifiableMap(roleWeights); }
 }

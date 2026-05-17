@@ -1,0 +1,17 @@
+# Minimum distance from (0,0) for random teleport destinations
+min-radius: 1000
+
+# Maximum distance from (0,0) for random teleport destinations
+max-radius: 10000
+
+# How many times to attempt finding a safe spot before giving up
+max-attempts: 20
+
+# Seconds before teleporting (0 = instant)
+teleport-delay: 3
+
+# Cancel the teleport countdown if the player moves
+cancel-on-move: true
+
+# Worlds disabled for RTP – managed with /dimensiondisable <world>
+disabled-worlds: []
