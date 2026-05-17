@@ -330,6 +330,16 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
                 }
             }
 
+            case "commandallowglobal" -> {
+                if (args.length < 2) {
+                    sender.sendMessage(Component.text("Usage: /role commandallowglobal <command>", NamedTextColor.RED));
+                    return true;
+                }
+                String cmd = args[1].toLowerCase().replace("/", "");
+                rm.allowCommandGlobal(cmd);
+                sender.sendMessage(Component.text("Allowed /" + cmd + " for ALL roles.", NamedTextColor.GREEN));
+            }
+
             case "commandblockglobal" -> {
                 if (args.length < 2) {
                     sender.sendMessage(Component.text("Usage: /role commandblockglobal <command>", NamedTextColor.RED));
@@ -361,7 +371,7 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("mostlyvanilla.roles.admin")) return List.of();
 
         if (args.length == 1) {
-            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "commandblockglobal", "commandblockallglobal", "unblockallglobal", "link", "unlink", "links"), args[0]);
+            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "commandblockglobal", "commandblockallglobal", "commandallowglobal", "unblockallglobal", "link", "unlink", "links"), args[0]);
         }
 
         RoleManager rm = plugin.getRoleManager();
@@ -408,6 +418,7 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("  /role commandblockall <role>  ", NamedTextColor.WHITE).append(Component.text("Block all commands for a role", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role commandallow <r> <cmd>  ", NamedTextColor.WHITE).append(Component.text("Allow/unblock a command for a role", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role unblockallcommands <r>  ", NamedTextColor.WHITE).append(Component.text("Clear ALL command blocks for a role", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role commandallowglobal <cmd> ", NamedTextColor.WHITE).append(Component.text("Allow/unblock a command for ALL roles", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role commandblockglobal <cmd>", NamedTextColor.WHITE).append(Component.text("Block a command for ALL roles", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role commandblockallglobal    ", NamedTextColor.WHITE).append(Component.text("Block ALL commands for ALL roles", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role unblockallglobal         ", NamedTextColor.WHITE).append(Component.text("Clear every command block on ALL roles", NamedTextColor.GRAY)));
