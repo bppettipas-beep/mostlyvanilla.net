@@ -24,6 +24,21 @@ commands:
   banreason:
     description: Manage preset ban reasons (op only)
     usage: /banreason <add|remove|list>
+  banlist:
+    description: List all banned players
+    usage: /banlist [page]
+  bancheck:
+    description: Check ban info for a player
+    usage: /bancheck <player>
+  unban:
+    description: Unban a player
+    usage: /unban <player>
+  invsee:
+    description: View a player's inventory
+    usage: /invsee <player>
+  checkec:
+    description: View a player's ender chest
+    usage: /checkec <player>
 
 permissions:
   mv.staff:

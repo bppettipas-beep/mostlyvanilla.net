@@ -15,11 +15,13 @@ public class MostlyVanillaStaff extends JavaPlugin {
         StaffManager manager     = new StaffManager(this, muteManager);
         WipeManager  wipeManager = new WipeManager(this);
 
-        StaffCommand    staffCmd     = new StaffCommand(manager);
-        WipeCommand     wipe         = new WipeCommand(wipeManager);
-        MuteCommand     mute         = new MuteCommand(muteManager);
-        BanCommand      ban          = new BanCommand(banReasonManager, wipeManager);
+        StaffCommand     staffCmd    = new StaffCommand(manager);
+        WipeCommand      wipe        = new WipeCommand(wipeManager);
+        MuteCommand      mute        = new MuteCommand(muteManager);
+        BanCommand       ban         = new BanCommand(banReasonManager, wipeManager);
         BanReasonCommand banReason   = new BanReasonCommand(banReasonManager);
+        BanManageCommand banManage   = new BanManageCommand();
+        InvSeeCommand    invSee      = new InvSeeCommand();
 
         getCommand("staff").setExecutor(staffCmd);
         getCommand("staff").setTabCompleter(staffCmd);
@@ -33,6 +35,16 @@ public class MostlyVanillaStaff extends JavaPlugin {
         getCommand("ban").setTabCompleter(ban);
         getCommand("banreason").setExecutor(banReason);
         getCommand("banreason").setTabCompleter(banReason);
+        getCommand("banlist").setExecutor(banManage);
+        getCommand("banlist").setTabCompleter(banManage);
+        getCommand("bancheck").setExecutor(banManage);
+        getCommand("bancheck").setTabCompleter(banManage);
+        getCommand("unban").setExecutor(banManage);
+        getCommand("unban").setTabCompleter(banManage);
+        getCommand("invsee").setExecutor(invSee);
+        getCommand("invsee").setTabCompleter(invSee);
+        getCommand("checkec").setExecutor(invSee);
+        getCommand("checkec").setTabCompleter(invSee);
         getServer().getPluginManager().registerEvents(new StaffListener(manager, wipeManager, muteManager), this);
         getServer().getPluginManager().registerEvents(new SpectatorVanishListener(this), this);
 

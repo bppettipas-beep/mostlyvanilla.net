@@ -37,6 +37,8 @@ public class RoleManager {
     private String  announcementRole  = null;
     private String  muteRole          = null;
     private String  banRole           = null;
+    private String  ecSeeRole         = null;
+    private String  invSeeRole        = null;
     private boolean nameColorMatch    = false;
 
     private final Map<String, Set<String>> blockedCmds  = new HashMap<>(); // role → blocked prefixes
@@ -78,6 +80,8 @@ public class RoleManager {
         announcementRole = rc.getString("announcement-role", null);
         muteRole         = rc.getString("mute-role",         null);
         banRole          = rc.getString("ban-role",          null);
+        ecSeeRole        = rc.getString("ecsee-role",        null);
+        invSeeRole       = rc.getString("invsee-role",       null);
         nameColorMatch   = rc.getBoolean("name-color-match", false);
         if (rc.isConfigurationSection("roles")) {
             for (String name : rc.getConfigurationSection("roles").getKeys(false)) {
@@ -153,6 +157,8 @@ public class RoleManager {
         if (announcementRole != null) c.set("announcement-role", announcementRole);
         if (muteRole         != null) c.set("mute-role",         muteRole);
         if (banRole          != null) c.set("ban-role",          banRole);
+        if (ecSeeRole        != null) c.set("ecsee-role",        ecSeeRole);
+        if (invSeeRole       != null) c.set("invsee-role",       invSeeRole);
         c.set("name-color-match", nameColorMatch);
         for (Map.Entry<String, String> e : roles.entrySet()) {
             c.set("roles." + e.getKey() + ".prefix", e.getValue());
@@ -674,6 +680,44 @@ public class RoleManager {
         if (banRole == null) return true; // unrestricted when no role set
         Integer threshold = roleWeights.get(banRole);
         if (threshold == null) return true;
+        String playerRole = playerRoles.get(uuid);
+        if (playerRole == null) return false;
+        Integer playerWeight = roleWeights.get(playerRole);
+        return playerWeight != null && playerWeight <= threshold;
+    }
+
+    public boolean setEcSeeRole(String name) {
+        if (!roles.containsKey(name)) return false;
+        ecSeeRole = name; saveRoles(); return true;
+    }
+
+    public void clearEcSeeRole() { ecSeeRole = null; saveRoles(); }
+
+    public String getEcSeeRole() { return ecSeeRole; }
+
+    public boolean canUseEcSee(UUID uuid) {
+        if (ecSeeRole == null) return false;
+        Integer threshold = roleWeights.get(ecSeeRole);
+        if (threshold == null) return false;
+        String playerRole = playerRoles.get(uuid);
+        if (playerRole == null) return false;
+        Integer playerWeight = roleWeights.get(playerRole);
+        return playerWeight != null && playerWeight <= threshold;
+    }
+
+    public boolean setInvSeeRole(String name) {
+        if (!roles.containsKey(name)) return false;
+        invSeeRole = name; saveRoles(); return true;
+    }
+
+    public void clearInvSeeRole() { invSeeRole = null; saveRoles(); }
+
+    public String getInvSeeRole() { return invSeeRole; }
+
+    public boolean canUseInvSee(UUID uuid) {
+        if (invSeeRole == null) return false;
+        Integer threshold = roleWeights.get(invSeeRole);
+        if (threshold == null) return false;
         String playerRole = playerRoles.get(uuid);
         if (playerRole == null) return false;
         Integer playerWeight = roleWeights.get(playerRole);
