@@ -19,6 +19,7 @@ import java.util.*;
 
 public class ShopManager {
 
+    // ── Category GUI ──────────────────────────────────────────────────────────
     private static final int[] ITEM_SLOTS = {
         10, 11, 12, 13, 14, 15, 16,
         19, 20, 21, 22, 23, 24, 25,
@@ -30,12 +31,28 @@ public class ShopManager {
     private static final int SLOT_BACK = 49;
     private static final int SLOT_NEXT = 51;
 
+    // ── Confirm GUI (45 slots / 5 rows) ──────────────────────────────────────
+    private static final int CONFIRM_SIZE          = 45;
+    private static final int CONFIRM_SLOT_ITEM     = 13;
+    private static final int CONFIRM_SLOT_MINUS64  = 19;
+    private static final int CONFIRM_SLOT_MINUS10  = 20;
+    private static final int CONFIRM_SLOT_MINUS1   = 21;
+    private static final int CONFIRM_SLOT_QTY      = 22;
+    private static final int CONFIRM_SLOT_PLUS1    = 23;
+    private static final int CONFIRM_SLOT_PLUS10   = 24;
+    private static final int CONFIRM_SLOT_PLUS64   = 25;
+    private static final int CONFIRM_SLOT_CANCEL   = 38;
+    private static final int CONFIRM_SLOT_CONFIRM  = 42;
+    private static final int MAX_QUANTITY          = 64;
+
     private record Session(boolean isMain, String categoryKey, int page) {}
+    private record ConfirmSession(ShopItem item, int quantity, String categoryKey, int page) {}
 
     private final JavaPlugin plugin;
     private final EconomyBridge bridge;
     private final List<ShopCategory> categories = new ArrayList<>();
     private final Map<Inventory, Session> sessions = new HashMap<>();
+    private final Map<Inventory, ConfirmSession> confirmSessions = new HashMap<>();
 
     private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.legacyAmpersand();
 
@@ -47,7 +64,7 @@ public class ShopManager {
 
     // ── Config loading ────────────────────────────────────────────────────────
 
-    private void loadConfig() {
+    void loadConfig() {
         categories.clear();
         ConfigurationSection cats = plugin.getConfig().getConfigurationSection("categories");
         if (cats == null) return;
@@ -123,7 +140,7 @@ public class ShopManager {
         try { return Double.parseDouble(o.toString()); } catch (Exception e) { return def; }
     }
 
-    // ── GUI building ──────────────────────────────────────────────────────────
+    // ── GUI helpers ───────────────────────────────────────────────────────────
 
     private Component parseName(String ampersandStr) {
         return LEGACY.deserialize(ampersandStr).decoration(TextDecoration.ITALIC, false);
@@ -141,6 +158,17 @@ public class ShopManager {
         ItemStack f = filler();
         for (int i = 0; i < inv.getSize(); i++) inv.setItem(i, f);
     }
+
+    private ItemStack makeButton(Material mat, String name) {
+        ItemStack btn = new ItemStack(mat);
+        ItemMeta meta = btn.getItemMeta();
+        meta.displayName(parseName(name));
+        meta.lore(List.of());
+        btn.setItemMeta(meta);
+        return btn;
+    }
+
+    // ── Main menu ─────────────────────────────────────────────────────────────
 
     public void openMainMenu(Player player) {
         Inventory inv = Bukkit.createInventory(null, 54,
@@ -164,6 +192,8 @@ public class ShopManager {
         player.openInventory(inv);
     }
 
+    // ── Category GUI ──────────────────────────────────────────────────────────
+
     public void openCategory(Player player, String categoryKey, int page) {
         ShopCategory cat = getCategory(categoryKey);
         if (cat == null) return;
@@ -184,7 +214,6 @@ public class ShopManager {
             inv.setItem(ITEM_SLOTS[slotIdx], buildDisplayItem(item));
         }
 
-        // Navigation
         if (page > 0) {
             ItemStack prev = new ItemStack(Material.ARROW);
             ItemMeta pm = prev.getItemMeta();
@@ -213,27 +242,22 @@ public class ShopManager {
 
     private ItemStack buildDisplayItem(ShopItem item) {
         ItemStack stack = new ItemStack(item.material(), item.amount());
-        // Apply enchants
         for (Map.Entry<Enchantment, Integer> e : item.enchants().entrySet()) {
             stack.addUnsafeEnchantment(e.getKey(), e.getValue());
         }
 
         ItemMeta meta = stack.getItemMeta();
-
-        // Display name
         String rawName = item.displayName() != null
             ? item.displayName()
             : prettifyMaterial(item.material());
         meta.displayName(parseName(rawName));
 
-        // Build lore
         List<Component> lore = new ArrayList<>();
         if (item.amount() > 1) {
             lore.add(parseName("&7Amount: &f" + item.amount()));
         }
         lore.add(parseName("&7Price: &e" + formatPrice(item.price()) + " &7" + bridge.getCurrency()));
         lore.add(parseName("&aLeft-click to purchase"));
-        // Append custom lore
         for (String line : item.lore()) {
             lore.add(parseName(line));
         }
@@ -242,27 +266,112 @@ public class ShopManager {
         return stack;
     }
 
-    private String formatPrice(double price) {
-        if (price == Math.floor(price)) return String.valueOf((long) price);
-        return String.valueOf(price);
+    // ── Confirm / quantity GUI ────────────────────────────────────────────────
+
+    public void openConfirmMenu(Player player, ShopItem item, String categoryKey, int page) {
+        String rawName = item.displayName() != null ? item.displayName() : prettifyMaterial(item.material());
+        Inventory inv = Bukkit.createInventory(null, CONFIRM_SIZE, parseName("&8Buy: " + rawName));
+        fillAll(inv);
+
+        int qty = 1;
+        inv.setItem(CONFIRM_SLOT_ITEM,    buildConfirmItemDisplay(item, qty));
+        inv.setItem(CONFIRM_SLOT_MINUS64, makeButton(Material.RED_STAINED_GLASS_PANE, "&c-64"));
+        inv.setItem(CONFIRM_SLOT_MINUS10, makeButton(Material.RED_STAINED_GLASS_PANE, "&c-10"));
+        inv.setItem(CONFIRM_SLOT_MINUS1,  makeButton(Material.RED_STAINED_GLASS_PANE, "&c-1"));
+        inv.setItem(CONFIRM_SLOT_QTY,     buildQtyDisplay(item, qty));
+        inv.setItem(CONFIRM_SLOT_PLUS1,   makeButton(Material.LIME_STAINED_GLASS_PANE, "&a+1"));
+        inv.setItem(CONFIRM_SLOT_PLUS10,  makeButton(Material.LIME_STAINED_GLASS_PANE, "&a+10"));
+        inv.setItem(CONFIRM_SLOT_PLUS64,  makeButton(Material.LIME_STAINED_GLASS_PANE, "&a+64"));
+        inv.setItem(CONFIRM_SLOT_CANCEL,  makeButton(Material.RED_CONCRETE, "&cCancel"));
+        inv.setItem(CONFIRM_SLOT_CONFIRM, makeButton(Material.LIME_CONCRETE, "&aConfirm Purchase"));
+
+        confirmSessions.put(inv, new ConfirmSession(item, qty, categoryKey, page));
+        player.openInventory(inv);
     }
 
-    private String prettifyMaterial(Material mat) {
-        String raw = mat.name().replace('_', ' ');
-        StringBuilder sb = new StringBuilder();
-        for (String word : raw.split(" ")) {
-            if (!word.isEmpty()) {
-                sb.append(Character.toUpperCase(word.charAt(0)));
-                if (word.length() > 1) sb.append(word.substring(1).toLowerCase());
-                sb.append(' ');
-            }
+    private ItemStack buildConfirmItemDisplay(ShopItem item, int qty) {
+        int totalAmount = item.amount() * qty;
+        int visualAmount = Math.min(totalAmount, item.material().getMaxStackSize());
+        ItemStack stack = new ItemStack(item.material(), Math.max(1, visualAmount));
+        for (Map.Entry<Enchantment, Integer> e : item.enchants().entrySet()) {
+            stack.addUnsafeEnchantment(e.getKey(), e.getValue());
         }
-        return sb.toString().trim();
+
+        ItemMeta meta = stack.getItemMeta();
+        String rawName = item.displayName() != null ? item.displayName() : prettifyMaterial(item.material());
+        meta.displayName(parseName(rawName));
+
+        List<Component> lore = new ArrayList<>();
+        if (totalAmount > 1) {
+            lore.add(parseName("&7Amount: &f" + totalAmount));
+        }
+        lore.add(parseName("&7Unit price: &e" + formatPrice(item.price()) + " &7" + bridge.getCurrency()));
+        lore.add(parseName("&7Total: &e" + formatPrice(item.price() * qty) + " &7" + bridge.getCurrency()));
+        for (String line : item.lore()) {
+            lore.add(parseName(line));
+        }
+        meta.lore(lore);
+        stack.setItemMeta(meta);
+        return stack;
     }
 
-    // ── Click handling ────────────────────────────────────────────────────────
+    private ItemStack buildQtyDisplay(ShopItem item, int qty) {
+        ItemStack paper = new ItemStack(Material.PAPER);
+        ItemMeta meta = paper.getItemMeta();
+        meta.displayName(parseName("&fQuantity: &e" + qty));
+        List<Component> lore = new ArrayList<>();
+        if (item.amount() > 1) {
+            lore.add(parseName("&7Items: &f" + (item.amount() * qty)));
+        }
+        lore.add(parseName("&7Total cost: &e" + formatPrice(item.price() * qty) + " &7" + bridge.getCurrency()));
+        meta.lore(lore);
+        paper.setItemMeta(meta);
+        return paper;
+    }
+
+    private void handleConfirmClick(Player player, Inventory inv, int slot) {
+        ConfirmSession session = confirmSessions.get(inv);
+        if (session == null) return;
+
+        ShopItem item = session.item();
+        int qty = session.quantity();
+        int newQty = qty;
+
+        switch (slot) {
+            case CONFIRM_SLOT_MINUS64 -> newQty = Math.max(1, qty - 64);
+            case CONFIRM_SLOT_MINUS10 -> newQty = Math.max(1, qty - 10);
+            case CONFIRM_SLOT_MINUS1  -> newQty = Math.max(1, qty - 1);
+            case CONFIRM_SLOT_PLUS1   -> newQty = Math.min(MAX_QUANTITY, qty + 1);
+            case CONFIRM_SLOT_PLUS10  -> newQty = Math.min(MAX_QUANTITY, qty + 10);
+            case CONFIRM_SLOT_PLUS64  -> newQty = Math.min(MAX_QUANTITY, qty + 64);
+            case CONFIRM_SLOT_CANCEL  -> {
+                player.closeInventory();
+                openCategory(player, session.categoryKey(), session.page());
+                return;
+            }
+            case CONFIRM_SLOT_CONFIRM -> {
+                player.closeInventory();
+                purchaseItem(player, item, qty);
+                return;
+            }
+            default -> { return; }
+        }
+
+        if (newQty != qty) {
+            confirmSessions.put(inv, new ConfirmSession(item, newQty, session.categoryKey(), session.page()));
+            inv.setItem(CONFIRM_SLOT_ITEM, buildConfirmItemDisplay(item, newQty));
+            inv.setItem(CONFIRM_SLOT_QTY,  buildQtyDisplay(item, newQty));
+        }
+    }
+
+    // ── Click routing ─────────────────────────────────────────────────────────
 
     public void handleClick(Player player, Inventory inv, int slot) {
+        if (confirmSessions.containsKey(inv)) {
+            handleConfirmClick(player, inv, slot);
+            return;
+        }
+
         Session session = sessions.get(inv);
         if (session == null) return;
 
@@ -277,7 +386,6 @@ public class ShopManager {
             return;
         }
 
-        // Category session
         String catKey = session.categoryKey();
         int page = session.page();
 
@@ -307,48 +415,78 @@ public class ShopManager {
         if (itemIdx < 0 || itemIdx >= cat.items().size()) return;
 
         ShopItem item = cat.items().get(itemIdx);
-        purchaseItem(player, item);
+        player.closeInventory();
+        openConfirmMenu(player, item, catKey, page);
     }
 
-    private void purchaseItem(Player player, ShopItem item) {
+    // ── Purchase ──────────────────────────────────────────────────────────────
+
+    private void purchaseItem(Player player, ShopItem item, int qty) {
+        double total = item.price() * qty;
         double bal = bridge.getBalance(player.getUniqueId());
-        if (bal < item.price()) {
+
+        if (bal < total) {
             player.sendMessage(Component.text("Insufficient funds. Need ")
                 .color(NamedTextColor.RED)
-                .append(Component.text(formatPrice(item.price()) + " " + bridge.getCurrency(), NamedTextColor.YELLOW))
+                .append(Component.text(formatPrice(total) + " " + bridge.getCurrency(), NamedTextColor.YELLOW))
                 .append(Component.text(", you have ", NamedTextColor.RED))
                 .append(Component.text(formatPrice(bal) + " " + bridge.getCurrency() + ".", NamedTextColor.YELLOW)));
             return;
         }
 
-        boolean success = bridge.withdraw(player.getUniqueId(), item.price());
-        if (!success) {
+        if (!bridge.withdraw(player.getUniqueId(), total)) {
             player.sendMessage(Component.text("Transaction failed. Insufficient funds.", NamedTextColor.RED));
             return;
         }
 
-        // Build item stack
-        ItemStack stack = new ItemStack(item.material(), item.amount());
-        for (Map.Entry<Enchantment, Integer> e : item.enchants().entrySet()) {
-            stack.addUnsafeEnchantment(e.getKey(), e.getValue());
+        // Give items, splitting across stacks if needed
+        int remaining = item.amount() * qty;
+        int maxStack = item.material().getMaxStackSize();
+        while (remaining > 0) {
+            int give = Math.min(remaining, maxStack);
+            ItemStack stack = new ItemStack(item.material(), give);
+            for (Map.Entry<Enchantment, Integer> e : item.enchants().entrySet()) {
+                stack.addUnsafeEnchantment(e.getKey(), e.getValue());
+            }
+            Map<Integer, ItemStack> overflow = player.getInventory().addItem(stack);
+            overflow.values().forEach(drop ->
+                player.getWorld().dropItemNaturally(player.getLocation(), drop));
+            remaining -= give;
         }
-
-        Map<Integer, ItemStack> overflow = player.getInventory().addItem(stack);
-        overflow.values().forEach(drop ->
-            player.getWorld().dropItemNaturally(player.getLocation(), drop));
 
         String itemName = item.displayName() != null
             ? LEGACY.serialize(parseName(item.displayName()))
             : prettifyMaterial(item.material());
 
+        int totalAmount = item.amount() * qty;
         player.sendMessage(Component.text("Purchased ")
             .color(NamedTextColor.GREEN)
-            .append(Component.text(itemName, NamedTextColor.WHITE))
+            .append(Component.text(totalAmount + "x " + itemName, NamedTextColor.WHITE))
             .append(Component.text(" for ", NamedTextColor.GREEN))
-            .append(Component.text(formatPrice(item.price()) + " " + bridge.getCurrency() + ".", NamedTextColor.YELLOW)));
+            .append(Component.text(formatPrice(total) + " " + bridge.getCurrency() + ".", NamedTextColor.YELLOW)));
 
         player.playSound(player.getLocation(),
             org.bukkit.Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
+    }
+
+    // ── Utilities ─────────────────────────────────────────────────────────────
+
+    private String formatPrice(double price) {
+        if (price == Math.floor(price)) return String.valueOf((long) price);
+        return String.valueOf(price);
+    }
+
+    private String prettifyMaterial(Material mat) {
+        String raw = mat.name().replace('_', ' ');
+        StringBuilder sb = new StringBuilder();
+        for (String word : raw.split(" ")) {
+            if (!word.isEmpty()) {
+                sb.append(Character.toUpperCase(word.charAt(0)));
+                if (word.length() > 1) sb.append(word.substring(1).toLowerCase());
+                sb.append(' ');
+            }
+        }
+        return sb.toString().trim();
     }
 
     private int slotToItemIndex(int slot) {
@@ -366,11 +504,17 @@ public class ShopManager {
         return null;
     }
 
+    public void reload() {
+        plugin.reloadConfig();
+        loadConfig();
+    }
+
     public boolean isShopInventory(Inventory inv) {
-        return sessions.containsKey(inv);
+        return sessions.containsKey(inv) || confirmSessions.containsKey(inv);
     }
 
     public void onClose(Inventory inv) {
         sessions.remove(inv);
+        confirmSessions.remove(inv);
     }
 }

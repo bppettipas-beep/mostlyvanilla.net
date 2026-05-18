@@ -1,5 +1,7 @@
 package com.mostlyvanilla.shop;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -18,6 +20,16 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
+            if (!sender.isOp()) {
+                sender.sendMessage(Component.text("You do not have permission.", NamedTextColor.RED));
+                return true;
+            }
+            manager.reload();
+            sender.sendMessage(Component.text("Shop config reloaded.", NamedTextColor.GREEN));
+            return true;
+        }
+
         if (!(sender instanceof Player player)) {
             sender.sendMessage("This command can only be used by players.");
             return true;
@@ -28,6 +40,9 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
+        if (args.length == 1 && sender.isOp()) {
+            return List.of("reload");
+        }
         return List.of();
     }
 }

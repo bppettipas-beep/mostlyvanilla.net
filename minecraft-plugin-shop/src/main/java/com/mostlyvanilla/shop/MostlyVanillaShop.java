@@ -8,8 +8,7 @@ public class MostlyVanillaShop extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfig();
 
-        String currency = getConfig().getString("currency", "coins");
-        EconomyBridge bridge  = new EconomyBridge(this, currency);
+        EconomyBridge bridge  = new EconomyBridge(this);
         ShopManager   manager = new ShopManager(this, bridge);
 
         ShopCommand shopCmd = new ShopCommand(manager);
@@ -18,7 +17,7 @@ public class MostlyVanillaShop extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new ShopListener(manager), this);
 
-        getLogger().info("MostlyVanilla Shop enabled (currency: " + currency + ").");
+        getLogger().info("MostlyVanilla Shop enabled (currency: " + bridge.getCurrency() + ").");
     }
 
     @Override
