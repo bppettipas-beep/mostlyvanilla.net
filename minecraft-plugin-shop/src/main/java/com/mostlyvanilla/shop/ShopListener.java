@@ -21,6 +21,7 @@ public class ShopListener implements Listener {
         Inventory top = e.getView().getTopInventory();
         if (!manager.isShopInventory(top)) return;
         e.setCancelled(true);
+        p.updateInventory();
         if (e.getClickedInventory() != top) return;
         manager.handleClick(p, top, e.getSlot());
     }
