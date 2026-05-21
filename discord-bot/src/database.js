@@ -8,28 +8,13 @@ if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 const db = new Database(path.join(dataDir, 'verification.db'));
 
 db.exec(`
-    CREATE TABLE IF NOT EXISTS pending_codes (
-        code        TEXT    PRIMARY KEY,
-        mc_uuid     TEXT    NOT NULL,
-        mc_name     TEXT    NOT NULL,
-        created_at  INTEGER NOT NULL,
-        expires_at  INTEGER NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS verified_players (
-        discord_id  TEXT    PRIMARY KEY,
-        mc_uuid     TEXT    NOT NULL UNIQUE,
-        mc_name     TEXT    NOT NULL,
-        verified_at INTEGER NOT NULL
-    );
-
     CREATE TABLE IF NOT EXISTS settings (
         key   TEXT PRIMARY KEY,
         value TEXT NOT NULL
     );
 `);
 
-// ── Ticket migrations (no-op if columns already exist or table absent) ─────────
+// ── Ticket migrations ─────────────────────────────────────────────────────────
 try { db.exec('ALTER TABLE ticket_config ADD COLUMN support_role_ids TEXT'); } catch {}
 try { db.exec('ALTER TABLE ticket_questions ADD COLUMN category_id TEXT'); } catch {}
 try { db.exec('ALTER TABLE ticket_questions ADD COLUMN support_role_ids TEXT'); } catch {}
@@ -122,6 +107,9 @@ const tickets = {
     update:       db.prepare('UPDATE tickets SET status = @status, claimed_by = @claimed_by, closed_at = @closed_at WHERE id = @id'),
 };
 
+// ── Staff applications ────────────────────────────────────────────────────────
+try { db.exec('ALTER TABLE staffapp_applications ADD COLUMN reason TEXT'); } catch {}
+
 db.exec(`
     CREATE TABLE IF NOT EXISTS staffapp_config (
         guild_id         TEXT PRIMARY KEY,
@@ -141,6 +129,7 @@ db.exec(`
         applied_role_id TEXT NOT NULL,
         answers         TEXT DEFAULT '[]',
         status          TEXT DEFAULT 'pending',
+        reason          TEXT,
         log_message_id  TEXT,
         reviewed_by     TEXT,
         submitted_at    INTEGER DEFAULT (strftime('%s','now'))
@@ -167,109 +156,49 @@ const staffappApplications = {
     create:        db.prepare('INSERT INTO staffapp_applications (guild_id, user_id, applied_role_id, answers) VALUES (@guild_id, @user_id, @applied_role_id, @answers)'),
     getById:       db.prepare('SELECT * FROM staffapp_applications WHERE id = ?'),
     getPending:    db.prepare("SELECT * FROM staffapp_applications WHERE guild_id = ? AND user_id = ? AND status = 'pending' LIMIT 1"),
-    updateStatus:  db.prepare('UPDATE staffapp_applications SET status = @status, reviewed_by = @reviewed_by WHERE id = @id'),
+    updateStatus:  db.prepare('UPDATE staffapp_applications SET status = @status, reviewed_by = @reviewed_by, reason = @reason WHERE id = @id'),
     setLogMessage: db.prepare('UPDATE staffapp_applications SET log_message_id = @log_message_id WHERE id = @id'),
 };
 
+// ── Chat counts ───────────────────────────────────────────────────────────────
 db.exec(`
-    CREATE TABLE IF NOT EXISTS role_links (
-        game_role       TEXT PRIMARY KEY,
-        discord_role_id TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS pending_game_roles (
-        id         INTEGER PRIMARY KEY AUTOINCREMENT,
-        mc_uuid    TEXT    NOT NULL,
-        game_role  TEXT    NOT NULL,
-        action     TEXT    NOT NULL,
-        created_at INTEGER DEFAULT (strftime('%s','now'))
+    CREATE TABLE IF NOT EXISTS chat_counts (
+        guild_id TEXT NOT NULL,
+        user_id  TEXT NOT NULL,
+        count    INTEGER DEFAULT 0,
+        PRIMARY KEY (guild_id, user_id)
     );
 `);
 
-const roleLinkStmts = {
-    get:           db.prepare('SELECT * FROM role_links WHERE game_role = ?'),
-    getByDiscord:  db.prepare('SELECT * FROM role_links WHERE discord_role_id = ?'),
-    getAll:        db.prepare('SELECT * FROM role_links'),
-    set:           db.prepare('INSERT OR REPLACE INTO role_links (game_role, discord_role_id) VALUES (?, ?)'),
-    delete:        db.prepare('DELETE FROM role_links WHERE game_role = ?'),
+const chatCountStmts = {
+    increment: db.prepare(`
+        INSERT INTO chat_counts (guild_id, user_id, count) VALUES (?, ?, 1)
+        ON CONFLICT(guild_id, user_id) DO UPDATE SET count = count + 1
+    `),
+    getUser: db.prepare('SELECT * FROM chat_counts WHERE guild_id = ? AND user_id = ?'),
+    getTop:  db.prepare('SELECT * FROM chat_counts WHERE guild_id = ? ORDER BY count DESC LIMIT 15'),
 };
 
-const pendingRoleStmts = {
-    add:      db.prepare('INSERT INTO pending_game_roles (mc_uuid, game_role, action) VALUES (?, ?, ?)'),
-    getAll:   db.prepare('SELECT * FROM pending_game_roles ORDER BY id'),
-    clearAll: db.prepare('DELETE FROM pending_game_roles'),
-};
-
-const drainPending = db.transaction(() => {
-    const rows = pendingRoleStmts.getAll.all();
-    pendingRoleStmts.clearAll.run();
-    return rows;
-});
-
+// ── Settings ──────────────────────────────────────────────────────────────────
 const stmts = {
-    insertCode: db.prepare(
-        'INSERT OR REPLACE INTO pending_codes (code, mc_uuid, mc_name, created_at, expires_at) VALUES (?, ?, ?, ?, ?)'
-    ),
-    getCode: db.prepare(
-        'SELECT * FROM pending_codes WHERE code = ? AND expires_at > ?'
-    ),
-    deleteCode: db.prepare(
-        'DELETE FROM pending_codes WHERE code = ?'
-    ),
-    insertVerified: db.prepare(
-        'INSERT OR REPLACE INTO verified_players (discord_id, mc_uuid, mc_name, verified_at) VALUES (?, ?, ?, ?)'
-    ),
-    getByDiscord: db.prepare(
-        'SELECT * FROM verified_players WHERE discord_id = ?'
-    ),
-    getByMinecraft: db.prepare(
-        'SELECT * FROM verified_players WHERE mc_uuid = ?'
-    ),
-    cleanupExpired: db.prepare(
-        'DELETE FROM pending_codes WHERE expires_at <= ?'
-    ),
-    getSetting: db.prepare(
-        'SELECT value FROM settings WHERE key = ?'
-    ),
-    setSetting: db.prepare(
-        'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)'
-    ),
-    deleteSetting: db.prepare(
-        'DELETE FROM settings WHERE key = ?'
-    ),
+    getSetting:    db.prepare('SELECT value FROM settings WHERE key = ?'),
+    setSetting:    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)'),
+    deleteSetting: db.prepare('DELETE FROM settings WHERE key = ?'),
 };
 
 module.exports = {
-    insertCode(code, mcUuid, mcName, expiryMinutes = 10) {
-        const now = Date.now();
-        stmts.insertCode.run(code, mcUuid, mcName, now, now + expiryMinutes * 60_000);
-    },
-    getCode: (code) => stmts.getCode.get(code, Date.now()),
-    deleteCode: (code) => stmts.deleteCode.run(code),
-    insertVerified(discordId, mcUuid, mcName) {
-        stmts.insertVerified.run(discordId, mcUuid, mcName, Date.now());
-    },
-    getByDiscord: (discordId) => stmts.getByDiscord.get(discordId),
-    getByMinecraft: (uuid) => stmts.getByMinecraft.get(uuid),
-    cleanupExpired: () => stmts.cleanupExpired.run(Date.now()),
-    getSetting: (key) => stmts.getSetting.get(key)?.value ?? null,
-    setSetting: (key, value) => stmts.setSetting.run(key, value),
-    deleteSetting: (key) => stmts.deleteSetting.run(key),
+    getSetting:    (key)        => stmts.getSetting.get(key)?.value ?? null,
+    setSetting:    (key, value) => stmts.setSetting.run(key, value),
+    deleteSetting: (key)        => stmts.deleteSetting.run(key),
     ticketConfig,
     getSupportRoleIds,
     ticketQuestions,
     tickets,
     staffappConfig,
     staffappApplications,
-    roleLinks: {
-        get:          (gameRole)       => roleLinkStmts.get.get(gameRole),
-        getByDiscord: (discordRoleId)  => roleLinkStmts.getByDiscord.get(discordRoleId),
-        getAll:       ()               => roleLinkStmts.getAll.all(),
-        set:          (gameRole, id)   => roleLinkStmts.set.run(gameRole, id),
-        delete:       (gameRole)       => roleLinkStmts.delete.run(gameRole),
-    },
-    pendingGameRoles: {
-        add:      (mcUuid, gameRole, action) => pendingRoleStmts.add.run(mcUuid, gameRole, action),
-        drainAll: () => drainPending(),
+    chatCounts: {
+        increment: (guildId, userId) => chatCountStmts.increment.run(guildId, userId),
+        getUser:   chatCountStmts.getUser,
+        getTop:    chatCountStmts.getTop,
     },
 };

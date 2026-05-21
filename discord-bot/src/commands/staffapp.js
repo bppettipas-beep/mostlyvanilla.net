@@ -4,16 +4,13 @@ const {
   EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
   ChannelSelectMenuBuilder, RoleSelectMenuBuilder,
 } = require('discord.js');
-const { staffappConfig, staffappApplications } = require('../database');
+const { staffappConfig, staffappApplications, ticketConfig, getSupportRoleIds, tickets } = require('../database');
 const { success, error, warning, info } = require('../ticketUtils');
 
-const STAFF_ROLE_ID      = '1504971700654178435';
 const SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000;
 
-// Active DM sessions: userId -> session
-const sessions = new Map();
-// Panel builder sessions: userId -> config
-const builders = new Map();
+const sessions  = new Map();
+const builders  = new Map();
 
 // ─── Command definition ───────────────────────────────────────────────────────
 
@@ -101,6 +98,9 @@ async function handleButton(interaction) {
   if (action === 'staffapp_builder_cancel') return handleBuilderCancel(interaction);
   if (action === 'staffapp_accept')         return handleAccept(interaction, parseInt(args[0], 10));
   if (action === 'staffapp_deny')           return handleDeny(interaction, parseInt(args[0], 10));
+  if (action === 'staffapp_accept_reason')  return showReasonModal(interaction, parseInt(args[0], 10), 'accept');
+  if (action === 'staffapp_deny_reason')    return showReasonModal(interaction, parseInt(args[0], 10), 'deny');
+  if (action === 'staffapp_ticket')         return handleOpenTicket(interaction, parseInt(args[0], 10));
 }
 
 async function handleSelect(interaction) {
@@ -109,7 +109,8 @@ async function handleSelect(interaction) {
 }
 
 async function handleModal(interaction) {
-  if (interaction.customId.startsWith('staffapp_panel_modal:')) return handlePanelModal(interaction);
+  if (interaction.customId.startsWith('staffapp_panel_modal:'))  return handlePanelModal(interaction);
+  if (interaction.customId.startsWith('staffapp_reason_modal:')) return handleReasonModal(interaction);
 }
 
 // ─── Panel builder handlers ────────────────────────────────────────────────────
@@ -162,7 +163,7 @@ async function handleBuilderPost(interaction) {
 
   const panelEmbed = new EmbedBuilder()
     .setColor(0x5865F2).setTitle(config.title).setDescription(config.description)
-    .setFooter({ text: 'Mostly Vanilla • Staff Applications' });
+    .setFooter({ text: 'MostlyVanilla Beacon • Staff Applications' });
 
   const panelMsg = await channel.send({
     embeds: [panelEmbed],
@@ -317,7 +318,10 @@ async function submitApplication(message, session) {
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`staffapp_accept:${appId}`).setLabel('Accept').setEmoji('✅').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`staffapp_accept_reason:${appId}`).setLabel('Accept w/ Reason').setEmoji('📝').setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId(`staffapp_deny:${appId}`).setLabel('Deny').setEmoji('❌').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId(`staffapp_deny_reason:${appId}`).setLabel('Deny w/ Reason').setEmoji('📝').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`staffapp_ticket:${appId}`).setLabel('Open Ticket').setEmoji('🎫').setStyle(ButtonStyle.Secondary),
   );
 
   const logMsg = await logCh.send({ embeds: [logEmbed], components: [row] }).catch(err => { console.error('[StaffApp] Log send failed:', err); return null; });
@@ -326,68 +330,163 @@ async function submitApplication(message, session) {
 
 // ─── Accept / Deny ────────────────────────────────────────────────────────────
 
-async function handleAccept(interaction, appId) {
+async function handleAccept(interaction, appId, reason = null) {
   const app = staffappApplications.getById.get(appId);
   if (!app) return interaction.reply({ embeds: [error('Not found', 'Application not found.')], ephemeral: true });
   if (app.status !== 'pending') return interaction.reply({ embeds: [warning('Already processed', 'This application has already been processed.')], ephemeral: true });
 
-  staffappApplications.updateStatus.run({ id: appId, status: 'accepted', reviewed_by: interaction.user.id });
+  staffappApplications.updateStatus.run({ id: appId, status: 'accepted', reviewed_by: interaction.user.id, reason });
 
   const member = await interaction.guild.members.fetch(app.user_id).catch(() => null);
   if (member) {
-    await member.roles.add(STAFF_ROLE_ID).catch(err => console.error('[StaffApp] Failed to add staff role:', err.message));
     await member.roles.add(app.applied_role_id).catch(err => console.error('[StaffApp] Failed to add applied role:', err.message));
   }
 
   const user = await interaction.client.users.fetch(app.user_id).catch(() => null);
   if (user) {
-    await user.send({
-      embeds: [
-        new EmbedBuilder().setColor(0x57F287)
-          .setTitle('🎉 Application Accepted!')
-          .setDescription(
-            `Congratulations! Your staff application for <@&${app.applied_role_id}> ` +
-            `in **${interaction.guild.name}** has been **accepted**!\n\n` +
-            `Welcome to the team! 🎉`
-          )
-          .setTimestamp(),
-      ],
-    }).catch(() => {});
+    const dmEmbed = new EmbedBuilder().setColor(0x57F287)
+      .setTitle('🎉 Application Accepted!')
+      .setDescription(
+        `Congratulations! Your staff application for <@&${app.applied_role_id}> ` +
+        `in **${interaction.guild.name}** has been **accepted**!\n\nWelcome to the team! 🎉`
+      )
+      .setTimestamp();
+    if (reason) dmEmbed.addFields({ name: 'Note from staff', value: reason });
+    await user.send({ embeds: [dmEmbed] }).catch(() => {});
   }
+
+  const footerText = reason
+    ? `✅ Accepted by ${interaction.user.tag} — ${reason}`
+    : `✅ Accepted by ${interaction.user.tag}`;
 
   const updated = EmbedBuilder.from(interaction.message.embeds[0])
     .setColor(0x57F287)
-    .setFooter({ text: `✅ Accepted by ${interaction.user.tag}` });
+    .setFooter({ text: footerText.substring(0, 2048) });
   await interaction.update({ embeds: [updated], components: [] });
 }
 
-async function handleDeny(interaction, appId) {
+async function handleDeny(interaction, appId, reason = null) {
   const app = staffappApplications.getById.get(appId);
   if (!app) return interaction.reply({ embeds: [error('Not found', 'Application not found.')], ephemeral: true });
   if (app.status !== 'pending') return interaction.reply({ embeds: [warning('Already processed', 'This application has already been processed.')], ephemeral: true });
 
-  staffappApplications.updateStatus.run({ id: appId, status: 'denied', reviewed_by: interaction.user.id });
+  staffappApplications.updateStatus.run({ id: appId, status: 'denied', reviewed_by: interaction.user.id, reason });
 
   const user = await interaction.client.users.fetch(app.user_id).catch(() => null);
   if (user) {
-    await user.send({
-      embeds: [
-        new EmbedBuilder().setColor(0xED4245)
-          .setTitle('Application Update')
-          .setDescription(
-            `Thank you for applying for a staff position in **${interaction.guild.name}**.\n\n` +
-            `Unfortunately, your application was **not accepted** at this time. ` +
-            `We appreciate your interest and encourage you to apply again in the future!`
-          )
-          .setTimestamp(),
-      ],
-    }).catch(() => {});
+    const dmEmbed = new EmbedBuilder().setColor(0xED4245)
+      .setTitle('Application Update')
+      .setDescription(
+        `Thank you for applying for a staff position in **${interaction.guild.name}**.\n\n` +
+        `Unfortunately, your application was **not accepted** at this time. ` +
+        `We appreciate your interest and encourage you to apply again in the future!`
+      )
+      .setTimestamp();
+    if (reason) dmEmbed.addFields({ name: 'Reason', value: reason });
+    await user.send({ embeds: [dmEmbed] }).catch(() => {});
   }
+
+  const footerText = reason
+    ? `❌ Denied by ${interaction.user.tag} — ${reason}`
+    : `❌ Denied by ${interaction.user.tag}`;
 
   const updated = EmbedBuilder.from(interaction.message.embeds[0])
     .setColor(0xED4245)
-    .setFooter({ text: `❌ Denied by ${interaction.user.tag}` });
+    .setFooter({ text: footerText.substring(0, 2048) });
   await interaction.update({ embeds: [updated], components: [] });
+}
+
+// ─── Accept/Deny with Reason ──────────────────────────────────────────────────
+
+async function showReasonModal(interaction, appId, verdict) {
+  const app = staffappApplications.getById.get(appId);
+  if (!app) return interaction.reply({ embeds: [error('Not found', 'Application not found.')], ephemeral: true });
+  if (app.status !== 'pending') return interaction.reply({ embeds: [warning('Already processed', 'This application has already been processed.')], ephemeral: true });
+
+  const modal = new ModalBuilder()
+    .setCustomId(`staffapp_reason_modal:${verdict}:${appId}`)
+    .setTitle(verdict === 'accept' ? 'Accept with Reason' : 'Deny with Reason');
+  modal.addComponents(
+    new ActionRowBuilder().addComponents(
+      new TextInputBuilder()
+        .setCustomId('reason')
+        .setLabel('Reason')
+        .setStyle(TextInputStyle.Paragraph)
+        .setPlaceholder(
+          verdict === 'accept'
+            ? 'e.g. Great application, welcome to the team!'
+            : 'e.g. Not enough experience at this time.'
+        )
+        .setMaxLength(1000)
+        .setRequired(true)
+    )
+  );
+  await interaction.showModal(modal);
+}
+
+async function handleReasonModal(interaction) {
+  const parts   = interaction.customId.split(':');
+  const verdict = parts[1];
+  const appId   = parseInt(parts[2], 10);
+  const reason  = interaction.fields.getTextInputValue('reason').trim();
+
+  if (verdict === 'accept') return handleAccept(interaction, appId, reason);
+  if (verdict === 'deny')   return handleDeny(interaction, appId, reason);
+}
+
+// ─── Open Ticket with User ────────────────────────────────────────────────────
+
+async function handleOpenTicket(interaction, appId) {
+  const app = staffappApplications.getById.get(appId);
+  if (!app) return interaction.reply({ embeds: [error('Not found', 'Application not found.')], ephemeral: true });
+
+  const cfg = ticketConfig.get.get(interaction.guildId);
+  if (!cfg?.category_id)
+    return interaction.reply({ embeds: [error('Not configured', 'No ticket system has been set up. Run `/ticket panel` first.')], ephemeral: true });
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const member = await interaction.guild.members.fetch(app.user_id).catch(() => null);
+  if (!member) return interaction.editReply({ embeds: [error('User not found', 'The applicant is no longer in the server.')] });
+
+  const supportRoleIds = getSupportRoleIds(cfg);
+  const guild          = interaction.guild;
+
+  const sanitizedName = member.user.username
+    .toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/-{2,}/g, '-').replace(/^-|-$/g, '').substring(0, 25) || 'user';
+
+  const permissionOverwrites = [
+    { id: guild.roles.everyone.id, deny:  [PermissionFlagsBits.ViewChannel] },
+    { id: app.user_id,             allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+    { id: interaction.user.id,     allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+    ...supportRoleIds.map(id => ({ id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] })),
+  ];
+
+  const channel = await guild.channels.create({
+    name: `staffapp-${sanitizedName}`,
+    type: ChannelType.GuildText,
+    parent: cfg.category_id,
+    permissionOverwrites,
+  });
+
+  const result   = tickets.create.run({ guild_id: interaction.guildId, channel_id: channel.id, ticket_num: cfg.next_ticket_num, owner_id: app.user_id, reason: `Staff application follow-up for <@&${app.applied_role_id}>` });
+  const ticketId = result.lastInsertRowid;
+  ticketConfig.bumpTicketNum.run(interaction.guildId);
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865F2)
+    .setTitle('Staff Application — Follow Up')
+    .setDescription(`${member} — a staff member would like to discuss your application for <@&${app.applied_role_id}>.`)
+    .setFooter({ text: 'MostlyVanilla Beacon' })
+    .setTimestamp();
+
+  const pingParts = [member.toString(), interaction.user.toString(), ...supportRoleIds.map(id => `<@&${id}>`)];
+  const closeRow  = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`ticket_close:${ticketId}`).setLabel('Close Ticket').setEmoji('🔒').setStyle(ButtonStyle.Danger),
+  );
+
+  await channel.send({ content: pingParts.join(' '), embeds: [embed], components: [closeRow] });
+  await interaction.editReply({ embeds: [success('Ticket Opened', `Ticket created for ${member} in ${channel}.`)] });
 }
 
 module.exports = { data, execute, handleButton, handleSelect, handleModal, handleDm };

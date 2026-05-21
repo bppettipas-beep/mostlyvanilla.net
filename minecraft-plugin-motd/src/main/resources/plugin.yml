@@ -1,0 +1,17 @@
+name: MostlyVanillaMOTD
+version: ${project.version}
+main: com.mostlyvanilla.motd.MostlyVanillaMOTD
+api-version: 1.20
+description: Animated MOTD for MostlyVanilla
+author: MostlyVanilla
+
+commands:
+  motdreload:
+    description: Reload the MOTD config
+    permission: motd.reload
+    usage: /motdreload
+
+permissions:
+  motd.reload:
+    description: Allows reloading MOTD config
+    default: op

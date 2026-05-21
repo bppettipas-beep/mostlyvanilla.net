@@ -1,0 +1,22 @@
+# MostlyVanilla MOTD Configuration
+# Uses MiniMessage formatting: https://docs.advntr.dev/minimessage/format.html
+# Each frame = exactly 2 lines. Frames rotate on every server list ping.
+
+motd-frames:
+  - - "          <gradient:#15803D:#4ADE80:#FFFFFF><bold>✦ MostlyVanilla ✦</bold></gradient>"
+    - "      <#4ADE80>⚡ <white><italic>Survival • Community • Vibes</italic></white> <#4ADE80>⚡"
+
+  - - "          <gradient:#FFFFFF:#86EFAC:#22C55E><bold>✧ MostlyVanilla ✧</bold></gradient>"
+    - "       <white>❄ <#4ADE80><bold>Pure Survival. Real Community.</bold></white> <white>❄"
+
+  - - "          <gradient:#22C55E:#BBF7D0:#FFFFFF><bold>❖ MostlyVanilla ❖</bold></gradient>"
+    - "        <#86EFAC>★ <white><italic>Where legends are forged...</italic></white> <#86EFAC>★"
+
+  - - "     <gradient:#15803D:#4ADE80:#FFFFFF:#4ADE80:#15803D><bold>✦ M O S T L Y  V A N I L L A ✦</bold></gradient>"
+    - "       <white>〈 <#4ADE80><bold>Crafting together since forever</bold></white> <white>〉"
+
+  - - "          <gradient:#166534:#4ADE80:#DCFCE7><bold>◈ MostlyVanilla ◈</bold></gradient>"
+    - "     <#86EFAC>✿ <white><italic>The vanilla experience, elevated.</italic></white> <#86EFAC>✿"
+
+  - - "          <gradient:#FFFFFF:#22C55E:#15803D><bold>⚙ MostlyVanilla ⚙</bold></gradient>"
+    - "      <#4ADE80>✦ <white><bold>No mods. No nonsense. Just vibes.</bold></white> <#4ADE80>✦"

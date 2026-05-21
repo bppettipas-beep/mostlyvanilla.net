@@ -7,7 +7,7 @@ const db = require('../database');
 const GREEN      = 0x2ECC71;
 const DARK_GREEN = 0x27AE60;
 const RED        = 0xE74C3C;
-const FOOTER     = 'Mostly Vanilla • Join Role';
+const FOOTER     = 'MostlyVanilla Beacon • Join Role';
 
 const data = new SlashCommandBuilder()
     .setName('joinrole')

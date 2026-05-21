@@ -221,7 +221,7 @@ async function onPostButton(interaction) {
   const channel = await interaction.client.channels.fetch(config.channelId).catch(() => null);
   if (!channel) return interaction.editReply({ embeds: [embeds.error('Channel not found', 'The target channel could not be found.')], components: [] });
 
-  const panelEmbed = new EmbedBuilder().setColor(config.color).setTitle(config.title).setDescription(config.description).setFooter({ text: 'Mostly Vanilla • Ticket System' });
+  const panelEmbed = new EmbedBuilder().setColor(config.color).setTitle(config.title).setDescription(config.description).setFooter({ text: 'MostlyVanilla Beacon • Ticket System' });
   const buttonComponents = config.buttons.map(b => {
     const { style } = resolveStyle(b.style);
     const btn = new ButtonBuilder().setCustomId(`ticket_create:${b.prefix}`).setLabel(b.label).setStyle(style);

@@ -7,7 +7,7 @@ const db = require('../database');
 const GREEN      = 0x2ECC71;
 const DARK_GREEN = 0x27AE60;
 const RED        = 0xE74C3C;
-const FOOTER     = 'Mostly Vanilla • Welcome';
+const FOOTER     = 'MostlyVanilla Beacon • Welcome';
 
 const DEFAULT_MESSAGE = 'Welcome to **{server}**, {user}! Glad to have you here!';
 

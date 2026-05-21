@@ -45,7 +45,7 @@ async function buildInviteEmbed(guild) {
         .setTitle('🔗 Invite Leaderboard')
         .setDescription(lines)
         .addFields({ name: 'Total Invites', value: `**${total}** across all tracked links` })
-        .setFooter({ text: `Mostly Vanilla • Updates every 5 min • Last updated ${updatedAt}` })
+        .setFooter({ text: `MostlyVanilla Beacon • Updates every 5 min • Last updated ${updatedAt}` })
         .setTimestamp();
 }
 
@@ -131,7 +131,7 @@ async function execute(interaction) {
                     .setTitle('🔗 Invite Count')
                     .setThumbnail(target.displayAvatarURL({ dynamic: true }))
                     .setDescription(`<@${target.id}> has invited **${uses}** member${uses !== 1 ? 's' : ''} to the server.`)
-                    .setFooter({ text: 'Mostly Vanilla' })
+                    .setFooter({ text: 'MostlyVanilla Beacon' })
                     .setTimestamp(),
             ],
         });
