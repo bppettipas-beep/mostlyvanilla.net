@@ -179,6 +179,42 @@ const chatCountStmts = {
     getTop:  db.prepare('SELECT * FROM chat_counts WHERE guild_id = ? ORDER BY count DESC LIMIT 15'),
 };
 
+// ── Moderation ────────────────────────────────────────────────────────────────
+db.exec(`
+    CREATE TABLE IF NOT EXISTS warnings (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id   TEXT NOT NULL,
+        user_id    TEXT NOT NULL,
+        mod_id     TEXT NOT NULL,
+        reason     TEXT NOT NULL,
+        created_at INTEGER DEFAULT (strftime('%s','now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS mod_cases (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id   TEXT NOT NULL,
+        user_id    TEXT NOT NULL,
+        mod_id     TEXT NOT NULL,
+        action     TEXT NOT NULL,
+        reason     TEXT,
+        duration   INTEGER,
+        created_at INTEGER DEFAULT (strftime('%s','now'))
+    );
+`);
+
+const warningStmts = {
+    create:    db.prepare('INSERT INTO warnings (guild_id, user_id, mod_id, reason) VALUES (@guild_id, @user_id, @mod_id, @reason)'),
+    getUser:   db.prepare('SELECT * FROM warnings WHERE guild_id = ? AND user_id = ? ORDER BY created_at ASC'),
+    countUser: db.prepare('SELECT COUNT(*) as count FROM warnings WHERE guild_id = ? AND user_id = ?'),
+    clearUser: db.prepare('DELETE FROM warnings WHERE guild_id = ? AND user_id = ?'),
+};
+
+const modCaseStmts = {
+    create:  db.prepare('INSERT INTO mod_cases (guild_id, user_id, mod_id, action, reason, duration) VALUES (@guild_id, @user_id, @mod_id, @action, @reason, @duration)'),
+    get:     db.prepare('SELECT * FROM mod_cases WHERE id = ?'),
+    getUser: db.prepare('SELECT * FROM mod_cases WHERE guild_id = ? AND user_id = ? ORDER BY created_at DESC LIMIT 20'),
+};
+
 // ── Settings ──────────────────────────────────────────────────────────────────
 const stmts = {
     getSetting:    db.prepare('SELECT value FROM settings WHERE key = ?'),
@@ -200,5 +236,16 @@ module.exports = {
         increment: (guildId, userId) => chatCountStmts.increment.run(guildId, userId),
         getUser:   chatCountStmts.getUser,
         getTop:    chatCountStmts.getTop,
+    },
+    warnings: {
+        create:    warningStmts.create,
+        getUser:   warningStmts.getUser,
+        countUser: warningStmts.countUser,
+        clearUser: warningStmts.clearUser,
+    },
+    modCases: {
+        create:  modCaseStmts.create,
+        get:     modCaseStmts.get,
+        getUser: modCaseStmts.getUser,
     },
 };

@@ -11,6 +11,22 @@ const { data: joinRoleData, execute: joinRoleExecute } = require('./commands/joi
 const { data: embedData, execute: embedExecute, handleInteraction: embedHandleInteraction, handleModalSubmit: embedHandleModalSubmit } = require('./commands/embed');
 const { data: invitesData, execute: invitesExecute, startLiveBoard } = require('./commands/invites');
 const { data: chatcountData, execute: chatcountExecute, startChatBoard, incrementChat } = require('./commands/chatcount');
+const {
+    banData, banExecute,
+    unbanData, unbanExecute,
+    kickData, kickExecute,
+    muteData, muteExecute,
+    unmuteData, unmuteExecute,
+    warnData, warnExecute,
+    warningsData, warningsExecute,
+    clearwarningsData, clearwarningsExecute,
+    modhistoryData, modhistoryExecute,
+    purgeData, purgeExecute,
+    slowmodeData, slowmodeExecute,
+    lockData, lockExecute,
+    unlockData, unlockExecute,
+    modlogData, modlogExecute,
+} = require('./commands/mod');
 
 const client = new Client({
     intents: [
@@ -39,6 +55,20 @@ client.once(Events.ClientReady, async (c) => {
                     chatcountData.toJSON(),
                     ticketData.toJSON(),
                     staffappData.toJSON(),
+                    banData.toJSON(),
+                    unbanData.toJSON(),
+                    kickData.toJSON(),
+                    muteData.toJSON(),
+                    unmuteData.toJSON(),
+                    warnData.toJSON(),
+                    warningsData.toJSON(),
+                    clearwarningsData.toJSON(),
+                    modhistoryData.toJSON(),
+                    purgeData.toJSON(),
+                    slowmodeData.toJSON(),
+                    lockData.toJSON(),
+                    unlockData.toJSON(),
+                    modlogData.toJSON(),
                 ],
             }
         );
@@ -76,8 +106,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (interaction.commandName === 'embed')      await embedExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'ticket')     await ticketExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'staffapp')   await staffappExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
-        if (interaction.commandName === 'invites')    await invitesExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
-        if (interaction.commandName === 'chatcount')  await chatcountExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'invites')       await invitesExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'chatcount')     await chatcountExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'ban')           await banExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'unban')         await unbanExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'kick')          await kickExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'mute')          await muteExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'unmute')        await unmuteExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'warn')          await warnExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'warnings')      await warningsExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'clearwarnings') await clearwarningsExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'modhistory')    await modhistoryExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'purge')         await purgeExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'slowmode')      await slowmodeExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'lock')          await lockExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'unlock')        await unlockExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'modlog')        await modlogExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         return;
     }
 
