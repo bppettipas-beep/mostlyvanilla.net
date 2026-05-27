@@ -11,6 +11,7 @@ const { data: joinRoleData, execute: joinRoleExecute } = require('./commands/joi
 const { data: embedData, execute: embedExecute, handleInteraction: embedHandleInteraction, handleModalSubmit: embedHandleModalSubmit } = require('./commands/embed');
 const { data: invitesData, execute: invitesExecute, startLiveBoard } = require('./commands/invites');
 const { data: chatcountData, execute: chatcountExecute, startChatBoard, incrementChat } = require('./commands/chatcount');
+const { data: memberembedData, execute: memberembedExecute, startMemberEmbed } = require('./commands/memberembed');
 const {
     banData, banExecute,
     unbanData, unbanExecute,
@@ -32,6 +33,7 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildPresences,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.DirectMessages,
     ],
@@ -69,6 +71,7 @@ client.once(Events.ClientReady, async (c) => {
                     lockData.toJSON(),
                     unlockData.toJSON(),
                     modlogData.toJSON(),
+                    memberembedData.toJSON(),
                 ],
             }
         );
@@ -79,6 +82,7 @@ client.once(Events.ClientReady, async (c) => {
 
     startLiveBoard(c);
     startChatBoard(c);
+    startMemberEmbed(c);
 });
 
 client.on(Events.GuildMemberAdd, async (member) => {
@@ -122,6 +126,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (interaction.commandName === 'lock')          await lockExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'unlock')        await unlockExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'modlog')        await modlogExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'memberembed')   await memberembedExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         return;
     }
 
