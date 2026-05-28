@@ -5,7 +5,7 @@ const {
 const db = require('../database');
 const { success, error, warning, info } = require('../ticketUtils');
 
-const UPDATE_MS = 60 * 1000;
+const UPDATE_MS = 15 * 1000;
 let liveInterval = null;
 
 // ── Leaderboard embed ─────────────────────────────────────────────────────────
@@ -13,7 +13,20 @@ let liveInterval = null;
 function buildStrikeBoard(guild) {
     const rows = db.strikes.getLeaderboard.all(guild.id);
 
-    if (!rows.length) return null;
+    const updatedAt = new Date().toLocaleString('en-US', {
+        month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+        second: '2-digit',
+    });
+
+    if (!rows.length) {
+        return new EmbedBuilder()
+            .setColor(0xE74C3C)
+            .setTitle('⚡ Staff Strike Leaderboard')
+            .setDescription('*No strikes have been issued.*')
+            .setFooter({ text: `MostlyVanilla Beacon • Last updated ${updatedAt}` })
+            .setTimestamp();
+    }
 
     const medals = ['🥇', '🥈', '🥉'];
     const lines  = rows.map((r, i) => {
@@ -22,11 +35,7 @@ function buildStrikeBoard(guild) {
         return `${rank} <@${r.user_id}> — **${r.count}** strike${r.count !== 1 ? 's' : ''}\n└ Last: *${r.last_reason}* · ${date}`;
     }).join('\n\n');
 
-    const total    = rows.reduce((s, r) => s + r.count, 0);
-    const updatedAt = new Date().toLocaleString('en-US', {
-        month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-    });
+    const total = rows.reduce((s, r) => s + r.count, 0);
 
     return new EmbedBuilder()
         .setColor(0xE74C3C)
@@ -57,7 +66,6 @@ async function updateStrikeBoard(client) {
         }
 
         const embed = buildStrikeBoard(channel.guild);
-        if (!embed) return;
         await message.edit({ embeds: [embed] });
     } catch (err) {
         console.error('[Strike] Live board update failed:', err.message);
