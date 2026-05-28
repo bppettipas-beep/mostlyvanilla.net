@@ -12,6 +12,7 @@ const { data: embedData, execute: embedExecute, handleInteraction: embedHandleIn
 const { data: invitesData, execute: invitesExecute, startLiveBoard, invitewipeData, invitewipeExecute, inviterestoreData, inviterestoreExecute } = require('./commands/invites');
 const { data: chatcountData, execute: chatcountExecute, startChatBoard, incrementChat } = require('./commands/chatcount');
 const { data: memberembedData, execute: memberembedExecute, startMemberEmbed } = require('./commands/memberembed');
+const { data: strikeData, execute: strikeExecute, startStrikeBoard } = require('./commands/strike');
 const {
     banData, banExecute,
     unbanData, unbanExecute,
@@ -75,6 +76,7 @@ client.once(Events.ClientReady, async (c) => {
                     unlockData.toJSON(),
                     modlogData.toJSON(),
                     memberembedData.toJSON(),
+                    strikeData.toJSON(),
                 ],
             }
         );
@@ -86,6 +88,7 @@ client.once(Events.ClientReady, async (c) => {
     startLiveBoard(c);
     startChatBoard(c);
     startMemberEmbed(c);
+    startStrikeBoard(c);
 });
 
 client.on(Events.GuildMemberAdd, async (member) => {
@@ -133,6 +136,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (interaction.commandName === 'unlock')        await unlockExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'modlog')        await modlogExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'memberembed')   await memberembedExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'strike')        await strikeExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         return;
     }
 

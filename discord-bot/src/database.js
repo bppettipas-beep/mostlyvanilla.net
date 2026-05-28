@@ -195,6 +195,27 @@ const inviteWipeStmts = {
     getAll: db.prepare('SELECT user_id FROM invite_wipes WHERE guild_id = ?'),
 };
 
+// ── Strikes ───────────────────────────────────────────────────────────────────
+db.exec(`
+    CREATE TABLE IF NOT EXISTS strikes (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id   TEXT NOT NULL,
+        user_id    TEXT NOT NULL,
+        mod_id     TEXT NOT NULL,
+        reason     TEXT NOT NULL,
+        created_at INTEGER DEFAULT (strftime('%s','now'))
+    );
+`);
+
+const strikeStmts = {
+    create:        db.prepare('INSERT INTO strikes (guild_id, user_id, mod_id, reason) VALUES (@guild_id, @user_id, @mod_id, @reason)'),
+    getUser:       db.prepare('SELECT * FROM strikes WHERE guild_id = ? AND user_id = ? ORDER BY created_at ASC'),
+    countUser:     db.prepare('SELECT COUNT(*) as count FROM strikes WHERE guild_id = ? AND user_id = ?'),
+    removeLast:    db.prepare('DELETE FROM strikes WHERE id = (SELECT id FROM strikes WHERE guild_id = ? AND user_id = ? ORDER BY created_at DESC LIMIT 1)'),
+    clearUser:     db.prepare('DELETE FROM strikes WHERE guild_id = ? AND user_id = ?'),
+    getLeaderboard: db.prepare('SELECT user_id, COUNT(*) as count, MAX(reason) as last_reason, MAX(created_at) as last_at FROM strikes WHERE guild_id = ? GROUP BY user_id ORDER BY count DESC, last_at DESC LIMIT 20'),
+};
+
 // ── Moderation ────────────────────────────────────────────────────────────────
 db.exec(`
     CREATE TABLE IF NOT EXISTS warnings (
@@ -252,6 +273,14 @@ module.exports = {
         increment: (guildId, userId) => chatCountStmts.increment.run(guildId, userId),
         getUser:   chatCountStmts.getUser,
         getTop:    chatCountStmts.getTop,
+    },
+    strikes: {
+        create:         strikeStmts.create,
+        getUser:        strikeStmts.getUser,
+        countUser:      strikeStmts.countUser,
+        removeLast:     (guildId, userId) => strikeStmts.removeLast.run(guildId, userId),
+        clearUser:      (guildId, userId) => strikeStmts.clearUser.run(guildId, userId),
+        getLeaderboard: strikeStmts.getLeaderboard,
     },
     inviteWipes: {
         add:     (guildId, userId) => inviteWipeStmts.add.run(guildId, userId),
