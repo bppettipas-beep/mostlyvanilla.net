@@ -4,6 +4,16 @@ const {
   EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
 } = require('discord.js');
 const { ticketConfig, getSupportRoleIds, tickets, ticketQuestions } = require('../database');
+
+// Resolve the support roles for a ticket: per-button if set, else global fallback.
+function resolveTicketRoles(cfg, prefix, guildId) {
+  const id     = guildId ?? cfg?.guild_id ?? '';
+  const btnCfg = ticketQuestions.get.get(id, prefix || 'ticket');
+  if (btnCfg?.support_role_ids) {
+    try { return JSON.parse(btnCfg.support_role_ids); } catch {}
+  }
+  return getSupportRoleIds(cfg);
+}
 const { success, error, warning, info, closeTicket } = require('../ticketUtils');
 const panel = require('../panel');
 
@@ -83,7 +93,7 @@ async function handleTicketClose(interaction) {
   const cfg    = ticketConfig.get.get(interaction.guildId);
   if (!ticket || ticket.status !== 'open')
     return interaction.reply({ embeds: [error('Not a ticket', 'This command can only be used inside an open ticket channel.')], ephemeral: true });
-  const closeRoles = getSupportRoleIds(cfg);
+  const closeRoles = resolveTicketRoles(cfg, ticket.prefix, interaction.guildId);
   const canClose   = interaction.user.id === ticket.owner_id || closeRoles.some(id => interaction.member?.roles.cache.has(id)) || interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels);
   if (!canClose) return interaction.reply({ embeds: [error('Permission denied', 'Only the ticket owner or staff can close this ticket.')], ephemeral: true });
   await interaction.deferReply();
@@ -123,8 +133,8 @@ async function handleButton(interaction) {
     const cfg       = ticketConfig.get.get(interaction.guildId);
     if (!ticket || ticket.status !== 'open')
       return interaction.reply({ embeds: [error('Ticket not found', 'This ticket could not be found or is already closed.')], ephemeral: true });
-    const claimRoles = getSupportRoleIds(cfg);
-    if (!claimRoles.some(id => interaction.member?.roles.cache.has(id)))
+    const claimRoles = resolveTicketRoles(cfg, ticket.prefix, interaction.guildId);
+    if (!claimRoles.some(id => interaction.member?.roles.cache.has(id)) && !interaction.memberPermissions?.has(PermissionFlagsBits.Administrator))
       return interaction.reply({ embeds: [error('Permission denied', 'Only support staff can claim tickets.')], ephemeral: true });
     tickets.update.run({ id: ticketId, status: 'open', claimed_by: interaction.user.id, closed_at: null });
     return interaction.reply({ embeds: [info('Ticket Claimed', `${interaction.user} has claimed this ticket.`)] });
@@ -136,7 +146,7 @@ async function handleButton(interaction) {
     const cfg       = ticketConfig.get.get(interaction.guildId);
     if (!ticket || ticket.status !== 'open')
       return interaction.reply({ embeds: [error('Ticket not found', 'This ticket could not be found or is already closed.')], ephemeral: true });
-    const closeRoles = getSupportRoleIds(cfg);
+    const closeRoles = resolveTicketRoles(cfg, ticket.prefix, interaction.guildId);
     const canClose   = interaction.user.id === ticket.owner_id || closeRoles.some(id => interaction.member?.roles.cache.has(id)) || interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels);
     if (!canClose)
       return interaction.reply({ embeds: [error('Permission denied', 'Only the ticket owner or staff can close this.')], ephemeral: true });
@@ -281,7 +291,7 @@ async function createTicketChannel(interaction, prefix, answers) {
     permissionOverwrites,
   });
 
-  const result = tickets.create.run({ guild_id: interaction.guildId, channel_id: channel.id, ticket_num: num, owner_id: interaction.user.id, reason: answers.length ? answers.map(a => `${a.question}: ${a.answer}`).join('\n') : null });
+  const result = tickets.create.run({ guild_id: interaction.guildId, channel_id: channel.id, ticket_num: num, owner_id: interaction.user.id, reason: answers.length ? answers.map(a => `${a.question}: ${a.answer}`).join('\n') : null, prefix });
   ticketConfig.bumpTicketNum.run(interaction.guildId);
 
   const ticketId    = result.lastInsertRowid;
@@ -331,8 +341,8 @@ async function ticketaddExecute(interaction) {
   if (!ticket || ticket.status !== 'open')
     return interaction.reply({ embeds: [error('Not a ticket', 'This command can only be used inside an open ticket channel.')], ephemeral: true });
 
-  const cfg         = ticketConfig.get.get(interaction.guildId);
-  const supportRoles = getSupportRoleIds(cfg);
+  const cfg          = ticketConfig.get.get(interaction.guildId);
+  const supportRoles = resolveTicketRoles(cfg, ticket.prefix, interaction.guildId);
   const canAdd = interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)
     || supportRoles.some(id => interaction.member?.roles.cache.has(id));
   if (!canAdd)

@@ -18,6 +18,7 @@ db.exec(`
 try { db.exec('ALTER TABLE ticket_config ADD COLUMN support_role_ids TEXT'); } catch {}
 try { db.exec('ALTER TABLE ticket_questions ADD COLUMN category_id TEXT'); } catch {}
 try { db.exec('ALTER TABLE ticket_questions ADD COLUMN support_role_ids TEXT'); } catch {}
+try { db.exec("ALTER TABLE tickets ADD COLUMN prefix TEXT NOT NULL DEFAULT 'ticket'"); } catch {}
 
 db.exec(`
     CREATE TABLE IF NOT EXISTS ticket_config (
@@ -100,7 +101,7 @@ const ticketQuestions = {
 };
 
 const tickets = {
-    create:       db.prepare('INSERT INTO tickets (guild_id, channel_id, ticket_num, owner_id, reason) VALUES (@guild_id, @channel_id, @ticket_num, @owner_id, @reason)'),
+    create:       db.prepare('INSERT INTO tickets (guild_id, channel_id, ticket_num, owner_id, reason, prefix) VALUES (@guild_id, @channel_id, @ticket_num, @owner_id, @reason, @prefix)'),
     getByChannel: db.prepare('SELECT * FROM tickets WHERE channel_id = ?'),
     getById:      db.prepare('SELECT * FROM tickets WHERE id = ?'),
     listOpen:     db.prepare("SELECT * FROM tickets WHERE guild_id = ? AND status = 'open'"),
