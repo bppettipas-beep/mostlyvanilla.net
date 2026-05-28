@@ -105,7 +105,7 @@ const data = new SlashCommandBuilder()
     .addSubcommand(sc => sc
         .setName('board')
         .setDescription('Post a live strike leaderboard in a channel.')
-        .addChannelOption(o => o.setName('channel').setDescription('Channel to post the leaderboard in.').addChannelTypes(ChannelType.GuildText).setRequired(true))
+        .addChannelOption(o => o.setName('channel').setDescription('Channel to post the leaderboard in.').addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement).setRequired(true))
     );
 
 async function execute(interaction) {
