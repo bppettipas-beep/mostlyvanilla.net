@@ -4,7 +4,7 @@ const {
     REST, Routes,
 } = require('discord.js');
 const db = require('./database');
-const { data: ticketData, execute: ticketExecute, handleButton: ticketHandleButton, handleSelect: ticketHandleSelect, handleModal: ticketHandleModal } = require('./commands/ticket');
+const { data: ticketData, execute: ticketExecute, handleButton: ticketHandleButton, handleSelect: ticketHandleSelect, handleModal: ticketHandleModal, ticketaddData, ticketaddExecute, ticketrenameData, ticketrenameExecute } = require('./commands/ticket');
 const { data: staffappData, execute: staffappExecute, handleButton: staffappHandleButton, handleSelect: staffappHandleSelect, handleModal: staffappHandleModal, handleDm: staffappHandleDm } = require('./commands/staffapp');
 const { data: welcomeData, execute: welcomeExecute, sendWelcomeMessage } = require('./commands/welcome');
 const { data: joinRoleData, execute: joinRoleExecute } = require('./commands/joinrole');
@@ -56,6 +56,8 @@ client.once(Events.ClientReady, async (c) => {
                     invitesData.toJSON(),
                     chatcountData.toJSON(),
                     ticketData.toJSON(),
+                    ticketaddData.toJSON(),
+                    ticketrenameData.toJSON(),
                     staffappData.toJSON(),
                     banData.toJSON(),
                     unbanData.toJSON(),
@@ -108,7 +110,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (interaction.commandName === 'welcome')    await welcomeExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'joinrole')   await joinRoleExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'embed')      await embedExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
-        if (interaction.commandName === 'ticket')     await ticketExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'ticket')        await ticketExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'ticketadd')     await ticketaddExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'ticketrename')  await ticketrenameExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'staffapp')   await staffappExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'invites')       await invitesExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'chatcount')     await chatcountExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));

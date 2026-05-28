@@ -319,4 +319,68 @@ async function createTicketChannel(interaction, prefix, answers) {
   await interaction.editReply({ embeds: [success('Ticket Created', `Your ticket is open in ${channel}.`)] });
 }
 
-module.exports = { data, execute, handleButton, handleSelect, handleModal };
+// ─── /ticketadd ───────────────────────────────────────────────────────────────
+
+const ticketaddData = new SlashCommandBuilder()
+  .setName('ticketadd')
+  .setDescription('Add a user to the current ticket.')
+  .addUserOption(o => o.setName('user').setDescription('User to add to this ticket.').setRequired(true));
+
+async function ticketaddExecute(interaction) {
+  const ticket = tickets.getByChannel.get(interaction.channelId);
+  if (!ticket || ticket.status !== 'open')
+    return interaction.reply({ embeds: [error('Not a ticket', 'This command can only be used inside an open ticket channel.')], ephemeral: true });
+
+  const cfg         = ticketConfig.get.get(interaction.guildId);
+  const supportRoles = getSupportRoleIds(cfg);
+  const canAdd = interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)
+    || supportRoles.some(id => interaction.member?.roles.cache.has(id));
+  if (!canAdd)
+    return interaction.reply({ embeds: [error('Permission denied', 'Only support staff can add users to tickets.')], ephemeral: true });
+
+  const target = interaction.options.getMember('user');
+  if (!target)
+    return interaction.reply({ embeds: [error('Not found', 'That user is not in this server.')], ephemeral: true });
+  if (interaction.channel.permissionOverwrites.cache.has(target.id))
+    return interaction.reply({ embeds: [warning('Already added', `${target} already has access to this ticket.`)], ephemeral: true });
+
+  await interaction.channel.permissionOverwrites.create(target, {
+    ViewChannel:        true,
+    SendMessages:       true,
+    ReadMessageHistory: true,
+  });
+
+  await interaction.reply({ embeds: [success('User Added', `${target} has been added to this ticket.`)] });
+}
+
+// ─── /ticketrename ────────────────────────────────────────────────────────────
+
+const ticketrenameData = new SlashCommandBuilder()
+  .setName('ticketrename')
+  .setDescription('Rename the current ticket channel.')
+  .addStringOption(o => o.setName('name').setDescription('New name for this ticket channel.').setRequired(true).setMaxLength(90));
+
+async function ticketrenameExecute(interaction) {
+  const ticket = tickets.getByChannel.get(interaction.channelId);
+  if (!ticket || ticket.status !== 'open')
+    return interaction.reply({ embeds: [error('Not a ticket', 'This command can only be used inside an open ticket channel.')], ephemeral: true });
+
+  const cfg          = ticketConfig.get.get(interaction.guildId);
+  const supportRoles = getSupportRoleIds(cfg);
+  const canRename = interaction.user.id === ticket.owner_id
+    || interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)
+    || supportRoles.some(id => interaction.member?.roles.cache.has(id));
+  if (!canRename)
+    return interaction.reply({ embeds: [error('Permission denied', 'Only the ticket owner or support staff can rename this ticket.')], ephemeral: true });
+
+  const raw     = interaction.options.getString('name');
+  const newName = raw.toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/-{2,}/g, '-').replace(/^-|-$/g, '').substring(0, 90);
+  if (!newName)
+    return interaction.reply({ embeds: [error('Invalid name', 'Channel name must contain at least one valid character.')], ephemeral: true });
+
+  await interaction.deferReply({ ephemeral: true });
+  await interaction.channel.setName(newName);
+  await interaction.editReply({ embeds: [success('Renamed', `Channel renamed to **${newName}**.`)] });
+}
+
+module.exports = { data, execute, handleButton, handleSelect, handleModal, ticketaddData, ticketaddExecute, ticketrenameData, ticketrenameExecute };
