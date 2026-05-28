@@ -9,7 +9,7 @@ const { data: staffappData, execute: staffappExecute, handleButton: staffappHand
 const { data: welcomeData, execute: welcomeExecute, sendWelcomeMessage } = require('./commands/welcome');
 const { data: joinRoleData, execute: joinRoleExecute } = require('./commands/joinrole');
 const { data: embedData, execute: embedExecute, handleInteraction: embedHandleInteraction, handleModalSubmit: embedHandleModalSubmit } = require('./commands/embed');
-const { data: invitesData, execute: invitesExecute, startLiveBoard } = require('./commands/invites');
+const { data: invitesData, execute: invitesExecute, startLiveBoard, invitewipeData, invitewipeExecute, inviterestoreData, inviterestoreExecute } = require('./commands/invites');
 const { data: chatcountData, execute: chatcountExecute, startChatBoard, incrementChat } = require('./commands/chatcount');
 const { data: memberembedData, execute: memberembedExecute, startMemberEmbed } = require('./commands/memberembed');
 const {
@@ -54,6 +54,8 @@ client.once(Events.ClientReady, async (c) => {
                     joinRoleData.toJSON(),
                     embedData.toJSON(),
                     invitesData.toJSON(),
+                    invitewipeData.toJSON(),
+                    inviterestoreData.toJSON(),
                     chatcountData.toJSON(),
                     ticketData.toJSON(),
                     ticketaddData.toJSON(),
@@ -112,7 +114,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (interaction.commandName === 'ticket')        await ticketExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'ticketadd')     await ticketaddExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'staffapp')   await staffappExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
-        if (interaction.commandName === 'invites')       await invitesExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'invites')        await invitesExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'invitewipe')     await invitewipeExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'inviterestore')  await inviterestoreExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'chatcount')     await chatcountExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'ban')           await banExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'unban')         await unbanExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));

@@ -179,6 +179,22 @@ const chatCountStmts = {
     getTop:  db.prepare('SELECT * FROM chat_counts WHERE guild_id = ? ORDER BY count DESC LIMIT 15'),
 };
 
+// ── Invite wipes ──────────────────────────────────────────────────────────────
+db.exec(`
+    CREATE TABLE IF NOT EXISTS invite_wipes (
+        guild_id TEXT NOT NULL,
+        user_id  TEXT NOT NULL,
+        PRIMARY KEY (guild_id, user_id)
+    );
+`);
+
+const inviteWipeStmts = {
+    add:    db.prepare('INSERT OR IGNORE INTO invite_wipes (guild_id, user_id) VALUES (?, ?)'),
+    remove: db.prepare('DELETE FROM invite_wipes WHERE guild_id = ? AND user_id = ?'),
+    isWiped: db.prepare('SELECT 1 FROM invite_wipes WHERE guild_id = ? AND user_id = ?'),
+    getAll: db.prepare('SELECT user_id FROM invite_wipes WHERE guild_id = ?'),
+};
+
 // ── Moderation ────────────────────────────────────────────────────────────────
 db.exec(`
     CREATE TABLE IF NOT EXISTS warnings (
@@ -236,6 +252,12 @@ module.exports = {
         increment: (guildId, userId) => chatCountStmts.increment.run(guildId, userId),
         getUser:   chatCountStmts.getUser,
         getTop:    chatCountStmts.getTop,
+    },
+    inviteWipes: {
+        add:     (guildId, userId) => inviteWipeStmts.add.run(guildId, userId),
+        remove:  (guildId, userId) => inviteWipeStmts.remove.run(guildId, userId),
+        isWiped: (guildId, userId) => !!inviteWipeStmts.isWiped.get(guildId, userId),
+        getAll:  (guildId)         => inviteWipeStmts.getAll.all(guildId).map(r => r.user_id),
     },
     warnings: {
         create:    warningStmts.create,
