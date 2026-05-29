@@ -214,6 +214,7 @@ const strikeStmts = {
     countUser:     db.prepare('SELECT COUNT(*) as count FROM strikes WHERE guild_id = ? AND user_id = ?'),
     removeLast:    db.prepare('DELETE FROM strikes WHERE id = (SELECT id FROM strikes WHERE guild_id = ? AND user_id = ? ORDER BY created_at DESC LIMIT 1)'),
     clearUser:     db.prepare('DELETE FROM strikes WHERE guild_id = ? AND user_id = ?'),
+    clearAll:      db.prepare('DELETE FROM strikes WHERE guild_id = ?'),
     getLeaderboard: db.prepare('SELECT user_id, COUNT(*) as count, MAX(reason) as last_reason, MAX(created_at) as last_at FROM strikes WHERE guild_id = ? GROUP BY user_id ORDER BY count DESC, last_at DESC LIMIT 20'),
 };
 
@@ -281,6 +282,7 @@ module.exports = {
         countUser:      strikeStmts.countUser,
         removeLast:     (guildId, userId) => strikeStmts.removeLast.run(guildId, userId),
         clearUser:      (guildId, userId) => strikeStmts.clearUser.run(guildId, userId),
+        clearAll:       (guildId)         => strikeStmts.clearAll.run(guildId),
         getLeaderboard: strikeStmts.getLeaderboard,
     },
     inviteWipes: {

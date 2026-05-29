@@ -12,7 +12,8 @@ const { data: embedData, execute: embedExecute, handleInteraction: embedHandleIn
 const { data: invitesData, execute: invitesExecute, startLiveBoard, invitewipeData, invitewipeExecute, inviterestoreData, inviterestoreExecute } = require('./commands/invites');
 const { data: chatcountData, execute: chatcountExecute, startChatBoard, incrementChat } = require('./commands/chatcount');
 const { data: memberembedData, execute: memberembedExecute, startMemberEmbed } = require('./commands/memberembed');
-const { data: strikeData, execute: strikeExecute, startStrikeBoard } = require('./commands/strike');
+const { data: strikeData, execute: strikeExecute, startStrikeBoard, startStrikeWipe, strikewipeData, strikewipeExecute, strikemaxData, strikemaxExecute } = require('./commands/strike');
+const { data: gamesData, execute: gamesExecute, handleInteraction: gamesHandleInteraction } = require('./commands/games');
 const {
     banData, banExecute,
     unbanData, unbanExecute,
@@ -77,6 +78,9 @@ client.once(Events.ClientReady, async (c) => {
                     modlogData.toJSON(),
                     memberembedData.toJSON(),
                     strikeData.toJSON(),
+                    strikewipeData.toJSON(),
+                    strikemaxData.toJSON(),
+                    gamesData.toJSON(),
                 ],
             }
         );
@@ -89,6 +93,7 @@ client.once(Events.ClientReady, async (c) => {
     startChatBoard(c);
     startMemberEmbed(c);
     startStrikeBoard(c);
+    startStrikeWipe(c);
 });
 
 client.on(Events.GuildMemberAdd, async (member) => {
@@ -137,20 +142,25 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (interaction.commandName === 'modlog')        await modlogExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'memberembed')   await memberembedExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'strike')        await strikeExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'strikewipe')    await strikewipeExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'strikemax')     await strikemaxExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'games')         await gamesExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         return;
     }
 
     if (interaction.isButton()) {
-        if (interaction.customId.startsWith('embed_'))    await embedHandleInteraction(interaction).catch(err => console.error('[Bot] Embed error:', err.message));
+        if (interaction.customId.startsWith('embed_'))         await embedHandleInteraction(interaction).catch(err => console.error('[Bot] Embed error:', err.message));
         else if (interaction.customId.startsWith('ticket_'))   await ticketHandleButton(interaction).catch(err => console.error('[Bot] Ticket button error:', err.message));
         else if (interaction.customId.startsWith('staffapp_')) await staffappHandleButton(interaction).catch(err => console.error('[Bot] StaffApp button error:', err.message));
+        else if (interaction.customId.startsWith('game_'))     await gamesHandleInteraction(interaction).catch(err => console.error('[Bot] Games error:', err.message));
         return;
     }
 
     if (interaction.isStringSelectMenu()) {
-        if (interaction.customId.startsWith('embed_'))         await embedHandleInteraction(interaction).catch(err => console.error('[Bot] Embed error:', err.message));
+        if (interaction.customId.startsWith('embed_'))              await embedHandleInteraction(interaction).catch(err => console.error('[Bot] Embed error:', err.message));
         else if (interaction.customId.startsWith('ticket_panel_'))  await ticketHandleSelect(interaction).catch(err => console.error('[Bot] Ticket select error:', err.message));
         else if (interaction.customId.startsWith('staffapp_'))      await staffappHandleSelect(interaction).catch(err => console.error('[Bot] StaffApp select error:', err.message));
+        else if (interaction.customId.startsWith('game_'))          await gamesHandleInteraction(interaction).catch(err => console.error('[Bot] Games error:', err.message));
         return;
     }
 

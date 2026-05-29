@@ -1,12 +1,44 @@
 const {
     SlashCommandBuilder, EmbedBuilder,
-    PermissionFlagsBits, ChannelType,
+    PermissionFlagsBits, ChannelType, Role,
 } = require('discord.js');
 const db = require('../database');
 const { success, error, warning, info } = require('../ticketUtils');
 
 const UPDATE_MS = 15 * 1000;
 let liveInterval = null;
+let wipeTimeout  = null;
+
+// ── Interval helpers ──────────────────────────────────────────────────────────
+
+function parseInterval(str) {
+    // mo must come before m so "1mo" doesn't match as "1m + o"
+    const match = str.trim().match(/^(\d+(?:\.\d+)?)(mo|y|w|d|h|m|s)$/i);
+    if (!match) return null;
+    const n    = parseFloat(match[1]);
+    const unit = match[2].toLowerCase();
+    const map  = { s: 1000, m: 60000, h: 3600000, d: 86400000, w: 604800000, mo: 2592000000, y: 31536000000 };
+    return Math.round(n * map[unit]);
+}
+
+function formatMs(ms) {
+    const units = [
+        { label: 'year',   div: 31536000000 },
+        { label: 'month',  div: 2592000000  },
+        { label: 'week',   div: 604800000   },
+        { label: 'day',    div: 86400000    },
+        { label: 'hour',   div: 3600000     },
+        { label: 'minute', div: 60000       },
+        { label: 'second', div: 1000        },
+    ];
+    for (const u of units) {
+        if (ms >= u.div) {
+            const n = Math.round(ms / u.div);
+            return `${n} ${u.label}${n !== 1 ? 's' : ''}`;
+        }
+    }
+    return `${ms}ms`;
+}
 
 // ── Leaderboard embed ─────────────────────────────────────────────────────────
 
@@ -81,6 +113,37 @@ function startStrikeBoard(client) {
     console.log('[Strike] Restoring live board — updating immediately then every 60s.');
     updateStrikeBoard(client);
     liveInterval = setInterval(() => updateStrikeBoard(client), UPDATE_MS);
+}
+
+// ── Strike wipe scheduler ─────────────────────────────────────────────────────
+
+async function runStrikeWipe(client, intervalMs) {
+    try {
+        const guildId = client.guilds.cache.first()?.id;
+        if (guildId) db.strikes.clearAll(guildId);
+        await updateStrikeBoard(client);
+        console.log('[Strike] Auto-wipe completed — all strikes cleared.');
+    } catch (err) {
+        console.error('[Strike] Auto-wipe failed:', err.message);
+    }
+    scheduleNextWipe(client, intervalMs);
+}
+
+function scheduleNextWipe(client, intervalMs) {
+    if (wipeTimeout) clearTimeout(wipeTimeout);
+    const nextAt = Date.now() + intervalMs;
+    db.setSetting('strike_wipe_next_at', String(nextAt));
+    wipeTimeout = setTimeout(() => runStrikeWipe(client, intervalMs), intervalMs);
+}
+
+function startStrikeWipe(client) {
+    const intervalMs = parseInt(db.getSetting('strike_wipe_interval_ms') ?? '0');
+    if (!intervalMs) return;
+    const nextAt = parseInt(db.getSetting('strike_wipe_next_at') ?? '0');
+    const delay  = Math.max(nextAt - Date.now(), 0);
+    if (wipeTimeout) clearTimeout(wipeTimeout);
+    wipeTimeout = setTimeout(() => runStrikeWipe(client, intervalMs), delay);
+    console.log(`[Strike] Auto-wipe resuming — next wipe in ${Math.round(delay / 1000)}s.`);
 }
 
 // ── Slash command ─────────────────────────────────────────────────────────────
@@ -176,6 +239,19 @@ async function handleAdd(interaction) {
         ],
     }).catch(() => {});
 
+    // Check strikemax threshold and notify
+    const maxCount = parseInt(db.getSetting('strike_max_count') ?? '0');
+    if (maxCount > 0 && count >= maxCount) {
+        const notifyId   = db.getSetting('strike_max_notify_id');
+        const notifyType = db.getSetting('strike_max_notify_type');
+        if (notifyId) {
+            const mention = notifyType === 'role' ? `<@&${notifyId}>` : `<@${notifyId}>`;
+            await interaction.channel.send({
+                content: `${mention} ⚠️ **${user.tag}** has reached **${count}** strike${count !== 1 ? 's' : ''} — the max threshold of **${maxCount}** has been hit.`,
+            }).catch(() => {});
+        }
+    }
+
     // Refresh live board immediately
     await updateStrikeBoard(interaction.client);
 }
@@ -268,4 +344,158 @@ async function handleBoard(interaction) {
     });
 }
 
-module.exports = { data, execute, startStrikeBoard };
+// ── /strikewipe ───────────────────────────────────────────────────────────────
+
+const strikewipeData = new SlashCommandBuilder()
+    .setName('strikewipe')
+    .setDescription('Configure automatic strike wipes for all staff.')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .addSubcommand(sc => sc
+        .setName('cooldown')
+        .setDescription('Set how often all strikes are automatically wiped (e.g. 1d, 12h, 2w, 1mo, 1y).')
+        .addStringOption(o => o.setName('set').setDescription('Interval — s/m/h/d/w/mo/y  (m=minutes, mo=months)').setRequired(true))
+    )
+    .addSubcommand(sc => sc
+        .setName('status')
+        .setDescription('Show the current auto-wipe schedule.')
+    )
+    .addSubcommand(sc => sc
+        .setName('clear')
+        .setDescription('Cancel the automatic strike wipe schedule.')
+    );
+
+async function strikewipeExecute(interaction) {
+    const sub = interaction.options.getSubcommand();
+    if (sub === 'cooldown') return handleWipeCooldown(interaction);
+    if (sub === 'status')   return handleWipeStatus(interaction);
+    if (sub === 'clear')    return handleWipeClear(interaction);
+}
+
+async function handleWipeCooldown(interaction) {
+    const raw = interaction.options.getString('set');
+    const ms  = parseInterval(raw);
+    if (!ms || ms < 1000) {
+        return interaction.reply({
+            embeds: [error('Invalid Interval', 'Use a format like `1d`, `12h`, `2w`, `1mo`, `1y`.\n`m` = minutes · `mo` = months')],
+            ephemeral: true,
+        });
+    }
+
+    db.setSetting('strike_wipe_interval_ms', String(ms));
+    scheduleNextWipe(interaction.client, ms);
+    const nextAt = Date.now() + ms;
+
+    await interaction.reply({
+        embeds: [
+            new EmbedBuilder()
+                .setColor(0xE74C3C)
+                .setTitle('⚡ Auto-Wipe Scheduled')
+                .setDescription(`All strikes will be wiped every **${formatMs(ms)}**.\nFirst wipe: <t:${Math.floor(nextAt / 1000)}:R>`)
+                .setFooter({ text: 'MostlyVanilla Beacon • Staff Discipline' })
+                .setTimestamp(),
+        ],
+        ephemeral: true,
+    });
+}
+
+async function handleWipeStatus(interaction) {
+    const intervalMs = parseInt(db.getSetting('strike_wipe_interval_ms') ?? '0');
+    if (!intervalMs) {
+        return interaction.reply({
+            embeds: [info('No Auto-Wipe', 'No automatic strike wipe is configured.')],
+            ephemeral: true,
+        });
+    }
+    const nextAt = parseInt(db.getSetting('strike_wipe_next_at') ?? '0');
+    await interaction.reply({
+        embeds: [
+            new EmbedBuilder()
+                .setColor(0xE74C3C)
+                .setTitle('⚡ Auto-Wipe Status')
+                .addFields(
+                    { name: 'Interval',  value: formatMs(intervalMs), inline: true },
+                    { name: 'Next Wipe', value: nextAt ? `<t:${Math.floor(nextAt / 1000)}:R>` : '*Unknown*', inline: true },
+                )
+                .setFooter({ text: 'MostlyVanilla Beacon • Staff Discipline' })
+                .setTimestamp(),
+        ],
+        ephemeral: true,
+    });
+}
+
+async function handleWipeClear(interaction) {
+    if (wipeTimeout) clearTimeout(wipeTimeout);
+    wipeTimeout = null;
+    db.deleteSetting('strike_wipe_interval_ms');
+    db.deleteSetting('strike_wipe_next_at');
+    await interaction.reply({
+        embeds: [success('Auto-Wipe Cancelled', 'Automatic strike wipes have been disabled.')],
+        ephemeral: true,
+    });
+}
+
+// ── /strikemax ────────────────────────────────────────────────────────────────
+
+const strikemaxData = new SlashCommandBuilder()
+    .setName('strikemax')
+    .setDescription('Set max strike threshold and who to notify when it is hit.')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .addIntegerOption(o => o.setName('set').setDescription('Max strikes before a notification is sent.').setMinValue(1))
+    .addMentionableOption(o => o.setName('notification').setDescription('User or role to notify when the max is reached.'));
+
+async function strikemaxExecute(interaction) {
+    const maxCount    = interaction.options.getInteger('set');
+    const mentionable = interaction.options.getMentionable('notification');
+
+    if (maxCount === null && !mentionable) {
+        const current    = parseInt(db.getSetting('strike_max_count') ?? '0');
+        const notifyId   = db.getSetting('strike_max_notify_id');
+        const notifyType = db.getSetting('strike_max_notify_type');
+        const mention    = notifyId ? (notifyType === 'role' ? `<@&${notifyId}>` : `<@${notifyId}>`) : '*Not set*';
+
+        return interaction.reply({
+            embeds: [
+                new EmbedBuilder()
+                    .setColor(0xE74C3C)
+                    .setTitle('⚡ Strike Max Settings')
+                    .addFields(
+                        { name: 'Max Strikes',   value: current ? `**${current}**` : '*Not set*', inline: true },
+                        { name: 'Notify Target', value: mention,                                  inline: true },
+                    )
+                    .setFooter({ text: 'MostlyVanilla Beacon • Staff Discipline' })
+                    .setTimestamp(),
+            ],
+            ephemeral: true,
+        });
+    }
+
+    if (maxCount !== null) db.setSetting('strike_max_count', String(maxCount));
+
+    if (mentionable) {
+        const isRole = mentionable instanceof Role;
+        db.setSetting('strike_max_notify_id',   mentionable.id);
+        db.setSetting('strike_max_notify_type', isRole ? 'role' : 'user');
+    }
+
+    const finalMax   = parseInt(db.getSetting('strike_max_count') ?? '0');
+    const notifyId   = db.getSetting('strike_max_notify_id');
+    const notifyType = db.getSetting('strike_max_notify_type');
+    const mention    = notifyId ? (notifyType === 'role' ? `<@&${notifyId}>` : `<@${notifyId}>`) : '*Not set*';
+
+    await interaction.reply({
+        embeds: [
+            new EmbedBuilder()
+                .setColor(0xE74C3C)
+                .setTitle('⚡ Strike Max Updated')
+                .addFields(
+                    { name: 'Max Strikes',   value: finalMax ? `**${finalMax}**` : '*Not set*', inline: true },
+                    { name: 'Notify Target', value: mention,                                    inline: true },
+                )
+                .setFooter({ text: 'MostlyVanilla Beacon • Staff Discipline' })
+                .setTimestamp(),
+        ],
+        ephemeral: true,
+    });
+}
+
+module.exports = { data, execute, startStrikeBoard, startStrikeWipe, strikewipeData, strikewipeExecute, strikemaxData, strikemaxExecute };
