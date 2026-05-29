@@ -19,7 +19,7 @@ async function execute(interaction) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function replyOrUpdate(interaction, opts) {
-    if (interaction.isChatInputCommand()) return interaction.reply({ ...opts, ephemeral: true });
+    if (interaction.isChatInputCommand()) return interaction.reply(opts);
     return interaction.update(opts);
 }
 
