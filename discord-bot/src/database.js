@@ -254,6 +254,45 @@ const modCaseStmts = {
     getUser: db.prepare('SELECT * FROM mod_cases WHERE guild_id = ? AND user_id = ? ORDER BY created_at DESC LIMIT 20'),
 };
 
+// ── Chat logs ─────────────────────────────────────────────────────────────────
+db.exec(`
+    CREATE TABLE IF NOT EXISTS chat_logs (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id    TEXT NOT NULL,
+        player_uuid TEXT NOT NULL,
+        player_name TEXT NOT NULL,
+        player_role TEXT,
+        message     TEXT NOT NULL,
+        world       TEXT,
+        x           INTEGER,
+        y           INTEGER,
+        z           INTEGER,
+        timestamp   INTEGER DEFAULT (strftime('%s','now'))
+    );
+`);
+
+// Prune logs older than 30 days on startup
+db.prepare('DELETE FROM chat_logs WHERE timestamp < ?').run(Math.floor(Date.now() / 1000) - 30 * 86400);
+
+const chatLogStmts = {
+    insert: db.prepare(`
+        INSERT INTO chat_logs (guild_id, player_uuid, player_name, player_role, message, world, x, y, z)
+        VALUES (@guild_id, @player_uuid, @player_name, @player_role, @message, @world, @x, @y, @z)
+    `),
+    getRecent: db.prepare(`
+        SELECT * FROM (
+            SELECT * FROM chat_logs WHERE guild_id = ? AND timestamp >= ?
+            ORDER BY timestamp DESC LIMIT ?
+        ) ORDER BY timestamp ASC
+    `),
+    getByPlayer: db.prepare(`
+        SELECT * FROM (
+            SELECT * FROM chat_logs WHERE guild_id = ? AND lower(player_name) = lower(?) AND timestamp >= ?
+            ORDER BY timestamp DESC LIMIT ?
+        ) ORDER BY timestamp ASC
+    `),
+};
+
 // ── Settings ──────────────────────────────────────────────────────────────────
 const stmts = {
     getSetting:    db.prepare('SELECT value FROM settings WHERE key = ?'),
@@ -301,5 +340,10 @@ module.exports = {
         create:  modCaseStmts.create,
         get:     modCaseStmts.get,
         getUser: modCaseStmts.getUser,
+    },
+    chatLogs: {
+        insert:      (row) => chatLogStmts.insert.run(row),
+        getRecent:   chatLogStmts.getRecent,
+        getByPlayer: chatLogStmts.getByPlayer,
     },
 };

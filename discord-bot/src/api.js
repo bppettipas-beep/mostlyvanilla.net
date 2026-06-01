@@ -134,6 +134,47 @@ app.get('/api/discord-roles/:uuid', requireSecret, async (req, res) => {
     }
 });
 
+// Called by the Minecraft plugin for every chat message
+app.post('/api/chat-message', requireSecret, async (req, res) => {
+    const { player_uuid, player_name, player_role, message, world, x, y, z } = req.body;
+    if (!player_uuid || !player_name || message === undefined) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const guildId = process.env.GUILD_ID;
+
+    db.chatLogs.insert({
+        guild_id:    guildId,
+        player_uuid,
+        player_name,
+        player_role: player_role || null,
+        message,
+        world:       world  || null,
+        x:           x      ?? null,
+        y:           y      ?? null,
+        z:           z      ?? null,
+    });
+
+    // Relay to live chat-log channel if one is configured
+    const channelId = db.getSetting(`chatlog_channel_${guildId}`);
+    if (channelId) {
+        try {
+            const guild = client.guilds.cache.get(guildId);
+            const ch = guild?.channels.cache.get(channelId);
+            if (ch) {
+                const timeStr  = new Date().toISOString().slice(11, 19) + ' UTC';
+                const roleTag  = player_role ? ` \`[${player_role}]\`` : '';
+                const locStr   = (world && x != null) ? ` · *${world}* \`${x}, ${y}, ${z}\`` : '';
+                await ch.send(`\`${timeStr}\`${roleTag} **${player_name}**${locStr}: ${message}`);
+            }
+        } catch (err) {
+            console.error('[API] Failed to relay chat message:', err.message);
+        }
+    }
+
+    res.json({ success: true });
+});
+
 // Polled by the Minecraft plugin every poll-interval seconds
 app.get('/api/pending-game-roles', requireSecret, (req, res) => {
     const rows = db.pendingGameRoles.drainAll();

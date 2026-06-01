@@ -2,6 +2,7 @@ package com.mostlyvanilla.roles;
 
 import com.mostlyvanilla.roles.commands.RoleCommand;
 import com.mostlyvanilla.roles.listeners.ChatListener;
+import com.mostlyvanilla.roles.listeners.ChatLogListener;
 import com.mostlyvanilla.roles.listeners.CommandListener;
 import com.mostlyvanilla.roles.listeners.PlayerJoinListener;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -33,6 +34,7 @@ public class MostlyVanillaRoles extends JavaPlugin {
         }
 
         getServer().getPluginManager().registerEvents(new ChatListener(this), this);
+        getServer().getPluginManager().registerEvents(new ChatLogListener(this), this);
         getServer().getPluginManager().registerEvents(new PlayerJoinListener(this), this);
         getServer().getPluginManager().registerEvents(new CommandListener(this), this);
         getServer().getPluginManager().registerEvents(tabManager, this);

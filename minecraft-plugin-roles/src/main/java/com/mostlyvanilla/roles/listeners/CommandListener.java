@@ -30,7 +30,7 @@ public class CommandListener implements Listener {
         String msg = event.getMessage(); // e.g. "/tpa overworld"
         String cmd = msg.startsWith("/") ? msg.substring(1) : msg;
 
-        if (rm.isCommandBlocked(roleName, cmd)) {
+        if (rm.isCommandBlocked(roleName, cmd) && !rm.hasRolePermission(player.getUniqueId(), cmd)) {
             event.setCancelled(true);
             player.sendMessage(Component.text("Unknown command.", NamedTextColor.RED));
         }
@@ -45,6 +45,6 @@ public class CommandListener implements Listener {
         String roleName = rm.getPlayerRole(player.getUniqueId());
         if (roleName == null) return;
 
-        event.getCommands().removeIf(cmd -> rm.isCommandBlocked(roleName, cmd));
+        event.getCommands().removeIf(cmd -> rm.isCommandBlocked(roleName, cmd) && !rm.hasRolePermission(player.getUniqueId(), cmd));
     }
 }

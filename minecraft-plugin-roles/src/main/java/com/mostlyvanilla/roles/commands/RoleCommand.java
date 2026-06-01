@@ -447,6 +447,31 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
                 }
             }
 
+            case "addallowtp" -> {
+                if (args.length < 2) {
+                    String current = rm.getAllowTpRole();
+                    sender.sendMessage(Component.text("AllowTP role: ", NamedTextColor.GREEN)
+                        .append(current != null
+                            ? Component.text(current, NamedTextColor.WHITE)
+                            : Component.text("none (nobody gets /tp via role)", NamedTextColor.GRAY)));
+                    sender.sendMessage(Component.text("Usage: /role addallowtp <role|disable>", NamedTextColor.GRAY));
+                    return true;
+                }
+                if (args[1].equalsIgnoreCase("disable")) {
+                    rm.clearAllowTpRole();
+                    sender.sendMessage(Component.text("AllowTP role restriction removed — /tp is now permission-only.", NamedTextColor.YELLOW));
+                } else {
+                    String roleName = args[1].toLowerCase();
+                    if (rm.setAllowTpRole(roleName)) {
+                        sender.sendMessage(Component.text("Players with role ", NamedTextColor.GREEN)
+                            .append(Component.text(roleName, NamedTextColor.WHITE))
+                            .append(Component.text(" or higher priority can now use /tp.", NamedTextColor.GREEN)));
+                    } else {
+                        sender.sendMessage(Component.text("Role '" + roleName + "' does not exist.", NamedTextColor.RED));
+                    }
+                }
+            }
+
             case "addfly" -> {
                 if (args.length < 2) {
                     String current = rm.getFlyRole();
@@ -589,14 +614,14 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("mostlyvanilla.roles.admin")) return List.of();
 
         if (args.length == 1) {
-            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "commandblockglobal", "commandblockallglobal", "commandallowglobal", "unblockallglobal", "addmute", "addban", "addannouncement", "addfly", "addstaff", "addecsee", "addinvsee", "gmmod", "gmadmin", "link", "unlink", "links", "namecolormatch"), args[0]);
+            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "commandblockglobal", "commandblockallglobal", "commandallowglobal", "unblockallglobal", "addmute", "addban", "addannouncement", "addfly", "addallowtp", "addstaff", "addecsee", "addinvsee", "gmmod", "gmadmin", "link", "unlink", "links", "namecolormatch"), args[0]);
         }
 
         RoleManager rm = plugin.getRoleManager();
 
         if (args.length == 2) {
             return switch (args[0].toLowerCase()) {
-                case "delete", "join", "setweight", "link", "unlink", "commandblockall", "commandblock", "commandallow", "unblockallcommands", "addstaff", "addfly", "addannouncement", "addmute", "addban", "addecsee", "addinvsee", "gmmod", "gmadmin" ->
+                case "delete", "join", "setweight", "link", "unlink", "commandblockall", "commandblock", "commandallow", "unblockallcommands", "addstaff", "addfly", "addallowtp", "addannouncement", "addmute", "addban", "addecsee", "addinvsee", "gmmod", "gmadmin" ->
                     filter(new ArrayList<>(rm.getRoleNames()), args[1]);
                 case "assign", "remove", "info" -> filter(
                     Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList()), args[1]
@@ -645,6 +670,7 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("  /role gmmod <role>             ", NamedTextColor.WHITE).append(Component.text("Allow /gms and /gmsp for a role", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role gmadmin <role>           ", NamedTextColor.WHITE).append(Component.text("Allow all /gm* commands for a role", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role addfly <role|disable>    ", NamedTextColor.WHITE).append(Component.text("Set minimum role that can use /fly", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role addallowtp <role|disable> ", NamedTextColor.WHITE).append(Component.text("Set minimum role that can use /tp", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role addstaff <role|disable>  ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to use /staff", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role addban <role|disable>    ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to ban players", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role addecsee <role|disable>  ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to use /checkec", NamedTextColor.GRAY)));

@@ -34,6 +34,7 @@ public class RoleManager {
     private String  joinRole          = null;
     private String  staffRole         = null;
     private String  flyRole           = null;
+    private String  allowTpRole       = null;
     private String  announcementRole  = null;
     private String  muteRole          = null;
     private String  banRole           = null;
@@ -77,6 +78,7 @@ public class RoleManager {
         joinRole         = rc.getString("join-role",         null);
         staffRole        = rc.getString("staff-role",        null);
         flyRole          = rc.getString("fly-role",          null);
+        allowTpRole      = rc.getString("allowtp-role",      null);
         announcementRole = rc.getString("announcement-role", null);
         muteRole         = rc.getString("mute-role",         null);
         banRole          = rc.getString("ban-role",          null);
@@ -154,6 +156,7 @@ public class RoleManager {
         if (joinRole         != null) c.set("join-role",         joinRole);
         if (staffRole        != null) c.set("staff-role",        staffRole);
         if (flyRole          != null) c.set("fly-role",          flyRole);
+        if (allowTpRole      != null) c.set("allowtp-role",      allowTpRole);
         if (announcementRole != null) c.set("announcement-role", announcementRole);
         if (muteRole         != null) c.set("mute-role",         muteRole);
         if (banRole          != null) c.set("ban-role",          banRole);
@@ -384,12 +387,10 @@ public class RoleManager {
     public boolean allowCommand(String roleName, String cmd) {
         if (!roles.containsKey(roleName)) return false;
         String c = cmd.toLowerCase();
-        if (blockAllRoles.contains(roleName)) {
-            allowedCmds.computeIfAbsent(roleName, k -> new HashSet<>()).add(c);
-        } else {
-            Set<String> blocked = blockedCmds.get(roleName);
-            if (blocked != null) blocked.remove(c);
-        }
+        // Always record the explicit allow so it works regardless of whether commandblockall was run first or after
+        allowedCmds.computeIfAbsent(roleName, k -> new HashSet<>()).add(c);
+        Set<String> blocked = blockedCmds.get(roleName);
+        if (blocked != null) blocked.remove(c);
         saveCmdBlocks();
         return true;
     }
@@ -399,10 +400,15 @@ public class RoleManager {
         String cmd = input.toLowerCase();
         if (cmd.startsWith("/")) cmd = cmd.substring(1);
 
+        // An explicit allow on the player's own role beats any cascade block from higher-priority roles.
+        // This makes gmmod/gmadmin/commandallow work regardless of blockAll on other roles.
+        for (String a : allowedCmds.getOrDefault(roleName, Set.of())) {
+            if (cmdMatches(a, cmd)) return false;
+        }
+
         int playerWeight = roleWeights.getOrDefault(roleName, 50);
 
-        // Check the player's role AND every higher-priority role (lower weight).
-        // A block at any higher priority cascades down; an allow at any lower priority cascades up.
+        // A block at any higher-priority role (lower weight) cascades down.
         for (Map.Entry<String, Integer> e : roleWeights.entrySet()) {
             if (e.getValue() <= playerWeight && isNetBlockedForRole(e.getKey(), cmd)) return true;
         }
@@ -410,12 +416,11 @@ public class RoleManager {
     }
 
     private boolean isNetBlockedForRole(String role, String cmd) {
-        if (blockAllRoles.contains(role)) {
-            for (String a : allowedCmds.getOrDefault(role, Set.of())) {
-                if (cmdMatches(a, cmd)) return false;
-            }
-            return true;
+        // Explicit allows always win, even for block-all roles
+        for (String a : allowedCmds.getOrDefault(role, Set.of())) {
+            if (cmdMatches(a, cmd)) return false;
         }
+        if (blockAllRoles.contains(role)) return true;
         for (String b : blockedCmds.getOrDefault(role, Set.of())) {
             if (cmdMatches(b, cmd)) return true;
         }
@@ -424,6 +429,25 @@ public class RoleManager {
 
     private boolean cmdMatches(String prefix, String input) {
         return input.equals(prefix) || input.startsWith(prefix + " ");
+    }
+
+    /**
+     * Returns true if the player's role grants them access to this command via one of the
+     * addfly / addmute / addannouncement / addban / addecsee / addinvsee / addstaff role thresholds.
+     * Used by CommandListener to let these override a general command block.
+     */
+    public boolean hasRolePermission(UUID uuid, String input) {
+        String cmd = input.toLowerCase();
+        if (cmd.startsWith("/")) cmd = cmd.substring(1);
+        if ((cmdMatches("fly", cmd) || cmdMatches("allowfly", cmd)) && canUseFly(uuid)) return true;
+        if ((cmdMatches("tp", cmd) || cmdMatches("teleport", cmd)) && canUseTp(uuid)) return true;
+        if ((cmdMatches("mute", cmd) || cmdMatches("unmute", cmd) || cmdMatches("tempmute", cmd)) && canUseMute(uuid)) return true;
+        if ((cmdMatches("announcement", cmd) || cmdMatches("announce", cmd)) && canUseAnnouncement(uuid)) return true;
+        if (banRole != null && (cmdMatches("ban", cmd) || cmdMatches("tempban", cmd) || cmdMatches("banip", cmd)) && canUseBan(uuid)) return true;
+        if (cmdMatches("checkec", cmd) && canUseEcSee(uuid)) return true;
+        if (cmdMatches("invsee", cmd) && canUseInvSee(uuid)) return true;
+        if (staffRole != null && cmdMatches("staff", cmd) && canUseStaff(uuid)) return true;
+        return false;
     }
 
     // ── Role links ───────────────────────────────────────────────────────────
@@ -755,6 +779,25 @@ public class RoleManager {
     public boolean canUseFly(UUID uuid) {
         if (flyRole == null) return false;
         Integer threshold = roleWeights.get(flyRole);
+        if (threshold == null) return false;
+        String playerRole = playerRoles.get(uuid);
+        if (playerRole == null) return false;
+        Integer playerWeight = roleWeights.get(playerRole);
+        return playerWeight != null && playerWeight <= threshold;
+    }
+
+    public boolean setAllowTpRole(String name) {
+        if (!roles.containsKey(name)) return false;
+        allowTpRole = name; saveRoles(); return true;
+    }
+
+    public void clearAllowTpRole() { allowTpRole = null; saveRoles(); }
+
+    public String getAllowTpRole() { return allowTpRole; }
+
+    public boolean canUseTp(UUID uuid) {
+        if (allowTpRole == null) return false;
+        Integer threshold = roleWeights.get(allowTpRole);
         if (threshold == null) return false;
         String playerRole = playerRoles.get(uuid);
         if (playerRole == null) return false;
