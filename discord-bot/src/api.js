@@ -141,6 +141,8 @@ app.post('/api/chat-message', requireSecret, async (req, res) => {
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    console.log(`[ChatLog] ${player_name}: ${message}`);
+
     const guildId = process.env.GUILD_ID;
 
     db.chatLogs.insert({
@@ -159,16 +161,17 @@ app.post('/api/chat-message', requireSecret, async (req, res) => {
     const channelId = db.getSetting(`chatlog_channel_${guildId}`);
     if (channelId) {
         try {
-            const guild = client.guilds.cache.get(guildId);
-            const ch = guild?.channels.cache.get(channelId);
+            const ch = await client.channels.fetch(channelId).catch(() => null);
             if (ch) {
-                const timeStr  = new Date().toISOString().slice(11, 19) + ' UTC';
-                const roleTag  = player_role ? ` \`[${player_role}]\`` : '';
-                const locStr   = (world && x != null) ? ` · *${world}* \`${x}, ${y}, ${z}\`` : '';
+                const timeStr = new Date().toISOString().slice(11, 19) + ' UTC';
+                const roleTag = player_role ? ` \`[${player_role}]\`` : '';
+                const locStr  = (world && x != null) ? ` · *${world}* \`${x}, ${y}, ${z}\`` : '';
                 await ch.send(`\`${timeStr}\`${roleTag} **${player_name}**${locStr}: ${message}`);
+            } else {
+                console.warn('[ChatLog] Configured channel not found:', channelId);
             }
         } catch (err) {
-            console.error('[API] Failed to relay chat message:', err.message);
+            console.error('[ChatLog] Failed to relay message:', err.message);
         }
     }
 
