@@ -12,7 +12,10 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class RtpGui {
 
@@ -28,7 +31,13 @@ public class RtpGui {
     }
 
     public void open(Player player) {
-        List<World> worlds = Bukkit.getWorlds();
+        // One world per environment type; exclude non-game worlds like mv_spawn
+        Set<World.Environment> seen = new HashSet<>();
+        List<World> worlds = new ArrayList<>();
+        for (World w : Bukkit.getWorlds()) {
+            if (w.getName().equals("mv_spawn")) continue;
+            if (seen.add(w.getEnvironment())) worlds.add(w);
+        }
 
         RtpGuiHolder holder = new RtpGuiHolder();
         Inventory inv = Bukkit.createInventory(holder, 27,

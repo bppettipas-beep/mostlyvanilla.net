@@ -8,7 +8,7 @@ max-radius: 10000
 max-attempts: 20
 
 # Seconds before teleporting (0 = instant)
-teleport-delay: 3
+teleport-delay: 5
 
 # Cancel the teleport countdown if the player moves
 cancel-on-move: true

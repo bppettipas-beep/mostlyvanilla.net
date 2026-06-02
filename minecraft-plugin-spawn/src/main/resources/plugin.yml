@@ -1,0 +1,35 @@
+name: MostlyVanillaSpawn
+version: ${project.version}
+main: com.mostlyvanilla.spawn.MostlyVanillaSpawn
+api-version: '1.20'
+description: Isolated spawn world for Mostly Vanilla
+softdepend:
+  - Citizens
+
+commands:
+  spawn:
+    description: Teleport to spawn
+    usage: /spawn
+  setspawn:
+    description: Set the spawn point at your current location (must be in spawn world)
+    usage: /setspawn
+  blockhere:
+    description: Place a cobblestone block directly below your feet (spawn world only)
+    usage: /blockhere
+  createnpc:
+    description: Create or delete an NPC at your location
+    usage: /createnpc <skin> <command> [hologram text...] | /createnpc delete
+  hologram:
+    description: Create or delete a hologram at your location
+    usage: /hologram <text...> | /hologram delete
+  spawndrop1:
+    description: Set first corner of the drop zone rectangle
+    usage: /spawndrop1
+  spawndrop2:
+    description: Set second corner of the drop zone rectangle and activate it
+    usage: /spawndrop2
+
+permissions:
+  mostlyvanilla.spawn.admin:
+    description: Access to spawn admin commands and bypass spawn restrictions
+    default: op
