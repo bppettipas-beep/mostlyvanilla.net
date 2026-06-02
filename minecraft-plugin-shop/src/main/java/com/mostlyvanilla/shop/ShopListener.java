@@ -9,12 +9,14 @@ import org.bukkit.inventory.Inventory;
 
 public class ShopListener implements Listener {
 
-    private final ShopManager shopManager;
-    private final SellManager sellManager;
+    private final ShopManager    shopManager;
+    private final SellManager    sellManager;
+    private final BitShopManager bitShopManager;
 
-    public ShopListener(ShopManager shopManager, SellManager sellManager) {
-        this.shopManager = shopManager;
-        this.sellManager = sellManager;
+    public ShopListener(ShopManager shopManager, SellManager sellManager, BitShopManager bitShopManager) {
+        this.shopManager    = shopManager;
+        this.sellManager    = sellManager;
+        this.bitShopManager = bitShopManager;
     }
 
     @EventHandler
@@ -24,14 +26,18 @@ public class ShopListener implements Listener {
 
         if (shopManager.isShopInventory(top)) {
             e.setCancelled(true);
-            p.updateInventory();
             if (e.getClickedInventory() == top) shopManager.handleClick(p, top, e.getSlot());
+            return;
+        }
+
+        if (bitShopManager.isBitShop(top)) {
+            e.setCancelled(true);
+            if (e.getClickedInventory() == top) bitShopManager.handleClick(p, top, e.getSlot());
             return;
         }
 
         if (sellManager.isWorthGui(top)) {
             e.setCancelled(true);
-            p.updateInventory();
             if (e.getClickedInventory() == top) sellManager.handleWorthClick(p, top, e.getSlot());
         }
     }
@@ -39,6 +45,12 @@ public class ShopListener implements Listener {
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent e) {
         shopManager.onClose(e.getInventory());
-        sellManager.onClose(e.getInventory());
+        bitShopManager.onClose(e.getInventory());
+        if (sellManager.isSellGui(e.getInventory())) {
+            if (e.getPlayer() instanceof Player p)
+                sellManager.handleSellClose(p, e.getInventory());
+        } else {
+            sellManager.onClose(e.getInventory());
+        }
     }
 }

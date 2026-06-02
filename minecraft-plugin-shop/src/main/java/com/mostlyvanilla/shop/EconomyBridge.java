@@ -7,13 +7,22 @@ import java.util.UUID;
 public class EconomyBridge {
 
     private final JavaPlugin plugin;
+    private final String     currencyOverride; // null = read from config
 
     public EconomyBridge(JavaPlugin plugin) {
-        this.plugin = plugin;
+        this.plugin           = plugin;
+        this.currencyOverride = null;
+    }
+
+    /** Use this constructor to hard-wire a specific currency (e.g. "bits"). */
+    public EconomyBridge(JavaPlugin plugin, String currency) {
+        this.plugin           = plugin;
+        this.currencyOverride = currency;
     }
 
     public String getCurrency() {
-        return plugin.getConfig().getString("currency", "coins");
+        return currencyOverride != null ? currencyOverride
+            : plugin.getConfig().getString("currency", "coins");
     }
 
     public String getSymbol() {

@@ -22,6 +22,7 @@ public class SpawnManager {
 
     private final Set<UUID>             pendingTeleports = new HashSet<>();
     private final Map<UUID, BukkitTask> pendingSpawns    = new HashMap<>();
+    private final Map<UUID, Location>   lastOverworld    = new HashMap<>();
 
     // Drop zone — the rectangle below spawn that catches falling players
     private Location dropPoint1      = null; // temporary until both points set
@@ -130,6 +131,27 @@ public class SpawnManager {
     }
 
     // ── Teleport flags ────────────────────────────────────────────────────────
+
+    // ── Last overworld location ───────────────────────────────────────────────
+
+    /** Call this BEFORE teleporting a player to spawn so /leave can send them back. */
+    public void saveLastOverworld(UUID uuid, Location loc) {
+        if (!isInSpawnWorld(loc)) lastOverworld.put(uuid, loc.clone());
+    }
+
+    /**
+     * Returns the player's last known non-spawn location, or the main world's
+     * spawn as a fallback if we have no record.
+     */
+    public Location getLastOverworld(UUID uuid) {
+        Location saved = lastOverworld.get(uuid);
+        if (saved != null) return saved.clone();
+        // Fallback: main world spawn
+        org.bukkit.World main = org.bukkit.Bukkit.getWorlds().stream()
+            .filter(w -> !w.equals(spawnWorld))
+            .findFirst().orElse(null);
+        return main != null ? main.getSpawnLocation() : null;
+    }
 
     public void flagTeleport(UUID uuid)             { pendingTeleports.add(uuid); }
     public boolean consumeTeleportFlag(UUID uuid)   { return pendingTeleports.remove(uuid); }

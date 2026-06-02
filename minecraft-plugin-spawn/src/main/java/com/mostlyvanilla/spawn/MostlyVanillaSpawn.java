@@ -33,7 +33,8 @@ public class MostlyVanillaSpawn extends JavaPlugin {
         boolean citizensPresent = getServer().getPluginManager().getPlugin("Citizens") != null;
         if (citizensPresent) {
             npcManager = new NpcManager(this, hologramManager);
-            npcManager.load();
+            // Delay one tick so Citizens has finished spawning NPCs into the world
+            getServer().getScheduler().runTask(this, () -> npcManager.load());
             getServer().getPluginManager().registerEvents(new NpcListener(this), this);
             getLogger().info("Citizens found — NPCs enabled.");
         } else {

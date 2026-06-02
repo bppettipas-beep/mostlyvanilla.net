@@ -13,7 +13,10 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.InventoryHolder;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class GuiListener implements Listener {
 
@@ -39,7 +42,7 @@ public class GuiListener implements Listener {
         // Middle row only (slots 9–17)
         if (slot < 9 || slot > 17) return;
 
-        List<World> worlds = Bukkit.getWorlds();
+        List<World> worlds = getGuiWorlds();
         int n = Math.min(worlds.size(), 9);
         int[] slots = buildSlots(n);
 
@@ -55,6 +58,17 @@ public class GuiListener implements Listener {
                 return;
             }
         }
+    }
+
+    /** Must match the filtering logic in RtpGui.open(). */
+    private static List<World> getGuiWorlds() {
+        Set<World.Environment> seen = new HashSet<>();
+        List<World> worlds = new ArrayList<>();
+        for (World w : Bukkit.getWorlds()) {
+            if (w.getName().equals("mv_spawn")) continue;
+            if (seen.add(w.getEnvironment())) worlds.add(w);
+        }
+        return worlds;
     }
 
     private static int[] buildSlots(int n) {

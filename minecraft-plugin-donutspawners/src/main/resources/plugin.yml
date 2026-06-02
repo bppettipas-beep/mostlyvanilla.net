@@ -1,0 +1,19 @@
+name: MVSpawners
+version: ${project.version}
+main: com.mostlyvanilla.spawners.DonutSpawners
+api-version: '1.20'
+description: Virtual spawner system for Mostly Vanilla
+softdepend:
+  - MostlyVanillaEconomy
+
+commands:
+  ds:
+    description: MVSpawners admin commands
+    usage: /ds <give|list|remove|removeall|reload>
+    aliases: [spawner, mvspawner]
+    permission: mvspawners.admin
+
+permissions:
+  mvspawners.admin:
+    description: Full access to MVSpawners commands
+    default: op

@@ -59,6 +59,7 @@ public class SpawnCommand implements CommandExecutor {
         }
 
         if (player.hasPermission("mostlyvanilla.spawn.admin")) {
+            sm.saveLastOverworld(player.getUniqueId(), player.getLocation());
             sm.flagTeleport(player.getUniqueId());
             player.teleport(sm.getSpawnPoint());
             player.sendMessage(Component.text("Teleported to spawn.", NamedTextColor.GREEN));
@@ -69,6 +70,9 @@ public class SpawnCommand implements CommandExecutor {
         if (sm.hasPendingSpawn(player.getUniqueId())) {
             sm.removePendingSpawn(player.getUniqueId()).cancel();
         }
+
+        // Save location NOW (before any movement can happen)
+        sm.saveLastOverworld(player.getUniqueId(), player.getLocation());
 
         player.sendMessage(Component.text("Teleporting to spawn in 5 seconds... don't move!", NamedTextColor.YELLOW));
 

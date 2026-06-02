@@ -1,6 +1,72 @@
 currency: money
 currency-symbol: "$"
 
+# ── Bit Shop ──────────────────────────────────────────────────────────────────
+bitshop:
+  bits-currency: bits
+
+  spawners:
+    PIG:
+      display-name: "Pig Spawner"
+      price: 150
+    COW:
+      display-name: "Cow Spawner"
+      price: 180
+    ZOMBIE:
+      display-name: "Zombie Spawner"
+      price: 200
+    SKELETON:
+      display-name: "Skeleton Spawner"
+      price: 400
+    SPIDER:
+      display-name: "Spider Spawner"
+      price: 300
+    CREEPER:
+      display-name: "Creeper Spawner"
+      price: 400
+    ZOMBIE_PIGLIN:
+      display-name: "Zombie Piglin Spawner"
+      price: 280
+    BLAZE:
+      display-name: "Blaze Spawner"
+      price: 450
+    IRON_GOLEM:
+      display-name: "Iron Golem Spawner"
+      price: 500
+
+  crate-keys:
+    iron:
+      display-name: "&fIron Key"
+      material: TRIPWIRE_HOOK
+      price: 150
+      lore:
+        - "&fAn iron tier crate key"
+    gold:
+      display-name: "&eGold Key"
+      material: TRIPWIRE_HOOK
+      price: 300
+      lore:
+        - "&eA gold tier crate key"
+    diamond:
+      display-name: "&bDiamond Key"
+      material: TRIPWIRE_HOOK
+      price: 400
+      lore:
+        - "&bA diamond tier crate key"
+    netherite:
+      display-name: "&8Netherite Key"
+      material: TRIPWIRE_HOOK
+      price: 700
+      lore:
+        - "&8A netherite tier crate key"
+    amethyst:
+      display-name: "&dAmethyst Key"
+      material: TRIPWIRE_HOOK
+      price: 600
+      lore:
+        - "&dA rare amethyst tier crate key"
+
+# ── Shop categories ───────────────────────────────────────────────────────────
 categories:
   redstone:
     name: "&c❖ Redstone"
@@ -45,7 +111,6 @@ categories:
     icon: SMOOTH_STONE
     main-slot: 21
     items:
-      # Stone & variants
       - {material: STONE, name: "&fStone", amount: 1, price: 10.0}
       - {material: COBBLESTONE, name: "&fCobblestone", amount: 1, price: 5.0}
       - {material: SMOOTH_STONE, name: "&fSmooth Stone", amount: 1, price: 15.0}
@@ -67,7 +132,6 @@ categories:
       - {material: SMOOTH_BASALT, name: "&fSmooth Basalt", amount: 1, price: 15.0}
       - {material: BRICKS, name: "&fBricks", amount: 1, price: 25.0}
       - {material: NETHER_BRICKS, name: "&fNether Bricks", amount: 1, price: 25.0}
-      # Dirt & terrain
       - {material: DIRT, name: "&fDirt", amount: 1, price: 5.0}
       - {material: GRASS_BLOCK, name: "&fGrass Block", amount: 1, price: 10.0}
       - {material: SAND, name: "&fSand", amount: 1, price: 10.0}
@@ -75,12 +139,10 @@ categories:
       - {material: GRAVEL, name: "&fGravel", amount: 1, price: 10.0}
       - {material: CLAY, name: "&fClay", amount: 1, price: 15.0}
       - {material: TERRACOTTA, name: "&fTerracotta", amount: 1, price: 15.0}
-      # Sandstone
       - {material: SANDSTONE, name: "&fSandstone", amount: 1, price: 15.0}
       - {material: SMOOTH_SANDSTONE, name: "&fSmooth Sandstone", amount: 1, price: 25.0}
       - {material: RED_SANDSTONE, name: "&fRed Sandstone", amount: 1, price: 15.0}
       - {material: SMOOTH_RED_SANDSTONE, name: "&fSmooth Red Sandstone", amount: 1, price: 25.0}
-      # Special blocks
       - {material: QUARTZ_BLOCK, name: "&fQuartz Block", amount: 1, price: 40.0}
       - {material: SMOOTH_QUARTZ, name: "&fSmooth Quartz", amount: 1, price: 50.0}
       - {material: PURPUR_BLOCK, name: "&fPurpur Block", amount: 1, price: 50.0}
@@ -99,7 +161,6 @@ categories:
       - {material: SHROOMLIGHT, name: "&fShroomlight", amount: 1, price: 100.0}
       - {material: LANTERN, name: "&fLantern", amount: 1, price: 50.0}
       - {material: SOUL_LANTERN, name: "&fSoul Lantern", amount: 1, price: 50.0}
-      # Logs
       - {material: OAK_LOG, name: "&fOak Log", amount: 1, price: 20.0}
       - {material: SPRUCE_LOG, name: "&fSpruce Log", amount: 1, price: 20.0}
       - {material: BIRCH_LOG, name: "&fBirch Log", amount: 1, price: 20.0}
@@ -108,7 +169,6 @@ categories:
       - {material: DARK_OAK_LOG, name: "&fDark Oak Log", amount: 1, price: 20.0}
       - {material: MANGROVE_LOG, name: "&fMangrove Log", amount: 1, price: 25.0}
       - {material: CHERRY_LOG, name: "&fCherry Log", amount: 1, price: 25.0}
-      # Planks
       - {material: OAK_PLANKS, name: "&fOak Planks", amount: 1, price: 10.0}
       - {material: SPRUCE_PLANKS, name: "&fSpruce Planks", amount: 1, price: 10.0}
       - {material: BIRCH_PLANKS, name: "&fBirch Planks", amount: 1, price: 10.0}
@@ -117,7 +177,6 @@ categories:
       - {material: DARK_OAK_PLANKS, name: "&fDark Oak Planks", amount: 1, price: 10.0}
       - {material: MANGROVE_PLANKS, name: "&fMangrove Planks", amount: 1, price: 12.0}
       - {material: CHERRY_PLANKS, name: "&fCherry Planks", amount: 1, price: 12.0}
-      # Glass
       - {material: GLASS, name: "&fGlass", amount: 1, price: 25.0}
       - {material: GLASS_PANE, name: "&fGlass Pane", amount: 1, price: 10.0}
       - {material: WHITE_STAINED_GLASS, name: "&fWhite Stained Glass", amount: 1, price: 30.0}
@@ -136,7 +195,6 @@ categories:
       - {material: GREEN_STAINED_GLASS, name: "&2Green Stained Glass", amount: 1, price: 30.0}
       - {material: RED_STAINED_GLASS, name: "&cRed Stained Glass", amount: 1, price: 30.0}
       - {material: BLACK_STAINED_GLASS, name: "&0Black Stained Glass", amount: 1, price: 30.0}
-      # Concrete
       - {material: WHITE_CONCRETE, name: "&fWhite Concrete", amount: 1, price: 25.0}
       - {material: ORANGE_CONCRETE, name: "&6Orange Concrete", amount: 1, price: 25.0}
       - {material: MAGENTA_CONCRETE, name: "&dMagenta Concrete", amount: 1, price: 25.0}
@@ -153,7 +211,6 @@ categories:
       - {material: GREEN_CONCRETE, name: "&2Green Concrete", amount: 1, price: 25.0}
       - {material: RED_CONCRETE, name: "&cRed Concrete", amount: 1, price: 25.0}
       - {material: BLACK_CONCRETE, name: "&0Black Concrete", amount: 1, price: 25.0}
-      # Wool
       - {material: WHITE_WOOL, name: "&fWhite Wool", amount: 1, price: 15.0}
       - {material: ORANGE_WOOL, name: "&6Orange Wool", amount: 1, price: 15.0}
       - {material: MAGENTA_WOOL, name: "&dMagenta Wool", amount: 1, price: 15.0}
@@ -235,52 +292,86 @@ categories:
       - {material: SOUL_SAND, name: "&fSoul Sand", amount: 1, price: 50.0}
       - {material: MAGMA_BLOCK, name: "&cMagma Block", amount: 1, price: 50.0}
 
-# ── Sell prices ──────────────────────────────────────────────────────────────
-# These determine what players receive when using /sell or /sell all.
-# Items not listed here cannot be sold.
-
+# ── Sell prices ───────────────────────────────────────────────────────────────
 sell-prices:
-  # Ores & metals
+
+  # ── Ores & metals ─────────────────────────────────────────────────────────
   COAL: 8
+  COAL_BLOCK: 65
+  COAL_ORE: 10
+  DEEPSLATE_COAL_ORE: 12
   RAW_IRON: 20
   IRON_INGOT: 30
+  IRON_NUGGET: 4
+  IRON_BLOCK: 240
+  IRON_ORE: 25
+  DEEPSLATE_IRON_ORE: 28
   RAW_GOLD: 35
   GOLD_INGOT: 50
-  COPPER_INGOT: 10
+  GOLD_NUGGET: 6
+  GOLD_BLOCK: 400
+  GOLD_ORE: 40
+  DEEPSLATE_GOLD_ORE: 45
+  NETHER_GOLD_ORE: 30
   RAW_COPPER: 5
+  COPPER_INGOT: 10
+  COPPER_BLOCK: 80
+  COPPER_ORE: 8
+  DEEPSLATE_COPPER_ORE: 10
   DIAMOND: 150
   DIAMOND_BLOCK: 1200
+  DIAMOND_ORE: 160
+  DEEPSLATE_DIAMOND_ORE: 175
   EMERALD: 100
   EMERALD_BLOCK: 800
+  EMERALD_ORE: 110
+  DEEPSLATE_EMERALD_ORE: 120
   LAPIS_LAZULI: 15
+  LAPIS_BLOCK: 120
+  LAPIS_ORE: 18
+  DEEPSLATE_LAPIS_ORE: 20
   REDSTONE: 2
+  REDSTONE_BLOCK: 15
+  REDSTONE_ORE: 5
+  DEEPSLATE_REDSTONE_ORE: 6
   QUARTZ: 8
+  QUARTZ_BLOCK: 30
+  SMOOTH_QUARTZ: 35
+  QUARTZ_PILLAR: 30
+  CHISELED_QUARTZ_BLOCK: 35
+  NETHER_QUARTZ_ORE: 10
   AMETHYST_SHARD: 20
+  AMETHYST_BLOCK: 150
   ANCIENT_DEBRIS: 750
   NETHERITE_SCRAP: 600
   NETHERITE_INGOT: 2000
   NETHERITE_BLOCK: 16000
-  GOLD_BLOCK: 400
-  IRON_BLOCK: 240
-  COAL_BLOCK: 60
-  # Mob drops
+
+  # ── Mob drops ──────────────────────────────────────────────────────────────
   BONE: 3
+  BONE_MEAL: 1
+  BONE_BLOCK: 80
   ROTTEN_FLESH: 1
+  ZOMBIE_HEAD: 80
   SPIDER_EYE: 5
+  FERMENTED_SPIDER_EYE: 20
   STRING: 2
+  COBWEB: 30
   FEATHER: 3
+  ARROW: 3
   LEATHER: 8
   RABBIT_HIDE: 3
   RABBIT_FOOT: 50
   GUNPOWDER: 20
   SLIMEBALL: 25
+  MAGMA_CREAM: 150
   PHANTOM_MEMBRANE: 100
   GHAST_TEAR: 200
   BLAZE_ROD: 150
   BLAZE_POWDER: 70
-  MAGMA_CREAM: 150
   NETHER_WART: 30
   GLOWSTONE_DUST: 75
+  GLOWSTONE: 60
   SHULKER_SHELL: 300
   ENDER_PEARL: 30
   EYE_OF_ENDER: 50
@@ -291,13 +382,68 @@ sell-prices:
   TURTLE_SCUTE: 75
   ARMADILLO_SCUTE: 50
   WIND_CHARGE: 150
-  # Food
+  BREEZE_ROD: 150
+  WITHER_SKELETON_SKULL: 1000
+  SKELETON_SKULL: 100
+  CREEPER_HEAD: 500
+  PIGLIN_HEAD: 150
+  NAUTILUS_SHELL: 200
+  HEART_OF_THE_SEA: 5000
+  SPONGE: 500
+  WET_SPONGE: 500
+  TRIDENT: 2000
+  WITHER_ROSE: 100
+  PUFFERFISH: 10
+  TROPICAL_FISH: 5
+  MUSIC_DISC_13: 500
+  MUSIC_DISC_CAT: 500
+  MUSIC_DISC_BLOCKS: 500
+  MUSIC_DISC_CHIRP: 500
+  MUSIC_DISC_FAR: 500
+  MUSIC_DISC_MALL: 500
+  MUSIC_DISC_MELLOHI: 500
+  MUSIC_DISC_STAL: 500
+  MUSIC_DISC_STRAD: 500
+  MUSIC_DISC_WARD: 500
+  MUSIC_DISC_11: 750
+  MUSIC_DISC_WAIT: 500
+  MUSIC_DISC_OTHERSIDE: 750
+  MUSIC_DISC_PIGSTEP: 1000
+  MUSIC_DISC_5: 750
+  MUSIC_DISC_RELIC: 1000
+
+  # ── Food & farming ─────────────────────────────────────────────────────────
+  KELP: 3
+  DRIED_KELP: 30
+  DRIED_KELP_BLOCK: 240
+  BAMBOO: 4
+  BAMBOO_BLOCK: 48
+  SEA_PICKLE: 17
   WHEAT: 3
   WHEAT_SEEDS: 1
+  BREAD: 5
+  CAKE: 15
+  COOKIE: 1
   POTATO: 8
+  BAKED_POTATO: 5
+  POISONOUS_POTATO: 1
   CARROT: 8
+  GOLDEN_CARROT: 15
   BEETROOT: 5
   BEETROOT_SEEDS: 2
+  MELON_SLICE: 1
+  MELON: 3
+  GLISTERING_MELON_SLICE: 20
+  PUMPKIN: 5
+  CARVED_PUMPKIN: 5
+  PUMPKIN_PIE: 8
+  PUMPKIN_SEEDS: 2
+  MELON_SEEDS: 1
+  SUGAR_CANE: 1
+  SUGAR: 2
+  APPLE: 3
+  GOLDEN_APPLE: 75
+  ENCHANTED_GOLDEN_APPLE: 500
   COOKED_BEEF: 15
   BEEF: 5
   COOKED_PORKCHOP: 12
@@ -310,21 +456,27 @@ sell-prices:
   SALMON: 4
   COOKED_COD: 8
   COD: 3
-  APPLE: 3
-  GOLDEN_APPLE: 75
-  ENCHANTED_GOLDEN_APPLE: 500
-  MELON_SLICE: 1
-  PUMPKIN: 5
-  BREAD: 5
-  BAKED_POTATO: 5
-  CAKE: 15
-  COOKIE: 1
-  HONEY_BOTTLE: 8
-  GOLDEN_CARROT: 15
-  CHORUS_FRUIT: 5
+  COOKED_RABBIT: 10
+  RABBIT: 4
   MUSHROOM_STEW: 5
-  DRIED_KELP: 1
-  # Logs & wood
+  BROWN_MUSHROOM: 3
+  RED_MUSHROOM: 3
+  HONEY_BOTTLE: 8
+  HONEYCOMB: 5
+  SWEET_BERRIES: 3
+  GLOW_BERRIES: 5
+  CHORUS_FRUIT: 5
+  POPPED_CHORUS_FRUIT: 10
+  CACTUS: 2
+  TORCHFLOWER_SEEDS: 50
+  TORCHFLOWER: 100
+  PITCHER_POD: 50
+  PITCHER_PLANT: 100
+  COCOA_BEANS: 3
+  NETHER_WART_BLOCK: 20
+  WARPED_WART_BLOCK: 20
+
+  # ── Logs & wood ────────────────────────────────────────────────────────────
   OAK_LOG: 6
   SPRUCE_LOG: 6
   BIRCH_LOG: 6
@@ -333,45 +485,390 @@ sell-prices:
   DARK_OAK_LOG: 6
   MANGROVE_LOG: 8
   CHERRY_LOG: 8
-  BAMBOO: 1
-  # Building blocks
+  CRIMSON_STEM: 6
+  WARPED_STEM: 6
+  OAK_PLANKS: 3
+  SPRUCE_PLANKS: 3
+  BIRCH_PLANKS: 3
+  JUNGLE_PLANKS: 3
+  ACACIA_PLANKS: 3
+  DARK_OAK_PLANKS: 3
+  MANGROVE_PLANKS: 4
+  CHERRY_PLANKS: 4
+  CRIMSON_PLANKS: 4
+  WARPED_PLANKS: 4
+  OAK_SAPLING: 2
+  SPRUCE_SAPLING: 2
+  BIRCH_SAPLING: 2
+  JUNGLE_SAPLING: 2
+  ACACIA_SAPLING: 2
+  DARK_OAK_SAPLING: 2
+  MANGROVE_PROPAGULE: 3
+  CHERRY_SAPLING: 3
+
+  # ── Stone & building blocks ────────────────────────────────────────────────
   COBBLESTONE: 2
   STONE: 3
+  SMOOTH_STONE: 5
+  STONE_BRICKS: 6
+  MOSSY_STONE_BRICKS: 8
+  CRACKED_STONE_BRICKS: 5
+  CHISELED_STONE_BRICKS: 8
+  GRANITE: 3
+  POLISHED_GRANITE: 5
+  DIORITE: 3
+  POLISHED_DIORITE: 5
+  ANDESITE: 3
+  POLISHED_ANDESITE: 5
+  DEEPSLATE: 3
+  COBBLED_DEEPSLATE: 3
+  POLISHED_DEEPSLATE: 5
+  DEEPSLATE_BRICKS: 8
+  DEEPSLATE_TILES: 10
+  CHISELED_DEEPSLATE: 8
+  TUFF: 3
+  POLISHED_TUFF: 5
+  TUFF_BRICKS: 6
+  CHISELED_TUFF: 8
+  CHISELED_TUFF_BRICKS: 8
+  BLACKSTONE: 5
+  POLISHED_BLACKSTONE: 8
+  POLISHED_BLACKSTONE_BRICKS: 10
+  GILDED_BLACKSTONE: 50
+  CHISELED_POLISHED_BLACKSTONE: 10
+  BASALT: 3
+  SMOOTH_BASALT: 5
+  POLISHED_BASALT: 5
+  BRICKS: 8
+  NETHER_BRICK: 8
+  NETHER_BRICKS: 20
+  RED_NETHER_BRICKS: 20
+  CHISELED_NETHER_BRICKS: 15
   SAND: 2
   RED_SAND: 2
+  SANDSTONE: 5
+  SMOOTH_SANDSTONE: 8
+  CUT_SANDSTONE: 6
+  CHISELED_SANDSTONE: 8
+  RED_SANDSTONE: 5
+  SMOOTH_RED_SANDSTONE: 8
+  CUT_RED_SANDSTONE: 6
+  CHISELED_RED_SANDSTONE: 8
   GRAVEL: 3
+  FLINT: 3
   DIRT: 1
+  COARSE_DIRT: 1
+  ROOTED_DIRT: 2
+  MUD: 2
+  MUDDY_MANGROVE_ROOTS: 3
+  PACKED_MUD: 4
+  MUD_BRICKS: 5
   CLAY: 5
+  CLAY_BALL: 2
+  TERRACOTTA: 5
+  WHITE_TERRACOTTA: 6
+  ORANGE_TERRACOTTA: 6
+  MAGENTA_TERRACOTTA: 6
+  LIGHT_BLUE_TERRACOTTA: 6
+  YELLOW_TERRACOTTA: 6
+  LIME_TERRACOTTA: 6
+  PINK_TERRACOTTA: 6
+  GRAY_TERRACOTTA: 6
+  LIGHT_GRAY_TERRACOTTA: 6
+  CYAN_TERRACOTTA: 6
+  PURPLE_TERRACOTTA: 6
+  BLUE_TERRACOTTA: 6
+  BROWN_TERRACOTTA: 6
+  GREEN_TERRACOTTA: 6
+  RED_TERRACOTTA: 6
+  BLACK_TERRACOTTA: 6
+
+  # ── Glass ──────────────────────────────────────────────────────────────────
   GLASS: 8
-  GLOWSTONE: 200
+  GLASS_PANE: 3
+  WHITE_STAINED_GLASS: 8
+  ORANGE_STAINED_GLASS: 8
+  MAGENTA_STAINED_GLASS: 8
+  LIGHT_BLUE_STAINED_GLASS: 8
+  YELLOW_STAINED_GLASS: 8
+  LIME_STAINED_GLASS: 8
+  PINK_STAINED_GLASS: 8
+  GRAY_STAINED_GLASS: 8
+  LIGHT_GRAY_STAINED_GLASS: 8
+  CYAN_STAINED_GLASS: 8
+  PURPLE_STAINED_GLASS: 8
+  BLUE_STAINED_GLASS: 8
+  BROWN_STAINED_GLASS: 8
+  GREEN_STAINED_GLASS: 8
+  RED_STAINED_GLASS: 8
+  BLACK_STAINED_GLASS: 8
+  WHITE_STAINED_GLASS_PANE: 3
+  ORANGE_STAINED_GLASS_PANE: 3
+  MAGENTA_STAINED_GLASS_PANE: 3
+  LIGHT_BLUE_STAINED_GLASS_PANE: 3
+  YELLOW_STAINED_GLASS_PANE: 3
+  LIME_STAINED_GLASS_PANE: 3
+  PINK_STAINED_GLASS_PANE: 3
+  GRAY_STAINED_GLASS_PANE: 3
+  LIGHT_GRAY_STAINED_GLASS_PANE: 3
+  CYAN_STAINED_GLASS_PANE: 3
+  PURPLE_STAINED_GLASS_PANE: 3
+  BLUE_STAINED_GLASS_PANE: 3
+  BROWN_STAINED_GLASS_PANE: 3
+  GREEN_STAINED_GLASS_PANE: 3
+  RED_STAINED_GLASS_PANE: 3
+  BLACK_STAINED_GLASS_PANE: 3
+
+  # ── Concrete ──────────────────────────────────────────────────────────────
+  WHITE_CONCRETE: 8
+  ORANGE_CONCRETE: 8
+  MAGENTA_CONCRETE: 8
+  LIGHT_BLUE_CONCRETE: 8
+  YELLOW_CONCRETE: 8
+  LIME_CONCRETE: 8
+  PINK_CONCRETE: 8
+  GRAY_CONCRETE: 8
+  LIGHT_GRAY_CONCRETE: 8
+  CYAN_CONCRETE: 8
+  PURPLE_CONCRETE: 8
+  BLUE_CONCRETE: 8
+  BROWN_CONCRETE: 8
+  GREEN_CONCRETE: 8
+  RED_CONCRETE: 8
+  BLACK_CONCRETE: 8
+  WHITE_CONCRETE_POWDER: 5
+  ORANGE_CONCRETE_POWDER: 5
+  MAGENTA_CONCRETE_POWDER: 5
+  LIGHT_BLUE_CONCRETE_POWDER: 5
+  YELLOW_CONCRETE_POWDER: 5
+  LIME_CONCRETE_POWDER: 5
+  PINK_CONCRETE_POWDER: 5
+  GRAY_CONCRETE_POWDER: 5
+  LIGHT_GRAY_CONCRETE_POWDER: 5
+  CYAN_CONCRETE_POWDER: 5
+  PURPLE_CONCRETE_POWDER: 5
+  BLUE_CONCRETE_POWDER: 5
+  BROWN_CONCRETE_POWDER: 5
+  GREEN_CONCRETE_POWDER: 5
+  RED_CONCRETE_POWDER: 5
+  BLACK_CONCRETE_POWDER: 5
+
+  # ── Wool & carpet ─────────────────────────────────────────────────────────
+  WHITE_WOOL: 5
+  ORANGE_WOOL: 5
+  MAGENTA_WOOL: 5
+  LIGHT_BLUE_WOOL: 5
+  YELLOW_WOOL: 5
+  LIME_WOOL: 5
+  PINK_WOOL: 5
+  GRAY_WOOL: 5
+  LIGHT_GRAY_WOOL: 5
+  CYAN_WOOL: 5
+  PURPLE_WOOL: 5
+  BLUE_WOOL: 5
+  BROWN_WOOL: 5
+  GREEN_WOOL: 5
+  RED_WOOL: 5
+  BLACK_WOOL: 5
+  WHITE_CARPET: 2
+  ORANGE_CARPET: 2
+  MAGENTA_CARPET: 2
+  LIGHT_BLUE_CARPET: 2
+  YELLOW_CARPET: 2
+  LIME_CARPET: 2
+  PINK_CARPET: 2
+  GRAY_CARPET: 2
+  LIGHT_GRAY_CARPET: 2
+  CYAN_CARPET: 2
+  PURPLE_CARPET: 2
+  BLUE_CARPET: 2
+  BROWN_CARPET: 2
+  GREEN_CARPET: 2
+  RED_CARPET: 2
+  BLACK_CARPET: 2
+
+  # ── Dyes ──────────────────────────────────────────────────────────────────
+  WHITE_DYE: 2
+  ORANGE_DYE: 3
+  MAGENTA_DYE: 5
+  LIGHT_BLUE_DYE: 5
+  YELLOW_DYE: 2
+  LIME_DYE: 3
+  PINK_DYE: 5
+  GRAY_DYE: 3
+  LIGHT_GRAY_DYE: 3
+  CYAN_DYE: 5
+  PURPLE_DYE: 5
+  BLUE_DYE: 8
+  BROWN_DYE: 8
+  GREEN_DYE: 2
+  RED_DYE: 2
+  BLACK_DYE: 3
+
+  # ── Ice & snow ────────────────────────────────────────────────────────────
   ICE: 8
   PACKED_ICE: 20
   BLUE_ICE: 50
-  SEA_LANTERN: 40
-  PRISMARINE: 15
+  SNOW_BLOCK: 3
+  SNOW: 1
+  SNOWBALL: 1
+  POWDER_SNOW_BUCKET: 5
+
+  # ── Special & end blocks ──────────────────────────────────────────────────
+  PURPUR_BLOCK: 15
+  PURPUR_PILLAR: 15
+  END_STONE: 6
+  END_STONE_BRICKS: 12
   OBSIDIAN: 100
   CRYING_OBSIDIAN: 150
-  END_STONE: 6
-  PURPUR_BLOCK: 15
-  QUARTZ_BLOCK: 12
-  BASALT: 3
-  BLACKSTONE: 5
-  DEEPSLATE: 3
-  NETHER_BRICK: 8
-  SUGAR_CANE: 1
-  CACTUS: 2
-  # End items
-  SHULKER_BOX: 600
-  ENDER_CHEST: 900
-  ELYTRA: 500
-  DRAGON_BREATH: 200
-  # Special & rare
-  TOTEM_OF_UNDYING: 3000
-  EXPERIENCE_BOTTLE: 60
+  PRISMARINE: 15
+  PRISMARINE_BRICKS: 20
+  DARK_PRISMARINE: 20
+  SEA_LANTERN: 40
+
+  # ── Nether blocks ─────────────────────────────────────────────────────────
+  NETHERRACK: 2
+  SOUL_SAND: 15
+  SOUL_SOIL: 10
+  MAGMA_BLOCK: 15
+  SHROOMLIGHT: 30
+  CRIMSON_NYLIUM: 5
+  WARPED_NYLIUM: 5
+  CRIMSON_FUNGUS: 5
+  WARPED_FUNGUS: 5
+  CRIMSON_ROOTS: 2
+  WARPED_ROOTS: 2
+  NETHER_SPROUTS: 1
+  WEEPING_VINES: 2
+  TWISTING_VINES: 2
+
+  # ── Sculk ─────────────────────────────────────────────────────────────────
+  SCULK: 3
+  SCULK_VEIN: 2
+  SCULK_CATALYST: 100
+  SCULK_SHRIEKER: 200
+  SCULK_SENSOR: 50
+  CALIBRATED_SCULK_SENSOR: 80
+
+  # ── Flora & decorative ────────────────────────────────────────────────────
+  DANDELION: 1
+  POPPY: 1
+  BLUE_ORCHID: 5
+  ALLIUM: 3
+  AZURE_BLUET: 1
+  RED_TULIP: 2
+  ORANGE_TULIP: 2
+  WHITE_TULIP: 2
+  PINK_TULIP: 2
+  OXEYE_DAISY: 2
+  CORNFLOWER: 3
+  LILY_OF_THE_VALLEY: 3
+  SUNFLOWER: 3
+  LILAC: 3
+  ROSE_BUSH: 3
+  PEONY: 3
+  WITHER_ROSE: 100
+  SPORE_BLOSSOM: 5
+  AZALEA: 3
+  FLOWERING_AZALEA: 8
+  AZALEA_LEAVES: 2
+  FLOWERING_AZALEA_LEAVES: 5
+  CHERRY_LEAVES: 2
+  BIG_DRIPLEAF: 5
+  SMALL_DRIPLEAF: 3
+  HANGING_ROOTS: 2
+  MOSS_BLOCK: 3
+  MOSS_CARPET: 2
+  VINE: 2
+  LILY_PAD: 3
+  FERN: 1
+  DEAD_BUSH: 1
+  GLOW_LICHEN: 3
+  MANGROVE_ROOTS: 3
+
+  # ── Coral ─────────────────────────────────────────────────────────────────
+  BRAIN_CORAL: 5
+  BUBBLE_CORAL: 5
+  FIRE_CORAL: 5
+  HORN_CORAL: 5
+  TUBE_CORAL: 5
+  BRAIN_CORAL_BLOCK: 8
+  BUBBLE_CORAL_BLOCK: 8
+  FIRE_CORAL_BLOCK: 8
+  HORN_CORAL_BLOCK: 8
+  TUBE_CORAL_BLOCK: 8
+  DEAD_BRAIN_CORAL_BLOCK: 2
+  DEAD_BUBBLE_CORAL_BLOCK: 2
+  DEAD_FIRE_CORAL_BLOCK: 2
+  DEAD_HORN_CORAL_BLOCK: 2
+  DEAD_TUBE_CORAL_BLOCK: 2
+
+  # ── Misc ──────────────────────────────────────────────────────────────────
+  MYCELIUM: 5
+  PODZOL: 3
+  GRASS_BLOCK: 3
+  FARMLAND: 2
+  STICK: 1
+  PAPER: 1
+  BOOK: 5
+  GLASS_BOTTLE: 2
+  BOWL: 1
+  FLINT: 3
+  COMPASS: 20
+  CLOCK: 30
+  SPYGLASS: 50
   SADDLE: 150
   NAME_TAG: 200
   LEAD: 30
+  BUCKET: 10
+  WATER_BUCKET: 10
+  LAVA_BUCKET: 15
+  MILK_BUCKET: 8
+  FISHING_ROD: 10
+  BOW: 20
+  CROSSBOW: 30
+  SHIELD: 25
+  SHEARS: 15
+  FLINT_AND_STEEL: 20
+  TORCH: 1
+  SOUL_TORCH: 2
+  LANTERN: 15
+  SOUL_LANTERN: 15
+  IRON_SWORD: 30
+  IRON_AXE: 30
+  IRON_PICKAXE: 35
+  IRON_SHOVEL: 25
+  IRON_HOE: 20
+  IRON_HELMET: 25
+  IRON_CHESTPLATE: 50
+  IRON_LEGGINGS: 40
+  IRON_BOOTS: 25
+  GOLDEN_SWORD: 25
+  GOLDEN_AXE: 25
+  GOLDEN_PICKAXE: 28
+  GOLDEN_HELMET: 20
+  GOLDEN_CHESTPLATE: 40
+  GOLDEN_LEGGINGS: 30
+  GOLDEN_BOOTS: 20
+  CHAINMAIL_HELMET: 20
+  CHAINMAIL_CHESTPLATE: 40
+  CHAINMAIL_LEGGINGS: 30
+  CHAINMAIL_BOOTS: 20
+  DIAMOND_SWORD: 450
+  DIAMOND_AXE: 450
+  DIAMOND_PICKAXE: 500
+  DIAMOND_SHOVEL: 400
+  DIAMOND_HOE: 400
+  DIAMOND_HELMET: 400
+  DIAMOND_CHESTPLATE: 750
+  DIAMOND_LEGGINGS: 600
+  DIAMOND_BOOTS: 400
+
+  # ── End & rare ────────────────────────────────────────────────────────────
+  SHULKER_BOX: 600
+  ENDER_CHEST: 900
+  ELYTRA: 2000
+  TOTEM_OF_UNDYING: 3000
+  EXPERIENCE_BOTTLE: 60
   NETHER_STAR: 5000
   DRAGON_EGG: 10000
-  COBWEB: 30
-  BREEZE_ROD: 150

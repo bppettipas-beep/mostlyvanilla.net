@@ -1,0 +1,3 @@
+# Role required to use /spawnstash (and higher-priority roles).
+# Set via /allowspawnstash <role>. Ops always bypass this check.
+allowed-role: ~

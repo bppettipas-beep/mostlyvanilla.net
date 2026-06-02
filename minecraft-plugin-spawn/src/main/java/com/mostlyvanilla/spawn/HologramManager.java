@@ -117,7 +117,7 @@ public class HologramManager {
             e.setBillboard(Display.Billboard.CENTER);
             e.setShadowed(true);
             e.setDefaultBackground(false);
-            e.setPersistent(false);
+            e.setPersistent(true);
             e.addScoreboardTag(TAG);
             if (!standalone) e.addScoreboardTag("mv_npc_holo");
         });

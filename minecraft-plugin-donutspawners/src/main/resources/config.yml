@@ -1,0 +1,72 @@
+# ── General settings ─────────────────────────────────────────────────────────
+settings:
+  require-silk-touch: true      # players need Silk Touch to break spawners
+  proximity: 48                 # blocks a player must be within for spawners to tick
+  isolation-radius: 2           # blocks away with no other spawner = isolation bonus
+  isolation-bonus: 1.25         # multiplier applied when a spawner is isolated
+  save-interval: 300            # seconds between auto-saves to spawners.json
+
+# ── Economy ───────────────────────────────────────────────────────────────────
+# currency must match a MostlyVanillaEconomy currency name (e.g. "money")
+sell-currency: money
+
+# sell prices for Sell All button in the GUI
+sell-prices:
+  BONE: 3
+  ARROW: 5
+  ROTTEN_FLESH: 1
+  PORKCHOP: 15
+  BEEF: 15
+  STRING: 2
+  SPIDER_EYE: 5
+  GOLD_NUGGET: 10
+  BLAZE_POWDER: 70
+  GUNPOWDER: 20
+  IRON_INGOT: 30
+
+# ── Spawner production ────────────────────────────────────────────────────────
+# Each type lists:
+#   ticks  - how many ticks between each production cycle (20 ticks = 1 second)
+#   xp     - XP points earned per cycle (scales with sqrt of stack size)
+#   drops  - items produced per cycle at stack size 1 (scales with sqrt of stack)
+#
+# Output formula: floor( base * sqrt(stack) * isolation_bonus )
+drops:
+  SKELETON:
+    ticks: 100
+    xp: 3
+    BONE: 2
+    ARROW: 1
+  ZOMBIE:
+    ticks: 100
+    xp: 3
+    ROTTEN_FLESH: 3
+  PIG:
+    ticks: 120
+    xp: 1
+    PORKCHOP: 2
+  COW:
+    ticks: 120
+    xp: 1
+    BEEF: 2
+  SPIDER:
+    ticks: 110
+    xp: 3
+    STRING: 2
+    SPIDER_EYE: 1
+  ZOMBIE_PIGLIN:
+    ticks: 130
+    xp: 5
+    GOLD_NUGGET: 4
+  BLAZE:
+    ticks: 140
+    xp: 8
+    BLAZE_POWDER: 2
+  CREEPER:
+    ticks: 150
+    xp: 5
+    GUNPOWDER: 2
+  IRON_GOLEM:
+    ticks: 200
+    xp: 3
+    IRON_INGOT: 2

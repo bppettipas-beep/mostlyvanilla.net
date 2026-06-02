@@ -2,7 +2,6 @@ package com.mostlyvanilla.rtp;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.Bukkit;
 import org.bukkit.HeightMap;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -15,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 public class RtpManager {
 
@@ -31,11 +31,8 @@ public class RtpManager {
 
     // ── Disabled world management ─────────────────────────────────────────────
 
-    public boolean isDisabled(World world) {
-        return disabledWorlds.contains(world.getName());
-    }
+    public boolean isDisabled(World world) { return disabledWorlds.contains(world.getName()); }
 
-    /** Toggles the disabled state of a world. Returns true if it is now disabled. */
     public boolean toggleDisabled(String worldName) {
         boolean nowDisabled = disabledWorlds.add(worldName);
         if (!nowDisabled) disabledWorlds.remove(worldName);
@@ -44,6 +41,8 @@ public class RtpManager {
         return nowDisabled;
     }
 
+    public List<String> getDisabledWorlds() { return new ArrayList<>(disabledWorlds); }
+
     // ── RTP entry point ───────────────────────────────────────────────────────
 
     public void startRtp(Player player, World world) {
@@ -51,39 +50,81 @@ public class RtpManager {
             player.sendMessage(Component.text("That dimension is currently disabled.", NamedTextColor.RED));
             return;
         }
-        player.sendMessage(Component.text("Searching for a safe location in ", NamedTextColor.YELLOW)
-            .append(Component.text(displayName(world), NamedTextColor.GOLD))
-            .append(Component.text("…", NamedTextColor.YELLOW)));
-        tryFind(player, world, 0);
-    }
 
-    private void tryFind(Player player, World world, int attempt) {
-        if (!player.isOnline()) return;
+        // Start countdown immediately — search runs in parallel
+        teleportManager.startCountdown(player);
+
+        // Build candidate list on the main thread (isChunkGenerated is safe here)
         int maxAttempts = plugin.getConfig().getInt("max-attempts", 20);
-        if (attempt >= maxAttempts) {
-            player.sendMessage(Component.text("Could not find a safe location. Please try again.", NamedTextColor.RED));
-            return;
+        int minR        = plugin.getConfig().getInt("min-radius",   1000);
+        int maxR        = plugin.getConfig().getInt("max-radius",   10000);
+
+        List<int[]> generated   = new ArrayList<>();
+        List<int[]> ungenerated = new ArrayList<>();
+
+        for (int i = 0; i < maxAttempts; i++) {
+            double angle  = random.nextDouble() * 2 * Math.PI;
+            int    radius = minR + random.nextInt(Math.max(1, maxR - minR));
+            int    x      = (int) (radius * Math.cos(angle));
+            int    z      = (int) (radius * Math.sin(angle));
+            int[]  coord  = {x, z};
+            if (world.isChunkGenerated(x >> 4, z >> 4)) generated.add(coord);
+            else                                         ungenerated.add(coord);
         }
 
-        int minR   = plugin.getConfig().getInt("min-radius", 1000);
-        int maxR   = plugin.getConfig().getInt("max-radius", 10000);
-        double angle  = random.nextDouble() * 2 * Math.PI;
-        int    radius = minR + random.nextInt(Math.max(1, maxR - minR));
-        int    x      = (int) (radius * Math.cos(angle));
-        int    z      = (int) (radius * Math.sin(angle));
+        // Try generated chunks first (fast, no server-side generation), then fall back
+        List<int[]> candidates = new ArrayList<>(generated);
+        candidates.addAll(ungenerated);
 
-        // Load chunk async, then check safety on main thread
+        tryCoord(player, world, candidates, 0);
+    }
+
+    // ── Sequential safe-spot search ───────────────────────────────────────────
+
+    private void tryCoord(Player player, World world, List<int[]> candidates, int index) {
+        if (!player.isOnline() || !teleportManager.isPending(player.getUniqueId())) return;
+        if (index >= candidates.size()) return; // exhausted — countdown will time out
+
+        int[] coord = candidates.get(index);
+        int x = coord[0], z = coord[1];
+
+        // Load this chunk async (no main-thread block)
         world.getChunkAtAsync(x >> 4, z >> 4).thenAccept(chunk ->
             plugin.getServer().getScheduler().runTask(plugin, () -> {
-                if (!player.isOnline() || Bukkit.getWorld(world.getName()) == null) return;
+                if (!player.isOnline() || !teleportManager.isPending(player.getUniqueId())) return;
+
                 int y = findSafeY(world, x, z);
                 if (y < 0) {
-                    tryFind(player, world, attempt + 1);
-                } else {
-                    teleportManager.startTeleport(player, new Location(world, x + 0.5, y, z + 0.5));
+                    tryCoord(player, world, candidates, index + 1);
+                    return;
                 }
+
+                Location dest = new Location(world, x + 0.5, y, z + 0.5);
+
+                // Pre-load the 3×3 surrounding chunks so the player doesn't see a
+                // black screen on arrival. This happens while the countdown is still
+                // ticking, so it's essentially free time.
+                preloadSurroundingChunks(world, x >> 4, z >> 4, () ->
+                    plugin.getServer().getScheduler().runTask(plugin, () -> {
+                        if (player.isOnline() && teleportManager.isPending(player.getUniqueId())) {
+                            teleportManager.setDestination(player.getUniqueId(), dest);
+                        }
+                    })
+                );
             })
         );
+    }
+
+    /** Loads the 3×3 chunk region around the destination, then fires onComplete. */
+    private void preloadSurroundingChunks(World world, int cX, int cZ, Runnable onComplete) {
+        CompletableFuture<?>[] futures = new CompletableFuture[9];
+        int i = 0;
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                futures[i++] = world.getChunkAtAsync(cX + dx, cZ + dz);
+            }
+        }
+        CompletableFuture.allOf(futures).thenRun(onComplete);
     }
 
     // ── Safe-Y finders ────────────────────────────────────────────────────────
@@ -100,15 +141,13 @@ public class RtpManager {
         int y = world.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING);
         if (y <= world.getMinHeight()) return -1;
         Block ground = world.getBlockAt(x, y, z);
-        if (isLiquid(ground)) return -1;
-        if (!ground.getType().isSolid()) return -1;
+        if (isLiquid(ground) || !ground.getType().isSolid()) return -1;
         return y + 1;
     }
 
     private int findSafeYNether(World world, int x, int z) {
-        // Scan upward from just above the lava sea (y=32) to below the bedrock ceiling
         for (int y = 32; y <= 118; y++) {
-            Block floor = world.getBlockAt(x, y, z);
+            Block floor = world.getBlockAt(x, y,     z);
             Block feet  = world.getBlockAt(x, y + 1, z);
             Block head  = world.getBlockAt(x, y + 2, z);
             if (floor.getType().isSolid() && !isLiquid(floor)
@@ -122,14 +161,14 @@ public class RtpManager {
 
     private int findSafeYEnd(World world, int x, int z) {
         int y = world.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING);
-        if (y <= world.getMinHeight()) return -1; // nothing but void
+        if (y <= world.getMinHeight()) return -1;
         Block ground = world.getBlockAt(x, y, z);
         if (isLiquid(ground) || !ground.getType().isSolid()) return -1;
         return y + 1;
     }
 
-    private static boolean isLiquid(Block block) {
-        Material t = block.getType();
+    private static boolean isLiquid(Block b) {
+        Material t = b.getType();
         return t == Material.WATER || t == Material.LAVA || t == Material.BUBBLE_COLUMN;
     }
 
@@ -142,9 +181,5 @@ public class RtpManager {
             case THE_END -> "The End";
             default      -> world.getName();
         };
-    }
-
-    public List<String> getDisabledWorlds() {
-        return new ArrayList<>(disabledWorlds);
     }
 }

@@ -7,8 +7,11 @@ commands:
     description: Open the Mostly Vanilla shop
     usage: /shop [reload]
   sell:
-    description: Sell item in hand, or /sell all to sell entire inventory
-    usage: /sell [all]
+    description: Open the sell GUI — place items and close to sell them
+    usage: /sell [reload]
   worth:
     description: Browse item sell prices
     usage: /worth
+  bitshop:
+    description: Open the Bit Shop — spend bits on spawners and crate keys
+    usage: /bitshop
