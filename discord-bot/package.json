@@ -8,9 +8,10 @@
     "dev": "nodemon src/index.js"
   },
   "dependencies": {
-    "discord.js": "^14.16.0",
     "better-sqlite3": "^9.4.3",
-    "dotenv": "^16.4.1"
+    "discord.js": "^14.16.0",
+    "dotenv": "^16.4.1",
+    "express": "^4.22.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.3"
