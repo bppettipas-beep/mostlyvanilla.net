@@ -9,11 +9,24 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
-public class MostlyVanillaGm extends JavaPlugin implements CommandExecutor, TabCompleter {
+public class MostlyVanillaGm extends JavaPlugin implements CommandExecutor, TabCompleter, Listener {
+
+    private final Map<UUID, GameMode> previousMode = new HashMap<>();
+    private final Set<UUID> vanished = new HashSet<>();
 
     @Override
     public void onEnable() {
@@ -21,6 +34,7 @@ public class MostlyVanillaGm extends JavaPlugin implements CommandExecutor, TabC
             getCommand(cmd).setExecutor(this);
             getCommand(cmd).setTabCompleter(this);
         }
+        getServer().getPluginManager().registerEvents(this, this);
         getLogger().info("MostlyVanilla GM enabled.");
     }
 
@@ -49,7 +63,6 @@ public class MostlyVanillaGm extends JavaPlugin implements CommandExecutor, TabC
 
         if (mode == null) return true;
 
-        // Targeting another player
         if (args.length >= 1) {
             if (!sender.hasPermission("mv.gm.other")) {
                 sender.sendMessage(Component.text("You don't have permission to change other players' gamemode.", NamedTextColor.RED));
@@ -60,31 +73,93 @@ public class MostlyVanillaGm extends JavaPlugin implements CommandExecutor, TabC
                 sender.sendMessage(Component.text("Player not found or not online.", NamedTextColor.RED));
                 return true;
             }
-            target.setGameMode(mode);
-            target.sendMessage(Component.text("Your gamemode was set to ", NamedTextColor.YELLOW)
-                .append(Component.text(modeName(mode), NamedTextColor.WHITE))
-                .append(Component.text(" by ", NamedTextColor.YELLOW))
-                .append(Component.text(sender.getName(), NamedTextColor.WHITE))
-                .append(Component.text(".", NamedTextColor.YELLOW)));
-            sender.sendMessage(Component.text("Set ", NamedTextColor.YELLOW)
-                .append(Component.text(target.getName(), NamedTextColor.WHITE))
-                .append(Component.text(" to ", NamedTextColor.YELLOW))
-                .append(Component.text(modeName(mode), NamedTextColor.WHITE))
-                .append(Component.text(".", NamedTextColor.YELLOW)));
+            applyGameMode(target, mode, sender);
             return true;
         }
 
-        // Self
         if (!(sender instanceof Player player)) {
             sender.sendMessage(Component.text("Run this from in-game or specify a player.", NamedTextColor.RED));
             return true;
         }
 
-        player.setGameMode(mode);
-        player.sendMessage(Component.text("Gamemode set to ", NamedTextColor.YELLOW)
+        applyGameMode(player, mode, null);
+        return true;
+    }
+
+    private void applyGameMode(Player target, GameMode mode, CommandSender caller) {
+        GameMode current = target.getGameMode();
+        if (current == mode) {
+            GameMode prev = previousMode.remove(target.getUniqueId());
+            if (prev == null) prev = GameMode.SURVIVAL;
+            changeGameMode(target, prev, caller);
+        } else {
+            previousMode.put(target.getUniqueId(), current);
+            changeGameMode(target, mode, caller);
+        }
+    }
+
+    private void changeGameMode(Player target, GameMode mode, CommandSender caller) {
+        boolean wasSpectator = target.getGameMode() == GameMode.SPECTATOR;
+        target.setGameMode(mode);
+        boolean isSpectator = mode == GameMode.SPECTATOR;
+
+        if (!wasSpectator && isSpectator) vanish(target);
+        else if (wasSpectator && !isSpectator) unvanish(target);
+
+        target.sendMessage(Component.text("Gamemode set to ", NamedTextColor.YELLOW)
             .append(Component.text(modeName(mode), NamedTextColor.WHITE))
             .append(Component.text(".", NamedTextColor.YELLOW)));
-        return true;
+
+        if (caller != null) {
+            caller.sendMessage(Component.text("Set ", NamedTextColor.YELLOW)
+                .append(Component.text(target.getName(), NamedTextColor.WHITE))
+                .append(Component.text(" to ", NamedTextColor.YELLOW))
+                .append(Component.text(modeName(mode), NamedTextColor.WHITE))
+                .append(Component.text(".", NamedTextColor.YELLOW)));
+        }
+    }
+
+    private void vanish(Player player) {
+        vanished.add(player.getUniqueId());
+        for (Player other : Bukkit.getOnlinePlayers()) {
+            if (other.getUniqueId().equals(player.getUniqueId())) continue;
+            if (!other.hasPermission("mv.gm.other")) {
+                other.hidePlayer(this, player);
+            }
+        }
+        // hidePlayer can't hide a player from their own tab — send the packet directly
+        sendTabRemove(player, player.getUniqueId());
+    }
+
+    private void unvanish(Player player) {
+        vanished.remove(player.getUniqueId());
+        for (Player other : Bukkit.getOnlinePlayers()) {
+            if (other.getUniqueId().equals(player.getUniqueId())) continue;
+            other.showPlayer(this, player);
+        }
+        // Re-add self to own tab list
+        sendTabAdd(player);
+    }
+
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event) {
+        Player joining = event.getPlayer();
+        for (UUID uid : vanished) {
+            Player spectator = Bukkit.getPlayer(uid);
+            if (spectator != null && !joining.hasPermission("mv.gm.other")) {
+                joining.hidePlayer(this, spectator);
+            }
+        }
+        if (joining.getGameMode() == GameMode.SPECTATOR) {
+            getServer().getScheduler().runTaskLater(this, () -> vanish(joining), 1L);
+        }
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        UUID uid = event.getPlayer().getUniqueId();
+        vanished.remove(uid);
+        previousMode.remove(uid);
     }
 
     @Override
@@ -106,5 +181,42 @@ public class MostlyVanillaGm extends JavaPlugin implements CommandExecutor, TabC
             case SPECTATOR -> "Spectator";
             case ADVENTURE -> "Adventure";
         };
+    }
+
+    // ── Packet helpers (tab list) ────────────────────────────────────────────
+
+    // Bukkit's hidePlayer() can't remove a player from their own tab list, so we
+    // send ClientboundPlayerInfoRemovePacket directly via reflection.
+
+    private void sendTabRemove(Player viewer, UUID targetId) {
+        try {
+            Object handle = viewer.getClass().getMethod("getHandle").invoke(viewer);
+            Object conn   = handle.getClass().getField("connection").get(handle);
+            Class<?> pktClass = Class.forName("net.minecraft.network.protocol.game.ClientboundPlayerInfoRemovePacket");
+            Object packet = pktClass.getConstructor(List.class).newInstance(List.of(targetId));
+            conn.getClass().getMethod("send", Class.forName("net.minecraft.network.protocol.Packet")).invoke(conn, packet);
+        } catch (Exception e) {
+            getLogger().warning("sendTabRemove failed: " + e.getMessage());
+        }
+    }
+
+    private void sendTabAdd(Player player) {
+        try {
+            Object handle = player.getClass().getMethod("getHandle").invoke(player);
+            Object conn   = handle.getClass().getField("connection").get(handle);
+            Class<?> updateClass = Class.forName("net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket");
+            Method create = null;
+            for (Method m : updateClass.getMethods()) {
+                if (m.getName().equals("createPlayerInitializing") && m.getParameterCount() == 1) {
+                    create = m;
+                    break;
+                }
+            }
+            if (create == null) return;
+            Object packet = create.invoke(null, List.of(handle));
+            conn.getClass().getMethod("send", Class.forName("net.minecraft.network.protocol.Packet")).invoke(conn, packet);
+        } catch (Exception e) {
+            getLogger().warning("sendTabAdd failed: " + e.getMessage());
+        }
     }
 }

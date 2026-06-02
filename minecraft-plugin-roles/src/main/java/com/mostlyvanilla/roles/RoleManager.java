@@ -40,6 +40,7 @@ public class RoleManager {
     private String  banRole           = null;
     private String  ecSeeRole         = null;
     private String  invSeeRole        = null;
+    private String  allowTpRole       = null;
     private boolean nameColorMatch    = false;
 
     private final Map<String, Set<String>> blockedCmds  = new HashMap<>(); // role → blocked prefixes
@@ -84,6 +85,7 @@ public class RoleManager {
         banRole          = rc.getString("ban-role",          null);
         ecSeeRole        = rc.getString("ecsee-role",        null);
         invSeeRole       = rc.getString("invsee-role",       null);
+        allowTpRole      = rc.getString("allowtp-role",      null);
         nameColorMatch   = rc.getBoolean("name-color-match", false);
         if (rc.isConfigurationSection("roles")) {
             for (String name : rc.getConfigurationSection("roles").getKeys(false)) {
@@ -162,6 +164,7 @@ public class RoleManager {
         if (banRole          != null) c.set("ban-role",          banRole);
         if (ecSeeRole        != null) c.set("ecsee-role",        ecSeeRole);
         if (invSeeRole       != null) c.set("invsee-role",       invSeeRole);
+        if (allowTpRole      != null) c.set("allowtp-role",      allowTpRole);
         c.set("name-color-match", nameColorMatch);
         for (Map.Entry<String, String> e : roles.entrySet()) {
             c.set("roles." + e.getKey() + ".prefix", e.getValue());
@@ -262,7 +265,8 @@ public class RoleManager {
         roles.remove(name);
         roleWeights.remove(name);
         playerRoles.values().removeIf(r -> r.equals(name));
-        if (name.equals(joinRole)) joinRole = null;
+        if (name.equals(joinRole))     joinRole     = null;
+        if (name.equals(allowTpRole))  allowTpRole  = null;
         roleLinks.remove(name);
         blockedCmds.remove(name);
         allowedCmds.remove(name);

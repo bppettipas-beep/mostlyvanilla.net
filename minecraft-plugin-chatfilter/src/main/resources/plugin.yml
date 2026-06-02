@@ -1,0 +1,23 @@
+name: MostlyVanillaChatFilter
+version: ${project.version}
+main: com.mostlyvanilla.chatfilter.MostlyVanillaChatFilter
+api-version: '1.20'
+description: Chat filter with configurable punishments for Mostly Vanilla
+
+commands:
+  chatfilter:
+    description: Manage the chat filter
+    usage: /chatfilter reload
+    permission: mv.chatfilter.admin
+  cf:
+    description: Alias for /chatfilter
+    usage: /cf reload
+    permission: mv.chatfilter.admin
+
+permissions:
+  mv.chatfilter.admin:
+    description: Manage the chat filter and receive staff notifications
+    default: op
+  mv.chatfilter.bypass:
+    description: Bypass the chat filter entirely
+    default: false

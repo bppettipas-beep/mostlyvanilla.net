@@ -572,6 +572,31 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
                 }
             }
 
+            case "allowtp" -> {
+                if (args.length < 2) {
+                    String current = rm.getAllowTpRole();
+                    sender.sendMessage(Component.text("Allow-TP role: ", NamedTextColor.GREEN)
+                        .append(current != null
+                            ? Component.text(current, NamedTextColor.WHITE)
+                            : Component.text("none (nobody gets force-TP access via role)", NamedTextColor.GRAY)));
+                    sender.sendMessage(Component.text("Usage: /role allowtp <role|disable>", NamedTextColor.GRAY));
+                    return true;
+                }
+                if (args[1].equalsIgnoreCase("disable")) {
+                    rm.clearAllowTpRole();
+                    sender.sendMessage(Component.text("Allow-TP role cleared — force-TP access is now permission-only.", NamedTextColor.YELLOW));
+                } else {
+                    String roleName = args[1].toLowerCase();
+                    if (rm.setAllowTpRole(roleName)) {
+                        sender.sendMessage(Component.text("Players with role ", NamedTextColor.GREEN)
+                            .append(Component.text(roleName, NamedTextColor.WHITE))
+                            .append(Component.text(" or higher priority can now use force TPs.", NamedTextColor.GREEN)));
+                    } else {
+                        sender.sendMessage(Component.text("Role '" + roleName + "' does not exist.", NamedTextColor.RED));
+                    }
+                }
+            }
+
             case "namecolormatch" -> {
                 boolean now = rm.toggleNameColorMatch();
                 sender.sendMessage(Component.text("Name color match: ", NamedTextColor.GREEN)
@@ -675,6 +700,7 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("  /role addban <role|disable>    ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to ban players", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role addecsee <role|disable>  ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to use /checkec", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role addinvsee <role|disable> ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to use /invsee", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role allowtp <role|disable>   ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to use force TPs", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role namecolormatch           ", NamedTextColor.WHITE).append(Component.text("Toggle: color player names in chat to match role color", NamedTextColor.GRAY)));
     }
 }

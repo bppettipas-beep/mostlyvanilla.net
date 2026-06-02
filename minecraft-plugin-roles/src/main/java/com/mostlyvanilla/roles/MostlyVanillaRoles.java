@@ -17,7 +17,6 @@ public class MostlyVanillaRoles extends JavaPlugin {
     public void onEnable() {
         instance = this;
         getDataFolder().mkdirs();
-        saveDefaultConfig();
 
         roleManager = new RoleManager(this);
         roleManager.load();

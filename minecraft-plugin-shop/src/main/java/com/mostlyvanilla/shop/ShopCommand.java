@@ -12,10 +12,12 @@ import java.util.List;
 
 public class ShopCommand implements CommandExecutor, TabCompleter {
 
-    private final ShopManager manager;
+    private final ShopManager shopManager;
+    private final SellManager sellManager;
 
-    public ShopCommand(ShopManager manager) {
-        this.manager = manager;
+    public ShopCommand(ShopManager shopManager, SellManager sellManager) {
+        this.shopManager = shopManager;
+        this.sellManager = sellManager;
     }
 
     @Override
@@ -25,7 +27,8 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(Component.text("You do not have permission.", NamedTextColor.RED));
                 return true;
             }
-            manager.reload();
+            shopManager.reload();
+            sellManager.reload();
             sender.sendMessage(Component.text("Shop config reloaded.", NamedTextColor.GREEN));
             return true;
         }
@@ -34,15 +37,13 @@ public class ShopCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("This command can only be used by players.");
             return true;
         }
-        manager.openMainMenu(player);
+        shopManager.openMainMenu(player);
         return true;
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
-        if (args.length == 1 && sender.isOp()) {
-            return List.of("reload");
-        }
+        if (args.length == 1 && sender.isOp()) return List.of("reload");
         return List.of();
     }
 }

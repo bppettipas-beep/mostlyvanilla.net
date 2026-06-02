@@ -1,0 +1,99 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  MostlyVanilla ChatFilter  –  config.yml
+# ─────────────────────────────────────────────────────────────────────────────
+#
+#  HOW ACTIONS WORK
+#  ────────────────
+#  Each word category has an "actions" list. The list is indexed by how many
+#  times that player has violated that specific word:
+#
+#    Violation 1 → actions[0]
+#    Violation 2 → actions[1]
+#    Violation 3 → actions[2]
+#    … and so on.
+#
+#  If the player violates more times than there are entries, the LAST entry
+#  in the list is repeated forever.
+#
+#  AVAILABLE ACTIONS
+#  ─────────────────
+#    warn              – warn the player in chat (message is still blocked)
+#    mute:<duration>   – mute via the filter (30s, 5m, 2h, 7d, perm)
+#    kick              – kick from server
+#    ban               – permanently ban from server
+#
+#  DURATION FORMAT:  30s  5m  2h  7d  perm
+#
+#  Set "enabled: false" on any category to turn it off without deleting config.
+#  Violation counts reset when the server restarts.
+# ─────────────────────────────────────────────────────────────────────────────
+
+words:
+
+  # Racial slur (n-word) — harshest escalation
+  nigger_slur:
+    enabled: true
+    actions:
+      - warn
+      - mute:30m
+      - kick
+      - ban
+
+  # F-word
+  fuck:
+    enabled: true
+    actions:
+      - warn
+      - warn
+      - mute:10m
+      - kick
+
+  # S-word
+  shit:
+    enabled: true
+    actions:
+      - warn
+      - warn
+      - warn
+      - mute:30m
+      - kick
+
+  # B-word
+  bitch:
+    enabled: true
+    actions:
+      - warn
+      - warn
+      - mute:10m
+      - kick
+
+  # C-word
+  cunt:
+    enabled: true
+    actions:
+      - warn
+      - mute:30m
+      - kick
+      - ban
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  MESSAGES  —  use & for color codes, {placeholders} listed below each entry
+# ─────────────────────────────────────────────────────────────────────────────
+messages:
+  # Sent to the player who was warned.  {warning}  {word}
+  warned: "&cWarning &f{warning}&c: Watch your language! &7(category: {word})"
+
+  # Sent to the player when they are muted.  {duration}
+  muted: "&cYou have been muted for &f{duration} &cfor using prohibited language."
+
+  # Shown to the muted player when they try to chat.  {remaining}
+  still_muted: "&cYou are muted by the chat filter. &7({remaining} remaining)"
+
+  # Kick screen message (no color codes — plain text only)
+  kicked_message: "Kicked: Prohibited language."
+
+  # Ban screen message (plain text)
+  banned_message: "Banned: Repeated language violations."
+
+  # Notification sent to all online staff (mv.chatfilter.admin).  {player}  {word}  {action}  {warning}
+  staff_notify: "&8[&cFilter&8] &7{player} &8» &c{word} &7(action: {action}, violation #{warning})"

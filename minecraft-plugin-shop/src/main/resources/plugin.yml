@@ -6,3 +6,9 @@ commands:
   shop:
     description: Open the Mostly Vanilla shop
     usage: /shop [reload]
+  sell:
+    description: Sell item in hand, or /sell all to sell entire inventory
+    usage: /sell [all]
+  worth:
+    description: Browse item sell prices
+    usage: /worth

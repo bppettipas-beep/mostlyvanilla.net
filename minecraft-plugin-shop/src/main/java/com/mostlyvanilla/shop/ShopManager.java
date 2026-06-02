@@ -256,7 +256,7 @@ public class ShopManager {
         if (item.amount() > 1) {
             lore.add(parseName("&7Amount: &f" + item.amount()));
         }
-        lore.add(parseName("&7Price: &e" + formatPrice(item.price()) + " &7" + bridge.getCurrency()));
+        lore.add(parseName("&7Price: &e" + bridge.getSymbol() + formatPrice(item.price())));
         lore.add(parseName("&aLeft-click to purchase"));
         for (String line : item.lore()) {
             lore.add(parseName(line));
@@ -305,8 +305,8 @@ public class ShopManager {
         if (totalAmount > 1) {
             lore.add(parseName("&7Amount: &f" + totalAmount));
         }
-        lore.add(parseName("&7Unit price: &e" + formatPrice(item.price()) + " &7" + bridge.getCurrency()));
-        lore.add(parseName("&7Total: &e" + formatPrice(item.price() * qty) + " &7" + bridge.getCurrency()));
+        lore.add(parseName("&7Unit price: &e" + bridge.getSymbol() + formatPrice(item.price())));
+        lore.add(parseName("&7Total: &e" + bridge.getSymbol() + formatPrice(item.price() * qty)));
         for (String line : item.lore()) {
             lore.add(parseName(line));
         }
@@ -323,7 +323,7 @@ public class ShopManager {
         if (item.amount() > 1) {
             lore.add(parseName("&7Items: &f" + (item.amount() * qty)));
         }
-        lore.add(parseName("&7Total cost: &e" + formatPrice(item.price() * qty) + " &7" + bridge.getCurrency()));
+        lore.add(parseName("&7Total cost: &e" + bridge.getSymbol() + formatPrice(item.price() * qty)));
         meta.lore(lore);
         paper.setItemMeta(meta);
         return paper;
@@ -428,9 +428,9 @@ public class ShopManager {
         if (bal < total) {
             player.sendMessage(Component.text("Insufficient funds. Need ")
                 .color(NamedTextColor.RED)
-                .append(Component.text(formatPrice(total) + " " + bridge.getCurrency(), NamedTextColor.YELLOW))
+                .append(Component.text(bridge.getSymbol() + formatPrice(total), NamedTextColor.YELLOW))
                 .append(Component.text(", you have ", NamedTextColor.RED))
-                .append(Component.text(formatPrice(bal) + " " + bridge.getCurrency() + ".", NamedTextColor.YELLOW)));
+                .append(Component.text(bridge.getSymbol() + formatPrice(bal) + ".", NamedTextColor.YELLOW)));
             return;
         }
 
@@ -463,7 +463,7 @@ public class ShopManager {
             .color(NamedTextColor.GREEN)
             .append(Component.text(totalAmount + "x " + itemName, NamedTextColor.WHITE))
             .append(Component.text(" for ", NamedTextColor.GREEN))
-            .append(Component.text(formatPrice(total) + " " + bridge.getCurrency() + ".", NamedTextColor.YELLOW)));
+            .append(Component.text(bridge.getSymbol() + formatPrice(total) + ".", NamedTextColor.YELLOW)));
 
         player.playSound(player.getLocation(),
             org.bukkit.Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);

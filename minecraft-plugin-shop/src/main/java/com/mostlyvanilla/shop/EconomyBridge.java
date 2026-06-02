@@ -16,6 +16,10 @@ public class EconomyBridge {
         return plugin.getConfig().getString("currency", "coins");
     }
 
+    public String getSymbol() {
+        return plugin.getConfig().getString("currency-symbol", "$");
+    }
+
     public double getBalance(UUID uuid) {
         org.bukkit.plugin.Plugin econ = plugin.getServer().getPluginManager().getPlugin("MostlyVanillaEconomy");
         if (econ == null) return 0.0;
@@ -27,6 +31,18 @@ public class EconomyBridge {
         } catch (Exception e) {
             plugin.getLogger().warning("[Shop] Failed to get balance: " + e.getMessage());
             return 0.0;
+        }
+    }
+
+    public void deposit(UUID uuid, double amount) {
+        org.bukkit.plugin.Plugin econ = plugin.getServer().getPluginManager().getPlugin("MostlyVanillaEconomy");
+        if (econ == null) return;
+        try {
+            Object em = econ.getClass().getMethod("getEconomyManager").invoke(econ);
+            em.getClass().getMethod("giveBalance", UUID.class, String.class, double.class)
+                .invoke(em, uuid, getCurrency(), amount);
+        } catch (Exception e) {
+            plugin.getLogger().warning("[Shop] Failed to deposit balance: " + e.getMessage());
         }
     }
 
