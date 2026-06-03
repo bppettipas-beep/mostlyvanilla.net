@@ -30,6 +30,13 @@ public class CommandListener implements Listener {
         String msg = event.getMessage(); // e.g. "/tpa overworld"
         String cmd = msg.startsWith("/") ? msg.substring(1) : msg;
 
+        if (rm.isDutyRequired(player.getUniqueId()) && !rm.isOnDuty(player.getUniqueId())
+                && rm.isDutyGatedCommand(cmd)) {
+            event.setCancelled(true);
+            player.sendMessage(Component.text("You must be on duty to use staff commands. Type /duty to go on duty.", NamedTextColor.RED));
+            return;
+        }
+
         if (rm.isCommandBlocked(roleName, cmd) && !rm.hasRolePermission(player.getUniqueId(), cmd)) {
             event.setCancelled(true);
             player.sendMessage(Component.text("Unknown command.", NamedTextColor.RED));
@@ -45,6 +52,8 @@ public class CommandListener implements Listener {
         String roleName = rm.getPlayerRole(player.getUniqueId());
         if (roleName == null) return;
 
-        event.getCommands().removeIf(cmd -> rm.isCommandBlocked(roleName, cmd) && !rm.hasRolePermission(player.getUniqueId(), cmd));
+        event.getCommands().removeIf(cmd ->
+            (rm.isDutyRequired(player.getUniqueId()) && !rm.isOnDuty(player.getUniqueId()) && rm.isDutyGatedCommand(cmd))
+            || (rm.isCommandBlocked(roleName, cmd) && !rm.hasRolePermission(player.getUniqueId(), cmd)));
     }
 }

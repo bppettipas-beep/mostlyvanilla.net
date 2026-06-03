@@ -1,7 +1,9 @@
 package com.mostlyvanilla.spawn.listeners;
 
+import com.mostlyvanilla.roles.MostlyVanillaRoles;
 import com.mostlyvanilla.spawn.MostlyVanillaSpawn;
 import com.mostlyvanilla.spawn.SpawnManager;
+import org.bukkit.plugin.Plugin;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
@@ -36,6 +38,14 @@ public class SpawnListener implements Listener {
         return plugin.getSpawnManager().isInSpawnWorld(loc);
     }
 
+    private boolean canTpToSpawn(Player player) {
+        Plugin rolesPlugin = plugin.getServer().getPluginManager().getPlugin("MostlyVanillaRoles");
+        if (rolesPlugin instanceof MostlyVanillaRoles roles) {
+            return roles.getRoleManager().canUseTp(player.getUniqueId());
+        }
+        return false;
+    }
+
     // ── Teleport / movement ───────────────────────────────────────────────────
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -45,6 +55,7 @@ public class SpawnListener implements Listener {
         Location to = event.getTo();
         if (to == null || !sm.isInSpawnWorld(to)) return;
         if (player.hasPermission("mostlyvanilla.spawn.admin")) return;
+        if (canTpToSpawn(player)) return;
         if (sm.consumeTeleportFlag(player.getUniqueId())) return;
         event.setCancelled(true);
         player.sendMessage(Component.text("You can only reach spawn via /spawn.", NamedTextColor.RED));

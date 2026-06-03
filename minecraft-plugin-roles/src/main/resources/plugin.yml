@@ -12,6 +12,12 @@ commands:
   role:
     description: Manage player roles
     usage: /role <create|delete|assign|remove|list|info>
+  duty:
+    description: Toggle on/off duty status to enable or disable staff permissions
+    usage: /duty
+  dutyrequire:
+    description: Set which role threshold must use /duty before using staff commands
+    usage: /dutyrequire <role|disable>
 
 permissions:
   mostlyvanilla.roles.admin:

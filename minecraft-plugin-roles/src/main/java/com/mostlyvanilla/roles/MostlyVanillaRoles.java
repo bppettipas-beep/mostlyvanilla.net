@@ -1,5 +1,7 @@
 package com.mostlyvanilla.roles;
 
+import com.mostlyvanilla.roles.commands.DutyCommand;
+import com.mostlyvanilla.roles.commands.DutyRequireCommand;
 import com.mostlyvanilla.roles.commands.RoleCommand;
 import com.mostlyvanilla.roles.listeners.ChatListener;
 import com.mostlyvanilla.roles.listeners.ChatLogListener;
@@ -30,6 +32,16 @@ public class MostlyVanillaRoles extends JavaPlugin {
             var executor = new RoleCommand(this);
             roleCmd.setExecutor(executor);
             roleCmd.setTabCompleter(executor);
+        }
+
+        var dutyCmd = getCommand("duty");
+        if (dutyCmd != null) dutyCmd.setExecutor(new DutyCommand(this));
+
+        var dutyRequireCmd = getCommand("dutyrequire");
+        if (dutyRequireCmd != null) {
+            var dr = new DutyRequireCommand(this);
+            dutyRequireCmd.setExecutor(dr);
+            dutyRequireCmd.setTabCompleter(dr);
         }
 
         getServer().getPluginManager().registerEvents(new ChatListener(this), this);

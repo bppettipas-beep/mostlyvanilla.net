@@ -4,6 +4,7 @@ import com.mostlyvanilla.spawn.commands.BlockHereCommand;
 import com.mostlyvanilla.spawn.commands.SpawnDropCommand;
 import com.mostlyvanilla.spawn.commands.HologramCommand;
 import com.mostlyvanilla.spawn.commands.NpcCommand;
+import com.mostlyvanilla.spawn.commands.LeaveCommand;
 import com.mostlyvanilla.spawn.commands.SpawnCommand;
 import com.mostlyvanilla.spawn.listeners.NpcListener;
 import com.mostlyvanilla.spawn.listeners.SpawnListener;
@@ -49,6 +50,7 @@ public class MostlyVanillaSpawn extends JavaPlugin {
         getCommand("spawndrop1").setExecutor(new SpawnDropCommand(this, 1));
         getCommand("spawndrop2").setExecutor(new SpawnDropCommand(this, 2));
         getCommand("hologram").setExecutor(new HologramCommand(this));
+        getCommand("leave").setExecutor(new LeaveCommand(this));
 
         getServer().getPluginManager().registerEvents(new SpawnListener(this), this);
 

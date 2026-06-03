@@ -40,9 +40,10 @@ public class RoleManager {
     private String  banRole           = null;
     private String  ecSeeRole         = null;
     private String  invSeeRole        = null;
-    private String  allowTpRole       = null;
     private boolean nameColorMatch    = false;
+    private String  dutyRole          = null;
 
+    private final Set<UUID>                 onDutyPlayers = new HashSet<>();
     private final Map<String, Set<String>> blockedCmds  = new HashMap<>(); // role → blocked prefixes
     private final Map<String, Set<String>> allowedCmds  = new HashMap<>(); // role → allowed prefixes (block-all exceptions)
     private final Set<String>              blockAllRoles = new HashSet<>(); // roles with all commands blocked
@@ -85,8 +86,8 @@ public class RoleManager {
         banRole          = rc.getString("ban-role",          null);
         ecSeeRole        = rc.getString("ecsee-role",        null);
         invSeeRole       = rc.getString("invsee-role",       null);
-        allowTpRole      = rc.getString("allowtp-role",      null);
         nameColorMatch   = rc.getBoolean("name-color-match", false);
+        dutyRole         = rc.getString("duty-role",         null);
         if (rc.isConfigurationSection("roles")) {
             for (String name : rc.getConfigurationSection("roles").getKeys(false)) {
                 roles.put(name, rc.getString("roles." + name + ".prefix", ""));
@@ -164,8 +165,8 @@ public class RoleManager {
         if (banRole          != null) c.set("ban-role",          banRole);
         if (ecSeeRole        != null) c.set("ecsee-role",        ecSeeRole);
         if (invSeeRole       != null) c.set("invsee-role",       invSeeRole);
-        if (allowTpRole      != null) c.set("allowtp-role",      allowTpRole);
         c.set("name-color-match", nameColorMatch);
+        if (dutyRole         != null) c.set("duty-role",         dutyRole);
         for (Map.Entry<String, String> e : roles.entrySet()) {
             c.set("roles." + e.getKey() + ".prefix", e.getValue());
             c.set("roles." + e.getKey() + ".weight", roleWeights.getOrDefault(e.getKey(), 50));
@@ -267,6 +268,7 @@ public class RoleManager {
         playerRoles.values().removeIf(r -> r.equals(name));
         if (name.equals(joinRole))     joinRole     = null;
         if (name.equals(allowTpRole))  allowTpRole  = null;
+        if (name.equals(dutyRole))     dutyRole     = null;
         roleLinks.remove(name);
         blockedCmds.remove(name);
         allowedCmds.remove(name);
@@ -828,6 +830,58 @@ public class RoleManager {
         if (playerRole == null) return false;
         Integer playerWeight = roleWeights.get(playerRole);
         return playerWeight != null && playerWeight <= threshold;
+    }
+
+    // ── Duty system ──────────────────────────────────────────────────────────
+
+    public boolean setDutyRole(String name) {
+        if (!roles.containsKey(name)) return false;
+        dutyRole = name; saveRoles(); return true;
+    }
+
+    public void clearDutyRole() { dutyRole = null; saveRoles(); }
+
+    public String getDutyRole() { return dutyRole; }
+
+    /** True if the player's role is at or above the duty threshold (lower weight = higher rank). */
+    public boolean isDutyRequired(UUID uuid) {
+        if (dutyRole == null) return false;
+        Integer threshold = roleWeights.get(dutyRole);
+        if (threshold == null) return false;
+        String playerRole = playerRoles.get(uuid);
+        if (playerRole == null) return false;
+        Integer playerWeight = roleWeights.get(playerRole);
+        return playerWeight != null && playerWeight <= threshold;
+    }
+
+    public boolean isOnDuty(UUID uuid) { return onDutyPlayers.contains(uuid); }
+
+    /** Toggles duty status. Returns true if now on duty, false if now off duty. */
+    public boolean toggleDuty(UUID uuid) {
+        if (onDutyPlayers.remove(uuid)) return false;
+        onDutyPlayers.add(uuid);
+        return true;
+    }
+
+    public void clearDutyStatus(UUID uuid) { onDutyPlayers.remove(uuid); }
+
+    /** True if the command is a staff command gated by one of the configured role thresholds. */
+    public boolean isDutyGatedCommand(String input) {
+        String cmd = input.toLowerCase();
+        if (cmd.startsWith("/")) cmd = cmd.substring(1);
+        if (cmdMatches("gmc", cmd) || cmdMatches("gms", cmd) ||
+            cmdMatches("gmsp", cmd) || cmdMatches("gma", cmd)) return true;
+        if (staffRole != null && cmdMatches("staff", cmd)) return true;
+        if (muteRole != null && (cmdMatches("mute", cmd) || cmdMatches("unmute", cmd) ||
+            cmdMatches("tempmute", cmd))) return true;
+        if (banRole != null && (cmdMatches("ban", cmd) || cmdMatches("tempban", cmd) ||
+            cmdMatches("banip", cmd) || cmdMatches("unban", cmd))) return true;
+        if (flyRole != null && (cmdMatches("fly", cmd) || cmdMatches("allowfly", cmd))) return true;
+        if (allowTpRole != null && (cmdMatches("tp", cmd) || cmdMatches("teleport", cmd))) return true;
+        if (announcementRole != null && (cmdMatches("announcement", cmd) || cmdMatches("announce", cmd))) return true;
+        if (ecSeeRole != null && cmdMatches("checkec", cmd)) return true;
+        if (invSeeRole != null && cmdMatches("invsee", cmd)) return true;
+        return false;
     }
 
     public Map<String, Integer> getRoleWeights() { return Collections.unmodifiableMap(roleWeights); }
