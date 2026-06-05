@@ -1,0 +1,18 @@
+# Currency to reward players with (must match a currency in MostlyVanillaEconomy)
+currency: coins
+
+# How much currency to give per interval
+amount: 10.0
+
+# How often (in seconds) to pay players in the zone
+interval-seconds: 60
+
+zone:
+  enabled: false
+  world: world
+  x1: 0.0
+  y1: 64.0
+  z1: 0.0
+  x2: 0.0
+  y2: 64.0
+  z2: 0.0

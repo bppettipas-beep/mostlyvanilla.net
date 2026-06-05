@@ -230,6 +230,7 @@ public class StaffManager {
             }
             case BAN -> {
                 if (!canBan(staff.getUniqueId())) { err(staff, "You don't have permission to ban players."); return; }
+                if (name.equals("Unknown")) { err(staff, "Cannot ban: player name is unknown."); return; }
                 Bukkit.getBanList(BanList.Type.NAME)
                     .addBan(name, "Banned by " + staff.getName(), null, staff.getName());
                 if (target != null)
@@ -324,11 +325,11 @@ public class StaffManager {
 
     private boolean canBan(UUID uuid) {
         Plugin rolesPlugin = Bukkit.getPluginManager().getPlugin("MostlyVanillaRoles");
-        if (rolesPlugin == null) return true;
+        if (rolesPlugin == null) return false;
         try {
             Object rm = rolesPlugin.getClass().getMethod("getRoleManager").invoke(rolesPlugin);
             return (boolean) rm.getClass().getMethod("canUseBan", UUID.class).invoke(rm, uuid);
-        } catch (Exception e) { return true; }
+        } catch (Exception e) { return false; }
     }
 
     // ── Messaging ─────────────────────────────────────────────────────────────

@@ -1,0 +1,22 @@
+name: MostlyVanillaAuctionHouse
+version: ${project.version}
+main: com.mostlyvanilla.auctionhouse.MostlyVanillaAuctionHouse
+api-version: '1.20'
+description: Auction house and buy orders for Mostly Vanilla
+authors:
+  - MostlyVanilla
+softdepend:
+  - MostlyVanillaEconomy
+
+commands:
+  ah:
+    description: Open the auction house or list an item
+    usage: /ah [sell <price>]
+  orders:
+    description: Open the buy orders board or create an order
+    usage: /orders [create <amount> <price>]
+
+permissions:
+  mostlyvanilla.ah.admin:
+    description: Admin access for the auction house
+    default: op

@@ -7,17 +7,17 @@ import org.bukkit.World;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SpawnerData {
 
     private final String        key;
     private final SpawnerType   type;
     private int                 stack;
-    private final Map<Material, Integer> storage = new HashMap<>();
-    private final Set<Material> disabledDrops    = new HashSet<>();
+    private final Map<Material, Integer> storage = new ConcurrentHashMap<>();
+    private final Set<Material> disabledDrops    = ConcurrentHashMap.newKeySet();
     private int                 xp;
 
     // in-memory only — not persisted

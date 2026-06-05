@@ -14,6 +14,8 @@ public class MostlyVanillaChatFilter extends JavaPlugin {
 
         filterManager = new FilterManager();
         filterManager.loadConfig(getConfig());
+        getDataFolder().mkdirs();
+        filterManager.initData(getDataFolder());
 
         getServer().getPluginManager().registerEvents(
             new ChatFilterListener(this, filterManager), this);

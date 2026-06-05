@@ -1,0 +1,12 @@
+name: MostlyVanillaAfkZone
+version: ${project.version}
+main: com.mostlyvanilla.afkzone.MostlyVanillaAfkZone
+api-version: '1.20'
+description: AFK Zone plugin — earn currency by standing in a configured area
+
+commands:
+  afkzone:
+    description: AFK Zone management (OP only)
+    usage: /afkzone <set1|set2|enable|disable|setcurrency|setamount|setinterval|info|reload>
+    permission: afkzone.admin
+    permission-message: You must be OP to use this command.

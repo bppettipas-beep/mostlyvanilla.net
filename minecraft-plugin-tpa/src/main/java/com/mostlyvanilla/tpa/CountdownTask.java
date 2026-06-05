@@ -41,7 +41,8 @@ public class CountdownTask extends BukkitRunnable {
         // Movement check
         if (cancelOnMove || maxDistSq > 0) {
             Location cur = mover.getLocation();
-            boolean moved = !startLoc.getWorld().equals(cur.getWorld())
+            boolean moved = startLoc.getWorld() == null || cur.getWorld() == null
+                || !startLoc.getWorld().equals(cur.getWorld())
                 || cur.distanceSquared(startLoc) > (cancelOnMove ? 0.0225 : maxDistSq); // 0.15^2 for strict
             if (moved) {
                 cancel();

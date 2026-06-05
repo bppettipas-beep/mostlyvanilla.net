@@ -6,8 +6,11 @@ import org.bukkit.BanList;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -24,6 +27,8 @@ public class FilterManager {
     private final Map<UUID, Map<String, Integer>> violations = new HashMap<>();
     // player UUID → mute expiry epoch ms (-1 = permanent)
     private final Map<UUID, Long> filterMutes = new HashMap<>();
+
+    private File dataFile;
 
     private final List<WordCategory> categories;
 
@@ -178,6 +183,57 @@ public class FilterManager {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    //  DATA PERSISTENCE
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public void initData(File dataFolder) {
+        dataFile = new File(dataFolder, "filter-data.yml");
+        loadData();
+    }
+
+    private void loadData() {
+        if (dataFile == null || !dataFile.exists()) return;
+        YamlConfiguration c = YamlConfiguration.loadConfiguration(dataFile);
+
+        ConfigurationSection vs = c.getConfigurationSection("violations");
+        if (vs != null) {
+            for (String uuidStr : vs.getKeys(false)) {
+                try {
+                    UUID uuid = UUID.fromString(uuidStr);
+                    ConfigurationSection cats = vs.getConfigurationSection(uuidStr);
+                    if (cats == null) continue;
+                    Map<String, Integer> counts = new HashMap<>();
+                    for (String cat : cats.getKeys(false)) counts.put(cat, cats.getInt(cat));
+                    if (!counts.isEmpty()) violations.put(uuid, counts);
+                } catch (IllegalArgumentException ignored) {}
+            }
+        }
+
+        ConfigurationSection ms = c.getConfigurationSection("mutes");
+        if (ms != null) {
+            for (String uuidStr : ms.getKeys(false)) {
+                try {
+                    UUID uuid = UUID.fromString(uuidStr);
+                    long expiry = ms.getLong(uuidStr);
+                    if (expiry == -1L || expiry > System.currentTimeMillis()) filterMutes.put(uuid, expiry);
+                } catch (IllegalArgumentException ignored) {}
+            }
+        }
+    }
+
+    private void saveData() {
+        if (dataFile == null) return;
+        YamlConfiguration c = new YamlConfiguration();
+        for (Map.Entry<UUID, Map<String, Integer>> e : violations.entrySet()) {
+            String base = "violations." + e.getKey();
+            for (Map.Entry<String, Integer> cat : e.getValue().entrySet()) c.set(base + "." + cat.getKey(), cat.getValue());
+        }
+        for (Map.Entry<UUID, Long> e : filterMutes.entrySet()) c.set("mutes." + e.getKey(), e.getValue());
+        try { c.save(dataFile); }
+        catch (IOException ex) { Bukkit.getLogger().warning("[ChatFilter] Could not save filter-data.yml: " + ex.getMessage()); }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     //  NORMALIZATION
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -252,6 +308,7 @@ public class FilterManager {
 
     public void resetViolations(UUID uuid) {
         violations.remove(uuid);
+        saveData();
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -327,6 +384,7 @@ public class FilterManager {
                 .replace("{warning}", String.valueOf(violationNum))
                 .replace("{word}", cat.name)));
         }
+        saveData();
     }
 
     private void notifyStaff(Player player, String category, String action, int violationNum) {

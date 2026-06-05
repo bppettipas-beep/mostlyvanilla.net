@@ -7,6 +7,7 @@ import net.citizensnpcs.trait.SkinTrait;
 import org.bukkit.Location;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.TextDisplay;
 
 import java.io.File;
 import java.io.IOException;
@@ -102,6 +103,34 @@ public class NpcManager {
 
     public String getCommand(int npcId) {
         return commands.get(npcId);
+    }
+
+    /** Called when Citizens spawns an NPC — recreates the hologram if it's missing or stale. */
+    public void onNpcSpawn(NPC npc) {
+        String text = holoTexts.get(npc.getId());
+        if (text == null) return;
+
+        UUID existing = holoEntities.get(npc.getId());
+        if (existing != null) {
+            TextDisplay td = holoManager.getEntity(existing);
+            if (td != null && !td.isDead()) return; // hologram is healthy, nothing to do
+            // Stale reference — clean up before recreating
+            holoManager.removeNpcHologram(existing);
+        }
+
+        Location loc = npc.getEntity() != null
+            ? npc.getEntity().getLocation()
+            : npc.getStoredLocation();
+        if (loc == null || loc.getWorld() == null) return;
+
+        UUID holoId = holoManager.createNpcHologram(loc.clone().add(0, 2.4, 0), text);
+        holoEntities.put(npc.getId(), holoId);
+    }
+
+    /** Called when Citizens despawns an NPC — removes the hologram so it doesn't float in the air. */
+    public void onNpcDespawn(int npcId) {
+        UUID holoId = holoEntities.remove(npcId);
+        if (holoId != null) holoManager.removeNpcHologram(holoId);
     }
 
     private void save() {

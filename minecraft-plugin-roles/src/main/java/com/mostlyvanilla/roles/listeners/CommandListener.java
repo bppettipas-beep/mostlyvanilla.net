@@ -37,7 +37,8 @@ public class CommandListener implements Listener {
             return;
         }
 
-        if (rm.isCommandBlocked(roleName, cmd) && !rm.hasRolePermission(player.getUniqueId(), cmd)) {
+        if (!cmd.equals("duty") && !cmd.equals("dutyrequire")
+                && rm.isCommandBlocked(roleName, cmd) && !rm.hasRolePermission(player.getUniqueId(), cmd)) {
             event.setCancelled(true);
             player.sendMessage(Component.text("Unknown command.", NamedTextColor.RED));
         }
@@ -54,6 +55,7 @@ public class CommandListener implements Listener {
 
         event.getCommands().removeIf(cmd ->
             (rm.isDutyRequired(player.getUniqueId()) && !rm.isOnDuty(player.getUniqueId()) && rm.isDutyGatedCommand(cmd))
-            || (rm.isCommandBlocked(roleName, cmd) && !rm.hasRolePermission(player.getUniqueId(), cmd)));
+            || (!cmd.equals("duty") && !cmd.equals("dutyrequire")
+                && rm.isCommandBlocked(roleName, cmd) && !rm.hasRolePermission(player.getUniqueId(), cmd)));
     }
 }

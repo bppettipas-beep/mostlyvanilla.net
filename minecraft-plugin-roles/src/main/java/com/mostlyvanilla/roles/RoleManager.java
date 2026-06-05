@@ -266,9 +266,16 @@ public class RoleManager {
         roles.remove(name);
         roleWeights.remove(name);
         playerRoles.values().removeIf(r -> r.equals(name));
-        if (name.equals(joinRole))     joinRole     = null;
-        if (name.equals(allowTpRole))  allowTpRole  = null;
-        if (name.equals(dutyRole))     dutyRole     = null;
+        if (name.equals(joinRole))         joinRole         = null;
+        if (name.equals(allowTpRole))      allowTpRole      = null;
+        if (name.equals(dutyRole))         dutyRole         = null;
+        if (name.equals(staffRole))        staffRole        = null;
+        if (name.equals(flyRole))          flyRole          = null;
+        if (name.equals(announcementRole)) announcementRole = null;
+        if (name.equals(muteRole))         muteRole         = null;
+        if (name.equals(banRole))          banRole          = null;
+        if (name.equals(ecSeeRole))        ecSeeRole        = null;
+        if (name.equals(invSeeRole))       invSeeRole       = null;
         roleLinks.remove(name);
         blockedCmds.remove(name);
         allowedCmds.remove(name);
@@ -707,9 +714,9 @@ public class RoleManager {
     public String getBanRole() { return banRole; }
 
     public boolean canUseBan(UUID uuid) {
-        if (banRole == null) return true; // unrestricted when no role set
+        if (banRole == null) return false;
         Integer threshold = roleWeights.get(banRole);
-        if (threshold == null) return true;
+        if (threshold == null) return false;
         String playerRole = playerRoles.get(uuid);
         if (playerRole == null) return false;
         Integer playerWeight = roleWeights.get(playerRole);
@@ -825,7 +832,7 @@ public class RoleManager {
     public boolean canUseStaff(UUID uuid) {
         if (staffRole == null) return true;
         Integer threshold = roleWeights.get(staffRole);
-        if (threshold == null) return true;
+        if (threshold == null) return false;
         String playerRole = playerRoles.get(uuid);
         if (playerRole == null) return false;
         Integer playerWeight = roleWeights.get(playerRole);

@@ -10,11 +10,17 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
+
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PlayerJoinListener implements Listener {
 
     private final MostlyVanillaVerify plugin;
     private static final long REMINDER_INTERVAL_TICKS = 6000L; // 5 minutes
+    private final Map<UUID, BukkitTask> reminderTasks = new ConcurrentHashMap<>();
 
     public PlayerJoinListener(MostlyVanillaVerify plugin) {
         this.plugin = plugin;
@@ -57,14 +63,19 @@ public class PlayerJoinListener implements Listener {
     }
 
     private void scheduleReminders(Player player) {
-        new BukkitRunnable() {
+        UUID uuid = player.getUniqueId();
+        BukkitTask old = reminderTasks.remove(uuid);
+        if (old != null) old.cancel();
+        BukkitTask task = new BukkitRunnable() {
             @Override
             public void run() {
                 if (!player.isOnline()) {
+                    reminderTasks.remove(uuid);
                     cancel();
                     return;
                 }
-                if (plugin.getApiClient().isVerified(player.getUniqueId().toString())) {
+                if (plugin.getApiClient().isVerified(uuid.toString())) {
+                    reminderTasks.remove(uuid);
                     cancel();
                     return;
                 }
@@ -81,5 +92,6 @@ public class PlayerJoinListener implements Listener {
                 }.runTask(plugin);
             }
         }.runTaskTimerAsynchronously(plugin, REMINDER_INTERVAL_TICKS, REMINDER_INTERVAL_TICKS);
+        reminderTasks.put(uuid, task);
     }
 }

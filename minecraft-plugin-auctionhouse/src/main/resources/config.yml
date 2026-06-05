@@ -1,0 +1,14 @@
+currency: money
+currency-symbol: "$"
+
+# How many days a listing stays active before expiring
+listing-duration-days: 7
+
+# Percentage of the sale price taken as tax (e.g. 5 = 5%)
+sale-tax-percent: 5
+
+# Max concurrent active listings per player
+max-listings-per-player: 10
+
+# Max concurrent active buy orders per player
+max-orders-per-player: 5

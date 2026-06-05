@@ -105,10 +105,21 @@ public class HologramManager {
         return true;
     }
 
-    /** Removes an NPC hologram by entity UUID (called by NpcManager on NPC delete). */
+    /** Returns the cached TextDisplay for the given UUID, or null. */
+    public TextDisplay getEntity(UUID uuid) {
+        return live.get(uuid);
+    }
+
+    /** Removes an NPC hologram by entity UUID. Handles stale cached references via server UUID lookup. */
     public void removeNpcHologram(UUID uuid) {
         TextDisplay entity = live.remove(uuid);
-        if (entity != null && !entity.isDead()) entity.remove();
+        if (entity != null && !entity.isDead()) {
+            entity.remove();
+        } else {
+            // Cached reference may be stale after chunk unload/reload — look up by UUID directly
+            Entity byUuid = plugin.getServer().getEntity(uuid);
+            if (byUuid instanceof TextDisplay td) td.remove();
+        }
     }
 
     private UUID spawnEntity(Location loc, String text, boolean standalone) {

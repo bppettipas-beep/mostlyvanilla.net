@@ -1,6 +1,5 @@
 package com.mostlyvanilla.spawn.listeners;
 
-import com.mostlyvanilla.roles.MostlyVanillaRoles;
 import com.mostlyvanilla.spawn.MostlyVanillaSpawn;
 import com.mostlyvanilla.spawn.SpawnManager;
 import org.bukkit.plugin.Plugin;
@@ -26,6 +25,8 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.world.StructureGrowEvent;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.util.UUID;
+
 public class SpawnListener implements Listener {
 
     private final MostlyVanillaSpawn plugin;
@@ -40,10 +41,11 @@ public class SpawnListener implements Listener {
 
     private boolean canTpToSpawn(Player player) {
         Plugin rolesPlugin = plugin.getServer().getPluginManager().getPlugin("MostlyVanillaRoles");
-        if (rolesPlugin instanceof MostlyVanillaRoles roles) {
-            return roles.getRoleManager().canUseTp(player.getUniqueId());
-        }
-        return false;
+        if (rolesPlugin == null) return false;
+        try {
+            Object rm = rolesPlugin.getClass().getMethod("getRoleManager").invoke(rolesPlugin);
+            return (boolean) rm.getClass().getMethod("canUseTp", UUID.class).invoke(rm, player.getUniqueId());
+        } catch (Exception e) { return false; }
     }
 
     // ── Teleport / movement ───────────────────────────────────────────────────
@@ -77,7 +79,7 @@ public class SpawnListener implements Listener {
             player.sendMessage(Component.text("Teleportation cancelled — you moved.", NamedTextColor.RED));
         }
 
-        if (!sm.isInSpawnWorld(player.getLocation())) return;
+        if (!sm.isInSpawnWorld(event.getFrom())) return;
         if (player.hasPermission("mostlyvanilla.spawn.admin")) return;
 
         if (to.getY() < -10 && sm.isSpawnSet()) {

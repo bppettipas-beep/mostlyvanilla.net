@@ -2,6 +2,7 @@ package com.mostlyvanilla.spawn;
 
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -56,6 +57,27 @@ public class SpawnManager {
             dropMaxX = c.getDouble("drop-zone.max-x");
             dropMinZ = c.getDouble("drop-zone.min-z");
             dropMaxZ = c.getDouble("drop-zone.max-z");
+        }
+
+        ConfigurationSection ow = c.getConfigurationSection("last-overworld");
+        if (ow != null) {
+            for (String uuidStr : ow.getKeys(false)) {
+                try {
+                    UUID uuid = UUID.fromString(uuidStr);
+                    String worldName = c.getString("last-overworld." + uuidStr + ".world");
+                    org.bukkit.World w = worldName != null ? org.bukkit.Bukkit.getWorld(worldName) : null;
+                    if (w != null) {
+                        lastOverworld.put(uuid, new Location(
+                            w,
+                            c.getDouble("last-overworld." + uuidStr + ".x"),
+                            c.getDouble("last-overworld." + uuidStr + ".y"),
+                            c.getDouble("last-overworld." + uuidStr + ".z"),
+                            (float) c.getDouble("last-overworld." + uuidStr + ".yaw"),
+                            (float) c.getDouble("last-overworld." + uuidStr + ".pitch")
+                        ));
+                    }
+                } catch (IllegalArgumentException ignored) {}
+            }
         }
     }
 
@@ -126,6 +148,17 @@ public class SpawnManager {
             c.set("drop-zone.min-z", dropMinZ);
             c.set("drop-zone.max-z", dropMaxZ);
         }
+        for (Map.Entry<UUID, Location> e : lastOverworld.entrySet()) {
+            String base = "last-overworld." + e.getKey();
+            Location l = e.getValue();
+            if (l.getWorld() == null) continue;
+            c.set(base + ".world", l.getWorld().getName());
+            c.set(base + ".x",     l.getX());
+            c.set(base + ".y",     l.getY());
+            c.set(base + ".z",     l.getZ());
+            c.set(base + ".yaw",   (double) l.getYaw());
+            c.set(base + ".pitch", (double) l.getPitch());
+        }
         try { c.save(dataFile); }
         catch (IOException e) { plugin.getLogger().warning("Could not save spawn.yml: " + e.getMessage()); }
     }
@@ -136,7 +169,10 @@ public class SpawnManager {
 
     /** Call this BEFORE teleporting a player to spawn so /leave can send them back. */
     public void saveLastOverworld(UUID uuid, Location loc) {
-        if (!isInSpawnWorld(loc)) lastOverworld.put(uuid, loc.clone());
+        if (!isInSpawnWorld(loc)) {
+            lastOverworld.put(uuid, loc.clone());
+            save();
+        }
     }
 
     /**
