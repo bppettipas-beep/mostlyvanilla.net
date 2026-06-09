@@ -203,10 +203,6 @@ async function handleApply(interaction, roleId) {
     sessions.delete(interaction.user.id);
   }
 
-  const pending = staffappApplications.getPending.get(interaction.guildId, interaction.user.id);
-  if (pending)
-    return interaction.reply({ embeds: [warning('Already applied', 'You already have a pending application under review. Please wait for a decision.')], ephemeral: true });
-
   const questions = JSON.parse(cfg.questions ?? '[]');
   if (!questions.length)
     return interaction.reply({ embeds: [error('Not configured', 'No application questions have been set up.')], ephemeral: true });
