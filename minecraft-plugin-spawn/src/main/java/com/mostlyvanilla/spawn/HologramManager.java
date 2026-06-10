@@ -191,15 +191,31 @@ public class HologramManager {
     public void load(World spawnWorld) {
         dataFile = new File(plugin.getDataFolder(), "hologram-data.yml");
 
-        // Sweep any surviving tagged entities (handles /reload and edge cases)
-        for (Entity e : spawnWorld.getEntities()) {
-            if (e instanceof TextDisplay && e.getScoreboardTags().contains(TAG)) e.remove();
+        // Read YAML first so we know which chunks to pre-load
+        List<Map<?, ?>> entries = new ArrayList<>();
+        if (dataFile.exists()) {
+            YamlConfiguration c = YamlConfiguration.loadConfiguration(dataFile);
+            entries = new ArrayList<>(c.getMapList("holograms"));
         }
 
-        if (!dataFile.exists()) return;
+        // Force-load every chunk that should contain a saved hologram.
+        // Without this, persistent duplicates in unloaded chunks are invisible
+        // to the sweep below and reappear after the sweep runs.
+        for (Map<?, ?> entry : entries) {
+            int cx = (int) Math.floor(((Number) entry.get("x")).doubleValue()) >> 4;
+            int cz = (int) Math.floor(((Number) entry.get("z")).doubleValue()) >> 4;
+            spawnWorld.loadChunk(cx, cz, false);
+        }
 
-        YamlConfiguration c = YamlConfiguration.loadConfiguration(dataFile);
-        for (Map<?, ?> entry : c.getMapList("holograms")) {
+        // Sweep all tagged entities — standalone holograms, NPC holograms, and
+        // any accumulated duplicates are all removed in one pass.
+        // NpcManager re-creates NPC holograms one tick later.
+        for (Entity e : spawnWorld.getEntities()) {
+            if (e instanceof TextDisplay td && td.getScoreboardTags().contains(TAG)) td.remove();
+        }
+
+        // Spawn exactly one entity per saved record
+        for (Map<?, ?> entry : entries) {
             double x    = ((Number) entry.get("x")).doubleValue();
             double y    = ((Number) entry.get("y")).doubleValue();
             double z    = ((Number) entry.get("z")).doubleValue();
