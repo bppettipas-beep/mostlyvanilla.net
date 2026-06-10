@@ -1,0 +1,13 @@
+name: MostlyVanillaCrates
+version: ${project.version}
+main: com.mostlyvanilla.crates.MostlyVanillaCrates
+api-version: '1.20'
+description: Key-based crate plugin for Mostly Vanilla
+softdepend:
+  - MostlyVanillaShop
+
+commands:
+  crate:
+    description: Manage crates
+    usage: /crate <set|remove|list|reload> [type]
+    permission: mostlyvanilla.crates.admin

@@ -18,11 +18,15 @@ import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.EntityToggleGlideEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerPortalEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.world.StructureGrowEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.UUID;
@@ -46,6 +50,23 @@ public class SpawnListener implements Listener {
             Object rm = rolesPlugin.getClass().getMethod("getRoleManager").invoke(rolesPlugin);
             return (boolean) rm.getClass().getMethod("canUseTp", UUID.class).invoke(rm, player.getUniqueId());
         } catch (Exception e) { return false; }
+    }
+
+    // ── Hologram purge GUI ────────────────────────────────────────────────────
+
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        Inventory top = event.getView().getTopInventory();
+        if (!plugin.getHologramManager().isPurgePanel(top)) return;
+        event.setCancelled(true);
+        if (event.getClickedInventory() == top)
+            plugin.getHologramManager().handlePurgeClick(player, top, event.getSlot());
+    }
+
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        plugin.getHologramManager().onPurgeClose(event.getInventory());
     }
 
     // ── Teleport / movement ───────────────────────────────────────────────────
@@ -102,9 +123,20 @@ public class SpawnListener implements Listener {
     @EventHandler
     public void onRespawn(PlayerRespawnEvent event) {
         SpawnManager sm = plugin.getSpawnManager();
-        if (!sm.isInSpawnWorld(event.getPlayer().getLocation())) return;
         if (!sm.isSpawnSet()) return;
         event.setRespawnLocation(sm.getSpawnPoint());
+    }
+
+    @EventHandler
+    public void onFirstJoin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+        if (player.hasPlayedBefore()) return;
+        SpawnManager sm = plugin.getSpawnManager();
+        if (!sm.isSpawnSet()) return;
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            sm.flagTeleport(player.getUniqueId());
+            player.teleport(sm.getSpawnPoint());
+        });
     }
 
     // ── Player block changes ──────────────────────────────────────────────────

@@ -13,6 +13,7 @@ import org.bukkit.plugin.Plugin;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 public class MuteCommand implements CommandExecutor, TabCompleter {
@@ -124,18 +125,46 @@ public class MuteCommand implements CommandExecutor, TabCompleter {
             name = offline.getName() != null ? offline.getName() : targetName;
         }
 
-        if (!muteManager.isMuted(uuid)) {
+        boolean staffMuted  = muteManager.isMuted(uuid);
+        boolean filterMuted = isFilterMuted(uuid);
+
+        if (!staffMuted && !filterMuted) {
             sender.sendMessage(Component.text(name + " is not muted.", NamedTextColor.YELLOW));
             return;
         }
 
-        muteManager.unmute(uuid);
+        if (staffMuted)  muteManager.unmute(uuid);
+        if (filterMuted) clearFilterMute(uuid);
+
         sender.sendMessage(Component.text("✔ Unmuted ", NamedTextColor.GREEN)
             .append(Component.text(name, NamedTextColor.WHITE))
             .append(Component.text(".", NamedTextColor.GREEN)));
 
         if (target != null)
             target.sendMessage(Component.text("You have been unmuted.", NamedTextColor.GREEN));
+    }
+
+    private boolean isFilterMuted(UUID uuid) {
+        Plugin fp = Bukkit.getPluginManager().getPlugin("MostlyVanillaChatFilter");
+        if (fp == null) return false;
+        try {
+            Object fm = fp.getClass().getMethod("getFilterManager").invoke(fp);
+            return (boolean) fm.getClass().getMethod("isFilterMuted", UUID.class).invoke(fm, uuid);
+        } catch (Exception e) {
+            Bukkit.getLogger().log(Level.WARNING, "[Mute] Could not check filter mute", e);
+            return false;
+        }
+    }
+
+    private void clearFilterMute(UUID uuid) {
+        Plugin fp = Bukkit.getPluginManager().getPlugin("MostlyVanillaChatFilter");
+        if (fp == null) return;
+        try {
+            Object fm = fp.getClass().getMethod("getFilterManager").invoke(fp);
+            fm.getClass().getMethod("removeFilterMute", UUID.class).invoke(fm, uuid);
+        } catch (Exception e) {
+            Bukkit.getLogger().log(Level.WARNING, "[Mute] Could not clear filter mute", e);
+        }
     }
 
     private boolean canMute(CommandSender sender) {

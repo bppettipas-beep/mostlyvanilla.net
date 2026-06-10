@@ -1,0 +1,5 @@
+name: MostlyVanillaCombatLog
+version: ${project.version}
+main: com.mostlyvanilla.combatlog.MostlyVanillaCombatLog
+api-version: '1.20'
+description: Combat tagging — blocks teleports and kills logout cheaters

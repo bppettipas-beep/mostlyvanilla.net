@@ -123,6 +123,7 @@ public class WipeManager {
         String name = data.targetName;
         Player target = Bukkit.getPlayer(uuid);
 
+        notifyUnwipePlugin(uuid, target);
         wipeCurrencies(uuid);
 
         if (target != null) {
@@ -155,6 +156,21 @@ public class WipeManager {
                 .append(Component.text(name, NamedTextColor.YELLOW))
                 .append(Component.text(".", NamedTextColor.WHITE)));
         plugin.getLogger().info("[Wipe] " + staff.getName() + " wiped all data for " + name + " (" + uuid + ")");
+    }
+
+    private void notifyUnwipePlugin(UUID uuid, Player online) {
+        Plugin unwipePlugin = Bukkit.getPluginManager().getPlugin("MostlyVanillaUnwipe");
+        if (unwipePlugin == null) return;
+        try {
+            Object um = unwipePlugin.getClass().getMethod("getUnwipeManager").invoke(unwipePlugin);
+            if (um == null) return;
+            World world = Bukkit.getWorlds().get(0);
+            um.getClass()
+                .getMethod("saveSnapshot", UUID.class, Player.class, File.class)
+                .invoke(um, uuid, online, world.getWorldFolder());
+        } catch (Exception e) {
+            plugin.getLogger().warning("[Wipe] Could not save unwipe snapshot: " + e.getMessage());
+        }
     }
 
     @SuppressWarnings("unchecked")

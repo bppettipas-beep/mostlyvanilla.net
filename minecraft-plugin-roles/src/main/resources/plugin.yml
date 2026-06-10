@@ -18,6 +18,18 @@ commands:
   dutyrequire:
     description: Set which role threshold must use /duty before using staff commands
     usage: /dutyrequire <role|disable>
+  spawnstash:
+    description: Spawn a personal stash room at your location
+    usage: /spawnstash
+  delstash:
+    description: Remove your personal stash room and restore the original blocks
+    usage: /delstash
+  spawnore:
+    description: Spawn an ore vein of your choice at your location
+    usage: /spawnore <ore>
+  delore:
+    description: Remove all ore blocks you spawned with /spawnore and restore original blocks
+    usage: /delore
 
 permissions:
   mostlyvanilla.roles.admin:

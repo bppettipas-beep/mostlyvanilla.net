@@ -12,3 +12,7 @@ commands:
     description: Enable or disable a dimension for RTP
     usage: /dimensiondisable <world>
     permission: mostlyvanilla.rtp.admin
+  rtprange:
+    description: View or change the RTP min/max radius
+    usage: /rtprange [min] [max]
+    permission: mostlyvanilla.rtp.admin

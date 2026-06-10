@@ -62,11 +62,14 @@ public class RtpManager {
         List<int[]> generated   = new ArrayList<>();
         List<int[]> ungenerated = new ArrayList<>();
 
+        int originX = player.getLocation().getBlockX();
+        int originZ = player.getLocation().getBlockZ();
+
         for (int i = 0; i < maxAttempts; i++) {
             double angle  = random.nextDouble() * 2 * Math.PI;
             int    radius = minR + random.nextInt(Math.max(1, maxR - minR));
-            int    x      = (int) (radius * Math.cos(angle));
-            int    z      = (int) (radius * Math.sin(angle));
+            int    x      = originX + (int) (radius * Math.cos(angle));
+            int    z      = originZ + (int) (radius * Math.sin(angle));
             int[]  coord  = {x, z};
             if (world.isChunkGenerated(x >> 4, z >> 4)) generated.add(coord);
             else                                         ungenerated.add(coord);

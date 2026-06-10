@@ -1,12 +1,19 @@
 package com.mostlyvanilla.roles;
 
+import com.mostlyvanilla.roles.commands.DelOreCommand;
+import com.mostlyvanilla.roles.commands.DelStashCommand;
 import com.mostlyvanilla.roles.commands.DutyCommand;
 import com.mostlyvanilla.roles.commands.DutyRequireCommand;
 import com.mostlyvanilla.roles.commands.RoleCommand;
+import com.mostlyvanilla.roles.commands.SpawnOreCommand;
+import com.mostlyvanilla.roles.commands.SpawnStashCommand;
+import com.mostlyvanilla.roles.ore.OreManager;
 import com.mostlyvanilla.roles.listeners.ChatListener;
 import com.mostlyvanilla.roles.listeners.ChatLogListener;
 import com.mostlyvanilla.roles.listeners.CommandListener;
 import com.mostlyvanilla.roles.listeners.PlayerJoinListener;
+import com.mostlyvanilla.roles.stash.StashManager;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class MostlyVanillaRoles extends JavaPlugin {
@@ -14,6 +21,7 @@ public class MostlyVanillaRoles extends JavaPlugin {
     private static MostlyVanillaRoles instance;
     private RoleManager roleManager;
     private TabManager tabManager;
+    private GlowManager glowManager;
 
     @Override
     public void onEnable() {
@@ -27,6 +35,8 @@ public class MostlyVanillaRoles extends JavaPlugin {
         tabManager.setupPingObjective();
         tabManager.start();
 
+        glowManager = new GlowManager(this);
+
         var roleCmd = getCommand("role");
         if (roleCmd != null) {
             var executor = new RoleCommand(this);
@@ -36,6 +46,22 @@ public class MostlyVanillaRoles extends JavaPlugin {
 
         var dutyCmd = getCommand("duty");
         if (dutyCmd != null) dutyCmd.setExecutor(new DutyCommand(this));
+
+        StashManager stashManager = new StashManager(this);
+        var spawnStashCmd = getCommand("spawnstash");
+        if (spawnStashCmd != null) spawnStashCmd.setExecutor(new SpawnStashCommand(this, stashManager));
+        var delStashCmd = getCommand("delstash");
+        if (delStashCmd != null) delStashCmd.setExecutor(new DelStashCommand(stashManager));
+
+        OreManager oreManager = new OreManager();
+        var spawnOreCmd = getCommand("spawnore");
+        if (spawnOreCmd != null) {
+            var exec = new SpawnOreCommand(this, oreManager);
+            spawnOreCmd.setExecutor(exec);
+            spawnOreCmd.setTabCompleter(exec);
+        }
+        var delOreCmd = getCommand("delore");
+        if (delOreCmd != null) delOreCmd.setExecutor(new DelOreCommand(this, oreManager));
 
         var dutyRequireCmd = getCommand("dutyrequire");
         if (dutyRequireCmd != null) {
@@ -50,6 +76,12 @@ public class MostlyVanillaRoles extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new CommandListener(this), this);
         getServer().getPluginManager().registerEvents(tabManager, this);
 
+        // Repair any player knocked out of their role's scoreboard team by other plugins
+        getServer().getScheduler().runTaskTimer(this, () -> {
+            for (Player p : getServer().getOnlinePlayers())
+                roleManager.syncPlayerTeamIfNeeded(p);
+        }, 60L, 60L);
+
         getLogger().info("MostlyVanillaRoles enabled.");
     }
 
@@ -61,4 +93,5 @@ public class MostlyVanillaRoles extends JavaPlugin {
     public static MostlyVanillaRoles getInstance() { return instance; }
     public RoleManager getRoleManager() { return roleManager; }
     public TabManager getTabManager() { return tabManager; }
+    public GlowManager getGlowManager() { return glowManager; }
 }

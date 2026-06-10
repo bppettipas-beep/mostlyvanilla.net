@@ -1,0 +1,11 @@
+name: MostlyVanillaAntiDupe
+version: ${project.version}
+main: com.mostlyvanilla.antidupe.MostlyVanillaAntiDupe
+api-version: '1.20'
+description: Anti-duplication plugin for Mostly Vanilla
+
+commands:
+  antidupe:
+    description: AntiDupe admin commands
+    usage: /antidupe <clearflags|reload> [player]
+    permission: mostlyvanilla.antidupe.admin

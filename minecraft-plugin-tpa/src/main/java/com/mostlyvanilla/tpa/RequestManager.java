@@ -1,23 +1,20 @@
 package com.mostlyvanilla.tpa;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.event.ClickEvent;
-import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 public class RequestManager {
 
-    // Keyed by requester UUID — waiting for requester to click Confirm
-    private final Map<UUID, TpaRequest> pendingConfirm = new HashMap<>();
-    // Keyed by target UUID — waiting for target to accept/deny
+    // Keyed by target UUID — waiting for target to accept/deny via GUI
     private final Map<UUID, TpaRequest> pendingRequest = new HashMap<>();
 
     private final JavaPlugin plugin;
@@ -25,90 +22,58 @@ public class RequestManager {
     private final int countdownSeconds;
     private final boolean cancelOnMove;
     private final double maxMoveDistance;
-
-    private static final Component BAR = Component.text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━", NamedTextColor.DARK_GRAY);
+    private final SettingsBridge settingsBridge;
 
     public RequestManager(JavaPlugin plugin, long expireSeconds, int countdownSeconds,
                           boolean cancelOnMove, double maxMoveDistance) {
-        this.plugin          = plugin;
-        this.expireMs        = expireSeconds * 1000L;
+        this.plugin           = plugin;
+        this.expireMs         = expireSeconds * 1000L;
         this.countdownSeconds = countdownSeconds;
-        this.cancelOnMove    = cancelOnMove;
-        this.maxMoveDistance = maxMoveDistance;
+        this.cancelOnMove     = cancelOnMove;
+        this.maxMoveDistance  = maxMoveDistance;
+        this.settingsBridge   = new SettingsBridge(plugin.getServer());
     }
 
     // ── Initiate ─────────────────────────────────────────────────────────────
 
     public void initiateRequest(Player requester, Player target, TpaRequest.Type type) {
-        pendingConfirm.put(requester.getUniqueId(),
-            new TpaRequest(requester.getUniqueId(), target.getUniqueId(), type, expireMs));
-
-        String action = type == TpaRequest.Type.TPA
-            ? "Teleport to §e" + target.getName() + "§r?"
-            : "Request §e" + target.getName() + "§r to teleport to you?";
-
-        requester.sendMessage(Component.empty());
-        requester.sendMessage(BAR);
-        requester.sendMessage(Component.text("  " + action, NamedTextColor.WHITE));
-        requester.sendMessage(Component.empty());
-        requester.sendMessage(
-            Component.text("  ")
-                .append(Component.text(" ✔ Confirm ", NamedTextColor.GREEN, TextDecoration.BOLD)
-                    .clickEvent(ClickEvent.runCommand("/tpaconfirm"))
-                    .hoverEvent(HoverEvent.showText(Component.text("Send teleport request", NamedTextColor.GREEN))))
-                .append(Component.text("   "))
-                .append(Component.text(" ✘ Cancel ", NamedTextColor.RED, TextDecoration.BOLD)
-                    .clickEvent(ClickEvent.runCommand("/tpacancel"))
-                    .hoverEvent(HoverEvent.showText(Component.text("Cancel", NamedTextColor.RED))))
-        );
-        requester.sendMessage(BAR);
-        requester.sendMessage(Component.empty());
-    }
-
-    // ── Confirm (requester clicks Confirm) ───────────────────────────────────
-
-    public void confirm(Player requester) {
-        TpaRequest req = pendingConfirm.remove(requester.getUniqueId());
-        if (req == null || req.isExpired()) {
-            requester.sendMessage(Component.text("No pending confirmation.", NamedTextColor.RED));
+        if (pendingRequest.containsKey(target.getUniqueId())) {
+            requester.sendMessage(Component.text(target.getName() + " already has a pending teleport request.", NamedTextColor.RED));
             return;
         }
 
-        Player target = Bukkit.getPlayer(req.getTarget());
-        if (target == null) {
-            requester.sendMessage(Component.text("That player is no longer online.", NamedTextColor.RED));
+        // Auto-accept: bypass GUI and teleport immediately
+        if (settingsBridge.isAutoAccept(target.getUniqueId())) {
+            Player mover = type == TpaRequest.Type.TPA ? requester : target;
+            Player dest  = type == TpaRequest.Type.TPA ? target   : requester;
+            requester.sendMessage(Component.text(target.getName() + " has auto-accept on. Teleporting...", NamedTextColor.GREEN));
+            target.sendMessage(Component.text("Auto-accepted teleport request from " + requester.getName() + ".", NamedTextColor.GREEN));
+            if (countdownSeconds <= 0) {
+                mover.teleport(dest.getLocation());
+            } else {
+                String waitMsg = cancelOnMove ? "Don't move! Teleporting in " : "Teleporting in ";
+                mover.sendMessage(Component.text(waitMsg, NamedTextColor.YELLOW)
+                    .append(Component.text(countdownSeconds + "s", NamedTextColor.WHITE))
+                    .append(Component.text("...", NamedTextColor.YELLOW)));
+                new CountdownTask(mover, dest, countdownSeconds, cancelOnMove, maxMoveDistance)
+                    .runTaskTimer(plugin, 0L, 5L);
+            }
             return;
         }
 
+        TpaRequest req = new TpaRequest(requester.getUniqueId(), target.getUniqueId(), type, expireMs);
         pendingRequest.put(target.getUniqueId(), req);
 
-        String desc = req.getType() == TpaRequest.Type.TPA
-            ? "§e" + requester.getName() + "§r wants to teleport to you."
-            : "§e" + requester.getName() + "§r wants you to teleport to them.";
+        String sentMsg = type == TpaRequest.Type.TPA
+            ? "Teleport request sent to " + target.getName() + "."
+            : "Requested " + target.getName() + " to teleport to you.";
+        requester.sendMessage(Component.text(sentMsg, NamedTextColor.GREEN));
+        requester.sendMessage(Component.text("Use /tpacancel to cancel.", NamedTextColor.GRAY));
 
-        target.sendMessage(Component.empty());
-        target.sendMessage(BAR);
-        target.sendMessage(Component.text("  " + desc, NamedTextColor.WHITE));
-        target.sendMessage(Component.empty());
-        target.sendMessage(
-            Component.text("  ")
-                .append(Component.text(" ✔ Accept ", NamedTextColor.GREEN, TextDecoration.BOLD)
-                    .clickEvent(ClickEvent.runCommand("/tpaccept"))
-                    .hoverEvent(HoverEvent.showText(Component.text("Accept teleport request", NamedTextColor.GREEN))))
-                .append(Component.text("   "))
-                .append(Component.text(" ✘ Deny ", NamedTextColor.RED, TextDecoration.BOLD)
-                    .clickEvent(ClickEvent.runCommand("/tpdeny"))
-                    .hoverEvent(HoverEvent.showText(Component.text("Deny teleport request", NamedTextColor.RED))))
-        );
-        target.sendMessage(BAR);
-        target.sendMessage(Component.empty());
-
-        requester.sendMessage(Component.text("Request sent to ", NamedTextColor.GREEN)
-            .append(Component.text(target.getName(), NamedTextColor.YELLOW))
-            .append(Component.text(".", NamedTextColor.GREEN)));
+        target.openInventory(new TpaGui(req, requester.getName()).getInventory());
     }
 
-    // ── Accept (target clicks Accept) ────────────────────────────────────────
+    // ── Accept (target clicks Accept or types /tpaccept) ─────────────────────
 
     public void accept(Player target) {
         TpaRequest req = pendingRequest.remove(target.getUniqueId());
@@ -138,21 +103,16 @@ public class RequestManager {
             dest.sendMessage(Component.text(mover.getName(), NamedTextColor.YELLOW)
                 .append(Component.text(" teleported to you.", NamedTextColor.GREEN)));
         } else {
-            if (cancelOnMove) {
-                mover.sendMessage(Component.text("Don't move! Teleporting in ", NamedTextColor.YELLOW)
-                    .append(Component.text(countdownSeconds + "s", NamedTextColor.WHITE))
-                    .append(Component.text("...", NamedTextColor.YELLOW)));
-            } else {
-                mover.sendMessage(Component.text("Teleporting in ", NamedTextColor.YELLOW)
-                    .append(Component.text(countdownSeconds + "s", NamedTextColor.WHITE))
-                    .append(Component.text("...", NamedTextColor.YELLOW)));
-            }
+            String waitMsg = cancelOnMove ? "Don't move! Teleporting in " : "Teleporting in ";
+            mover.sendMessage(Component.text(waitMsg, NamedTextColor.YELLOW)
+                .append(Component.text(countdownSeconds + "s", NamedTextColor.WHITE))
+                .append(Component.text("...", NamedTextColor.YELLOW)));
             new CountdownTask(mover, dest, countdownSeconds, cancelOnMove, maxMoveDistance)
-                .runTaskTimer(plugin, 0L, 20L);
+                .runTaskTimer(plugin, 0L, 5L);
         }
     }
 
-    // ── Deny (target clicks Deny) ─────────────────────────────────────────────
+    // ── Deny (target clicks Deny or types /tpdeny) ───────────────────────────
 
     public void deny(Player target) {
         TpaRequest req = pendingRequest.remove(target.getUniqueId());
@@ -169,12 +129,21 @@ public class RequestManager {
         }
     }
 
-    // ── Cancel (requester cancels) ───────────────────────────────────────────
+    // ── Deny (silent — used when target closes the GUI without clicking) ──────
+
+    public void denyQuiet(Player target) {
+        TpaRequest req = pendingRequest.remove(target.getUniqueId());
+        if (req == null) return;
+        Player requester = Bukkit.getPlayer(req.getRequester());
+        if (requester != null) {
+            requester.sendMessage(Component.text(target.getName(), NamedTextColor.YELLOW)
+                .append(Component.text(" declined your teleport request.", NamedTextColor.RED)));
+        }
+    }
+
+    // ── Cancel (requester types /tpacancel) ──────────────────────────────────
 
     public void cancel(Player requester) {
-        boolean removed = pendingConfirm.remove(requester.getUniqueId()) != null;
-
-        // Find and remove any pending request this player sent
         UUID targetUuid = null;
         for (Map.Entry<UUID, TpaRequest> entry : pendingRequest.entrySet()) {
             if (entry.getValue().getRequester().equals(requester.getUniqueId())) {
@@ -182,40 +151,48 @@ public class RequestManager {
                 break;
             }
         }
-        if (targetUuid != null) {
-            pendingRequest.remove(targetUuid);
-            removed = true;
-            Player target = Bukkit.getPlayer(targetUuid);
-            if (target != null) {
-                target.sendMessage(Component.text(requester.getName(), NamedTextColor.YELLOW)
-                    .append(Component.text(" cancelled their teleport request.", NamedTextColor.YELLOW)));
-            }
+
+        if (targetUuid == null) {
+            requester.sendMessage(Component.text("No active teleport request to cancel.", NamedTextColor.RED));
+            return;
         }
 
-        requester.sendMessage(removed
-            ? Component.text("Teleport request cancelled.", NamedTextColor.YELLOW)
-            : Component.text("No active teleport request to cancel.", NamedTextColor.RED));
+        pendingRequest.remove(targetUuid);
+        requester.sendMessage(Component.text("Teleport request cancelled.", NamedTextColor.YELLOW));
+
+        Player target = Bukkit.getPlayer(targetUuid);
+        if (target != null) {
+            target.sendMessage(Component.text(requester.getName(), NamedTextColor.YELLOW)
+                .append(Component.text(" cancelled their teleport request.", NamedTextColor.YELLOW)));
+            // Close after removing from pendingRequest so the close event's denyQuiet sees null and exits silently.
+            target.closeInventory();
+        }
     }
 
     // ── Cleanup expired ──────────────────────────────────────────────────────
 
     public void cleanupExpired() {
-        pendingConfirm.entrySet().removeIf(e -> {
-            if (!e.getValue().isExpired()) return false;
-            Player p = Bukkit.getPlayer(e.getKey());
-            if (p != null) p.sendMessage(Component.text("Your teleport confirmation expired.", NamedTextColor.RED));
-            return true;
-        });
+        // Collect first to avoid ConcurrentModificationException when closeInventory fires close events.
+        List<Map.Entry<UUID, TpaRequest>> expired = new ArrayList<>();
+        for (Map.Entry<UUID, TpaRequest> e : pendingRequest.entrySet()) {
+            if (e.getValue().isExpired()) expired.add(e);
+        }
 
-        pendingRequest.entrySet().removeIf(e -> {
-            if (!e.getValue().isExpired()) return false;
+        for (Map.Entry<UUID, TpaRequest> e : expired) {
+            pendingRequest.remove(e.getKey());
+
             Player target = Bukkit.getPlayer(e.getKey());
-            if (target != null) target.sendMessage(Component.text("A teleport request expired.", NamedTextColor.RED));
+            if (target != null) {
+                // Remove from map before closing so denyQuiet sees null and is silent.
+                target.closeInventory();
+                target.sendMessage(Component.text("A teleport request expired.", NamedTextColor.RED));
+            }
+
             Player requester = Bukkit.getPlayer(e.getValue().getRequester());
-            if (requester != null) requester.sendMessage(
-                Component.text(target != null ? target.getName() : "The player", NamedTextColor.YELLOW)
+            if (requester != null) {
+                requester.sendMessage(Component.text(target != null ? target.getName() : "The player", NamedTextColor.YELLOW)
                     .append(Component.text(" did not respond to your teleport request.", NamedTextColor.RED)));
-            return true;
-        });
+            }
+        }
     }
 }

@@ -333,8 +333,12 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
         return parseAmount(sender, raw, false);
     }
 
-    /** Returns -1 on failure (error already sent). allowZero permits 0 as a valid value. */
     private double parseAmount(CommandSender sender, String raw, boolean allowZero) {
+        return parseAmountStatic(sender, raw, allowZero);
+    }
+
+    /** Public static version used by other commands. Returns -1 on failure (error already sent). */
+    public static double parseAmountStatic(CommandSender sender, String raw, boolean allowZero) {
         String s = raw.toLowerCase().trim();
         double mult = 1;
         if      (s.endsWith("k")) { mult = 1_000;         s = s.substring(0, s.length() - 1); }
@@ -348,7 +352,7 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
             }
             return v;
         } catch (NumberFormatException e) {
-            sender.sendMessage("§cInvalid amount: §e" + raw + " §7(use numbers or 1k/1m/1b)");
+            sender.sendMessage("§cInvalid amount: §e" + raw + " §7(use a number, e.g. 100, 10k, 5m, 1b)");
             return -1;
         }
     }

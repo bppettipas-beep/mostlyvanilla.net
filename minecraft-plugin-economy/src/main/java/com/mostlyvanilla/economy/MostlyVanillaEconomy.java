@@ -4,6 +4,7 @@ import com.mostlyvanilla.economy.commands.BalanceCommand;
 import com.mostlyvanilla.economy.commands.BaltopCommand;
 import com.mostlyvanilla.economy.commands.EcoCommand;
 import com.mostlyvanilla.economy.commands.PayCommand;
+import com.mostlyvanilla.economy.SettingsBridge;
 import com.mostlyvanilla.economy.gui.BaltopGui;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -28,7 +29,7 @@ public class MostlyVanillaEconomy extends JavaPlugin {
         getCommand("balance").setExecutor(balanceCommand);
         getCommand("balance").setTabCompleter(balanceCommand);
 
-        PayCommand payCommand = new PayCommand(economyManager);
+        PayCommand payCommand = new PayCommand(economyManager, new SettingsBridge(getServer()));
         getCommand("pay").setExecutor(payCommand);
         getCommand("pay").setTabCompleter(payCommand);
 

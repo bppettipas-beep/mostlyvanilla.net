@@ -20,6 +20,3 @@ commands:
   tpacancel:
     description: Cancel your outgoing teleport request
     usage: /tpacancel
-  tpaconfirm:
-    description: Confirm your pending teleport request
-    usage: /tpaconfirm

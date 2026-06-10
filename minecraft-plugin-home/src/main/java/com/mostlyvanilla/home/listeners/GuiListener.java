@@ -59,7 +59,7 @@ public class GuiListener implements Listener {
         plugin.getServer().getScheduler().runTask(plugin, () -> processingAction.remove(player.getUniqueId()));
 
         if (holder instanceof HomeGuiHolder h) {
-            handleMainGui(player, event.getSlot(), event.isRightClick(), h.getPage());
+            handleMainGui(player, event.getSlot(), event.isRightClick(), h.getPage(), h);
         } else {
             handleActionGui(player, event.getSlot(), (HomeActionHolder) holder);
         }
@@ -72,22 +72,37 @@ public class GuiListener implements Listener {
 
     // ── Main GUI ──────────────────────────────────────────────────────────────
 
-    private void handleMainGui(Player player, int slot, boolean rightClick, int page) {
-        if (slot == 45) { homeGui.open(player, page - 1); return; }
-        if (slot == 53) { homeGui.open(player, page + 1); return; }
-        if (slot == 49) { handleSetHomeButton(player, page); return; }
-        if (slot >= 45)  return; // other control-row fillers
+    private void handleMainGui(Player player, int slot, boolean rightClick, int page, HomeGuiHolder holder) {
+        if (slot == holder.getActionSlot()) { handleSetHomeButton(player, page); return; }
 
-        List<Home> homes = homeManager.getHomes(player.getUniqueId());
-        int index = page * 45 + slot;
-        if (index >= homes.size()) return;
-        Home home = homes.get(index);
+        if (holder.isEmptySlot(slot)) { handleSetHomeButton(player, page); return; }
+
+        if (holder.isLockedSlot(slot)) {
+            String role = holder.getLockedRole(slot);
+            if (role != null && !role.isEmpty()) {
+                player.sendMessage(Component.text("Buy ", NamedTextColor.RED)
+                    .append(Component.text(capitalize(role), NamedTextColor.GOLD))
+                    .append(Component.text(" to unlock this home slot.", NamedTextColor.RED)));
+            }
+            return;
+        }
+
+        String homeName = holder.getHomeName(slot);
+        if (homeName == null) return;
+
+        Home home = homeManager.getHome(player.getUniqueId(), homeName.toLowerCase());
+        if (home == null) return;
 
         if (rightClick) {
             homeGui.openAction(player, home.getName(), page);
         } else {
             teleportTo(player, home);
         }
+    }
+
+    private static String capitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        return Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
 
     private void handleSetHomeButton(Player player, int page) {

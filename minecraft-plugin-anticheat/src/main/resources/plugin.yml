@@ -1,0 +1,26 @@
+name: MostlyVanillaAnticheat
+version: ${project.version}
+main: com.mostlyvanilla.anticheat.MostlyVanillaAnticheat
+api-version: '1.20'
+description: Custom anticheat for Mostly Vanilla
+
+commands:
+  ac:
+    description: Anticheat admin commands
+    usage: /ac <violations|reset|alerts|status|reload>
+    permission: mostlyvanilla.ac.admin
+  sus:
+    description: View suspicious players
+    usage: /sus
+    permission: mostlyvanilla.ac.sus
+
+permissions:
+  mostlyvanilla.ac.admin:
+    description: Access to /ac commands and violation alerts
+    default: op
+  mostlyvanilla.ac.sus:
+    description: Fallback permission for /sus (role system takes precedence)
+    default: op
+  mostlyvanilla.ac.bypass:
+    description: Bypasses all anticheat checks
+    default: false

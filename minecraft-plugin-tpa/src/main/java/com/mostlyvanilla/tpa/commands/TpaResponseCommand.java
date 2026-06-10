@@ -22,10 +22,9 @@ public class TpaResponseCommand implements CommandExecutor {
         }
 
         switch (command.getName().toLowerCase()) {
-            case "tpaconfirm" -> rm.confirm(player);
-            case "tpaccept"   -> rm.accept(player);
-            case "tpdeny"     -> rm.deny(player);
-            case "tpacancel"  -> rm.cancel(player);
+            case "tpaccept"  -> rm.accept(player);
+            case "tpdeny"    -> rm.deny(player);
+            case "tpacancel" -> rm.cancel(player);
         }
         return true;
     }

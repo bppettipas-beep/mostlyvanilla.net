@@ -39,13 +39,6 @@ public class PlayerJoinListener implements Listener {
             }
         }.runTaskLater(plugin, 1L);
 
-        // Async: query Discord roles and upgrade to highest linked role
-        new BukkitRunnable() {
-            @Override public void run() {
-                rm.syncFromDiscord(uuid);
-            }
-        }.runTaskAsynchronously(plugin);
-
         // Remind duty-required staff that they are off duty on join
         if (rm.isDutyRequired(uuid)) {
             new BukkitRunnable() {

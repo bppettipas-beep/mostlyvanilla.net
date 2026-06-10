@@ -10,7 +10,6 @@ public class MostlyVanillaAfkZone extends JavaPlugin {
     private AfkZoneManager zoneManager;
     private EconomyBridge  economyBridge;
     private BukkitTask     rewardTask;
-    private BukkitTask     titleTask;
 
     @Override
     public void onEnable() {
@@ -18,28 +17,24 @@ public class MostlyVanillaAfkZone extends JavaPlugin {
         economyBridge = new EconomyBridge(this);
         zoneManager   = new AfkZoneManager(this, economyBridge);
 
-        getCommand("afkzone").setExecutor(new AfkZoneCommand(this, zoneManager, economyBridge));
-        getCommand("afkzone").setTabCompleter(new AfkZoneCommand(this, zoneManager, economyBridge));
+        AfkZoneCommand afkZoneCmd = new AfkZoneCommand(this, zoneManager, economyBridge);
+        getCommand("afkzone").setExecutor(afkZoneCmd);
+        getCommand("afkzone").setTabCompleter(afkZoneCmd);
+        getCommand("afk").setExecutor(new AfkCommand(zoneManager));
         getServer().getPluginManager().registerEvents(new ZoneListener(zoneManager), this);
 
         startTasks();
         getLogger().info("MostlyVanillaAfkZone enabled.");
     }
 
-    /** Starts (or restarts) the reward and title-refresh tasks. */
+    /** Starts (or restarts) the reward task. */
     public void startTasks() {
         if (rewardTask != null) rewardTask.cancel();
-        if (titleTask  != null) titleTask.cancel();
 
         long intervalTicks = getConfig().getLong("interval-seconds", 60) * 20L;
         rewardTask = new BukkitRunnable() {
             @Override public void run() { zoneManager.rewardPlayersInZone(); }
         }.runTaskTimer(this, intervalTicks, intervalTicks);
-
-        // Refresh title every 2 seconds so it stays on screen while inside the zone
-        titleTask = new BukkitRunnable() {
-            @Override public void run() { zoneManager.sendTitlesToZonePlayers(); }
-        }.runTaskTimer(this, 20L, 40L);
     }
 
     @Override

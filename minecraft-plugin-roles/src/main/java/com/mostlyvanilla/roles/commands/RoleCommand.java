@@ -173,45 +173,78 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
                 }
             }
 
-            case "link" -> {
-                if (args.length < 3) {
-                    sender.sendMessage(Component.text("Usage: /role link <game-role> <discord-role-id>", NamedTextColor.RED));
-                    return true;
-                }
-                String gameRole = args[1].toLowerCase();
-                String discordRoleId = args[2];
-                if (rm.linkRole(gameRole, discordRoleId)) {
-                    sender.sendMessage(Component.text("Linked ", NamedTextColor.GREEN)
-                        .append(Component.text(gameRole, NamedTextColor.WHITE))
-                        .append(Component.text(" → Discord role ", NamedTextColor.GREEN))
-                        .append(Component.text(discordRoleId, NamedTextColor.WHITE)));
-                } else {
-                    sender.sendMessage(Component.text("Role '" + gameRole + "' does not exist.", NamedTextColor.RED));
-                }
-            }
-
-            case "unlink" -> {
+            case "addstash" -> {
                 if (args.length < 2) {
-                    sender.sendMessage(Component.text("Usage: /role unlink <game-role>", NamedTextColor.RED));
+                    String current = rm.getStashRole();
+                    sender.sendMessage(Component.text("SpawnStash role: ", NamedTextColor.GREEN)
+                        .append(current != null
+                            ? Component.text(current, NamedTextColor.WHITE)
+                            : Component.text("none (only ops can use /spawnstash)", NamedTextColor.GRAY)));
+                    sender.sendMessage(Component.text("Usage: /role addstash <role|disable>", NamedTextColor.GRAY));
                     return true;
                 }
-                String gameRole = args[1].toLowerCase();
-                if (rm.unlinkRole(gameRole)) {
-                    sender.sendMessage(Component.text("Unlinked game role " + gameRole + " from Discord.", NamedTextColor.GREEN));
+                if (args[1].equalsIgnoreCase("disable")) {
+                    rm.clearStashRole();
+                    sender.sendMessage(Component.text("SpawnStash role cleared — only ops can use /spawnstash.", NamedTextColor.YELLOW));
                 } else {
-                    sender.sendMessage(Component.text("Role '" + gameRole + "' has no Discord link.", NamedTextColor.RED));
+                    String roleName = args[1].toLowerCase();
+                    if (rm.setStashRole(roleName)) {
+                        sender.sendMessage(Component.text("Players with role ", NamedTextColor.GREEN)
+                            .append(Component.text(roleName, NamedTextColor.WHITE))
+                            .append(Component.text(" or higher priority can now use /spawnstash.", NamedTextColor.GREEN)));
+                    } else {
+                        sender.sendMessage(Component.text("Role '" + roleName + "' does not exist.", NamedTextColor.RED));
+                    }
                 }
             }
 
-            case "links" -> {
-                Map<String, String> links = rm.getRoleLinks();
-                if (links.isEmpty()) {
-                    sender.sendMessage(Component.text("No role links configured.", NamedTextColor.YELLOW));
+            case "addspawnore" -> {
+                if (args.length < 2) {
+                    String current = rm.getSpawnoreRole();
+                    sender.sendMessage(Component.text("SpawnOre role: ", NamedTextColor.GREEN)
+                        .append(current != null
+                            ? Component.text(current, NamedTextColor.WHITE)
+                            : Component.text("none (only ops can use /spawnore)", NamedTextColor.GRAY)));
+                    sender.sendMessage(Component.text("Usage: /role addspawnore <role|disable>", NamedTextColor.GRAY));
                     return true;
                 }
-                sender.sendMessage(Component.text("━━━ Role Links ━━━", NamedTextColor.GREEN));
-                for (Map.Entry<String, String> e : links.entrySet()) {
-                    sender.sendMessage(Component.text("  " + e.getKey() + " → " + e.getValue(), NamedTextColor.GRAY));
+                if (args[1].equalsIgnoreCase("disable")) {
+                    rm.clearSpawnoreRole();
+                    sender.sendMessage(Component.text("SpawnOre role cleared — only ops can use /spawnore.", NamedTextColor.YELLOW));
+                } else {
+                    String roleName = args[1].toLowerCase();
+                    if (rm.setSpawnoreRole(roleName)) {
+                        sender.sendMessage(Component.text("Players with role ", NamedTextColor.GREEN)
+                            .append(Component.text(roleName, NamedTextColor.WHITE))
+                            .append(Component.text(" or higher priority can now use /spawnore.", NamedTextColor.GREEN)));
+                    } else {
+                        sender.sendMessage(Component.text("Role '" + roleName + "' does not exist.", NamedTextColor.RED));
+                    }
+                }
+            }
+
+            case "notifysus" -> {
+                if (args.length < 2) {
+                    String current = rm.getSusRole();
+                    sender.sendMessage(Component.text("Sus-notify role: ", NamedTextColor.GREEN)
+                        .append(current != null
+                            ? Component.text(current, NamedTextColor.WHITE)
+                            : Component.text("none (only ops get alerts)", NamedTextColor.GRAY)));
+                    sender.sendMessage(Component.text("Usage: /role notifysus <role|disable>", NamedTextColor.GRAY));
+                    return true;
+                }
+                if (args[1].equalsIgnoreCase("disable")) {
+                    rm.clearSusRole();
+                    sender.sendMessage(Component.text("Sus-notify role cleared — only ops receive anticheat alerts.", NamedTextColor.YELLOW));
+                } else {
+                    String roleName = args[1].toLowerCase();
+                    if (rm.setSusRole(roleName)) {
+                        sender.sendMessage(Component.text("Players with role ", NamedTextColor.GREEN)
+                            .append(Component.text(roleName, NamedTextColor.WHITE))
+                            .append(Component.text(" or higher priority will receive anticheat sus alerts and can use /sus.", NamedTextColor.GREEN)));
+                    } else {
+                        sender.sendMessage(Component.text("Role '" + roleName + "' does not exist.", NamedTextColor.RED));
+                    }
                 }
             }
 
@@ -639,14 +672,14 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("mostlyvanilla.roles.admin")) return List.of();
 
         if (args.length == 1) {
-            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "commandblockglobal", "commandblockallglobal", "commandallowglobal", "unblockallglobal", "addmute", "addban", "addannouncement", "addfly", "addallowtp", "addstaff", "addecsee", "addinvsee", "gmmod", "gmadmin", "link", "unlink", "links", "namecolormatch"), args[0]);
+            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "commandblockglobal", "commandblockallglobal", "commandallowglobal", "unblockallglobal", "addmute", "addban", "addannouncement", "addfly", "addallowtp", "addstaff", "addecsee", "addinvsee", "addstash", "addspawnore", "notifysus", "gmmod", "gmadmin", "namecolormatch"), args[0]);
         }
 
         RoleManager rm = plugin.getRoleManager();
 
         if (args.length == 2) {
             return switch (args[0].toLowerCase()) {
-                case "delete", "join", "setweight", "link", "unlink", "commandblockall", "commandblock", "commandallow", "unblockallcommands", "addstaff", "addfly", "addallowtp", "addannouncement", "addmute", "addban", "addecsee", "addinvsee", "gmmod", "gmadmin" ->
+                case "delete", "join", "setweight", "commandblockall", "commandblock", "commandallow", "unblockallcommands", "addstaff", "addfly", "addallowtp", "addannouncement", "addmute", "addban", "addecsee", "addinvsee", "addstash", "addspawnore", "notifysus", "gmmod", "gmadmin" ->
                     filter(new ArrayList<>(rm.getRoleNames()), args[1]);
                 case "assign", "remove", "info" -> filter(
                     Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList()), args[1]
@@ -678,9 +711,6 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("  /role listweight              ", NamedTextColor.WHITE).append(Component.text("List all roles sorted by weight", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role info <player>           ", NamedTextColor.WHITE).append(Component.text("See a player's role", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role join <role|disable>     ", NamedTextColor.WHITE).append(Component.text("Set the auto-assigned join role", NamedTextColor.GRAY)));
-        sender.sendMessage(Component.text("  /role link <role> <discord-id>", NamedTextColor.WHITE).append(Component.text("Link a game role to a Discord role", NamedTextColor.GRAY)));
-        sender.sendMessage(Component.text("  /role unlink <role>           ", NamedTextColor.WHITE).append(Component.text("Remove Discord role link", NamedTextColor.GRAY)));
-        sender.sendMessage(Component.text("  /role links                   ", NamedTextColor.WHITE).append(Component.text("List all role links", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role testall                 ", NamedTextColor.WHITE).append(Component.text("Preview all role prefixes in chat", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role commandblock <r> <cmd>  ", NamedTextColor.WHITE).append(Component.text("Block a command for a role", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role commandblockall <role>  ", NamedTextColor.WHITE).append(Component.text("Block all commands for a role", NamedTextColor.GRAY)));
@@ -700,6 +730,9 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("  /role addban <role|disable>    ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to ban players", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role addecsee <role|disable>  ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to use /checkec", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role addinvsee <role|disable> ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to use /invsee", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role addstash <role|disable>  ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to use /spawnstash", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role addspawnore <role|dis>   ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to use /spawnore", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role notifysus <role|disable> ", NamedTextColor.WHITE).append(Component.text("Set minimum role to receive anticheat sus alerts and use /sus", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role allowtp <role|disable>   ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to use force TPs", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role namecolormatch           ", NamedTextColor.WHITE).append(Component.text("Toggle: color player names in chat to match role color", NamedTextColor.GRAY)));
     }

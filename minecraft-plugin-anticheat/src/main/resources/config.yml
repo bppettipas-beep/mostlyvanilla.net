@@ -1,0 +1,104 @@
+anti-xray:
+  enabled: true
+  # Blocks per side to reveal around the player as they move
+  reveal-radius: 2
+  # Y level above which ores are not hidden (open caves, surface) — set high to hide more
+  max-hide-y: 64
+  # Ores to replace with fake blocks client-side
+  hidden-ores:
+    - DIAMOND_ORE
+    - DEEPSLATE_DIAMOND_ORE
+    - EMERALD_ORE
+    - DEEPSLATE_EMERALD_ORE
+    - GOLD_ORE
+    - DEEPSLATE_GOLD_ORE
+    - ANCIENT_DEBRIS
+    - NETHER_GOLD_ORE
+    - NETHER_QUARTZ_ORE
+    - REDSTONE_ORE
+    - DEEPSLATE_REDSTONE_ORE
+    - LAPIS_ORE
+    - DEEPSLATE_LAPIS_ORE
+    - COPPER_ORE
+    - DEEPSLATE_COPPER_ORE
+    - IRON_ORE
+    - DEEPSLATE_IRON_ORE
+    - COAL_ORE
+    - DEEPSLATE_COAL_ORE
+
+xray-detector:
+  enabled: true
+  # Minimum blocks mined before the ratio is checked
+  min-blocks-mined: 35
+  # Flag if (ores mined / total mined) exceeds this ratio
+  ore-ratio-threshold: 0.25
+
+checks:
+  speed:
+    enabled: true
+    # Max horizontal blocks/tick before flagging (sprint+SpeedII ≈ 0.43, buffer added)
+    max-speed: 0.6
+    # Consecutive fast ticks before adding a violation
+    buffer: 3
+
+  fly:
+    enabled: true
+    # Consecutive suspicious airborne ticks before flagging (player must not be descending)
+    max-air-ticks: 50
+
+  reach:
+    enabled: true
+    # Max distance from attacker eye to nearest point on target hitbox.
+    max-reach: 4.5
+    # Consecutive over-reach hits before flagging — higher = fewer false positives from lag
+    buffer: 6
+    # Kick when reach violations for this player hit this VL
+    kick-vl: 15
+
+  killaura:
+    enabled: true
+    # Max distinct entities hit within this window (milliseconds)
+    window-ms: 200
+    max-entities-in-window: 3
+    kick-vl: 20
+
+  autototem:
+    enabled: true
+    # Max ms between totem consume and new totem appearing in offhand to flag.
+    # Human minimum reaction to swap is ~300ms+; auto-totem fires in <50ms.
+    max-reaction-ms: 250
+    kick-vl: 10
+
+  nofall:
+    enabled: true
+    # Minimum fall distance (blocks) before checking for missing fall damage.
+    # High threshold avoids false flags from feather-falling + armor absorbing smaller falls.
+    fall-threshold: 12.0
+    kick-vl: 20
+
+  jump_reset:
+    enabled: true
+    # Millisecond window before an attack in which a jump is considered "reset"
+    jump-window-ms: 110
+    # Consecutive attacks preceded by a jump within the window before flagging
+    combo-threshold: 10
+    kick-vl: 30
+
+alerts:
+  # Broadcast alerts to players with mostlyvanilla.ac.admin
+  enabled: true
+  # Cooldown between repeated alerts for the same player+check (seconds)
+  cooldown-seconds: 10
+
+advancements:
+  # Suppress "Player has made the advancement [X]" chat messages
+  block-announcements: true
+
+punishments:
+  # Cumulative violations before punishment
+  warn-threshold: 20
+  kick-threshold: 80
+  ban-threshold: 200
+  # "none" | "warn" | "kick" | "ban"
+  max-punishment: kick
+  log-to-console: true

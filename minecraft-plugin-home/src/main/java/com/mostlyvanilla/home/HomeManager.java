@@ -102,6 +102,19 @@ public class HomeManager {
         return true;
     }
 
+    /** Deletes the home at 1-based index. Returns the deleted home name, or null if out of range. */
+    public String deleteHomeByIndex(UUID uuid, int index) {
+        Map<String, Home> m = homes.get(uuid);
+        if (m == null || index < 1 || index > m.size()) return null;
+        List<String> keys = new ArrayList<>(m.keySet());
+        String key = keys.get(index - 1);
+        String displayName = m.get(key).getName();
+        m.remove(key);
+        if (m.isEmpty()) homes.remove(uuid);
+        save();
+        return displayName;
+    }
+
     public boolean renameHome(UUID uuid, String oldName, String newName) {
         Map<String, Home> m = homes.get(uuid);
         if (m == null) return false;
@@ -120,6 +133,36 @@ public class HomeManager {
             if (limit >= 0) return limit;
         }
         return plugin.getConfig().getInt("default-homes", 3);
+    }
+
+    /** Returns the highest home limit reachable across all configured roles. */
+    public int getMaxPossibleLimit() {
+        int max = plugin.getConfig().getInt("default-homes", 3);
+        var sec = plugin.getConfig().getConfigurationSection("role-limits");
+        if (sec != null) {
+            for (String role : sec.getKeys(false)) {
+                int limit = sec.getInt(role);
+                if (limit > max) max = limit;
+            }
+        }
+        return max;
+    }
+
+    /** Returns the name of the cheapest role that gives at least slotIndex (1-based) homes, or null if within default. */
+    public String getRoleForSlot(int slotIndex) {
+        if (slotIndex <= plugin.getConfig().getInt("default-homes", 3)) return null;
+        var sec = plugin.getConfig().getConfigurationSection("role-limits");
+        if (sec == null) return null;
+        String best = null;
+        int bestLimit = Integer.MAX_VALUE;
+        for (String role : sec.getKeys(false)) {
+            int limit = sec.getInt(role);
+            if (limit >= slotIndex && limit < bestLimit) {
+                bestLimit = limit;
+                best = role;
+            }
+        }
+        return best;
     }
 
     public void setHomeLimitForRole(String role, int limit) {

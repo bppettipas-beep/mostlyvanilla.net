@@ -1,0 +1,44 @@
+# Each crate type needs a matching key ID from MostlyVanillaShop's bit shop.
+# Rewards are chosen by weighted random roll — higher weight = more likely.
+
+crate-types:
+  iron:
+    display-name: "&fIron Crate"
+    key-type: iron
+    rewards:
+      - {weight: 40, material: IRON_INGOT,   amount: 32,  name: "&7x32 Iron Ingots"}
+      - {weight: 30, material: COAL,          amount: 64,  name: "&8x64 Coal"}
+      - {weight: 15, material: GOLD_INGOT,    amount: 8,   name: "&6x8 Gold Ingots"}
+      - {weight: 10, material: DIAMOND,       amount: 1,   name: "&bDiamond"}
+      - {weight: 5,  material: EMERALD,       amount: 1,   name: "&aEmerald"}
+
+  gold:
+    display-name: "&6Gold Crate"
+    key-type: gold
+    rewards:
+      - {weight: 35, material: GOLD_INGOT,    amount: 32,  name: "&6x32 Gold Ingots"}
+      - {weight: 25, material: IRON_INGOT,    amount: 64,  name: "&7x64 Iron Ingots"}
+      - {weight: 20, material: DIAMOND,       amount: 3,   name: "&bx3 Diamonds"}
+      - {weight: 15, material: EMERALD,       amount: 3,   name: "&ax3 Emeralds"}
+      - {weight: 5,  material: GOLDEN_APPLE,  amount: 2,   name: "&6x2 Golden Apples"}
+
+  diamond:
+    display-name: "&bDiamond Crate"
+    key-type: diamond
+    rewards:
+      - {weight: 30, material: DIAMOND,       amount: 5,   name: "&bx5 Diamonds"}
+      - {weight: 25, material: EMERALD,       amount: 5,   name: "&ax5 Emeralds"}
+      - {weight: 20, material: GOLDEN_APPLE,  amount: 3,   name: "&6x3 Golden Apples"}
+      - {weight: 15, material: NETHERITE_SCRAP, amount: 1, name: "&8Netherite Scrap"}
+      - {weight: 10, material: TOTEM_OF_UNDYING, amount: 1, name: "&6Totem of Undying"}
+
+  netherite:
+    display-name: "&8Netherite Crate"
+    key-type: netherite
+    rewards:
+      - {weight: 30, material: NETHERITE_SCRAP,  amount: 2,  name: "&8x2 Netherite Scrap"}
+      - {weight: 25, material: DIAMOND,           amount: 10, name: "&bx10 Diamonds"}
+      - {weight: 20, material: TOTEM_OF_UNDYING,  amount: 1,  name: "&6Totem of Undying"}
+      - {weight: 15, material: NETHERITE_INGOT,   amount: 1,  name: "&8Netherite Ingot"}
+      - {weight: 10, material: ELYTRA,             amount: 1,  name: "&7Elytra"}
+

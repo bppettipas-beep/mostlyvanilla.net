@@ -67,7 +67,7 @@ public class SpawnerManager {
         // Re-apply PDC to all currently loaded spawner blocks
         for (SpawnerData data : spawners.values()) {
             Location loc = data.getLocation();
-            if (loc != null && loc.getChunk().isLoaded()) applyPdc(loc, data);
+            if (loc != null && loc.getWorld().isChunkLoaded(loc.getBlockX() >> 4, loc.getBlockZ() >> 4)) applyPdc(loc, data);
         }
     }
 
@@ -184,7 +184,7 @@ public class SpawnerManager {
         for (SpawnerData data : spawners.values()) {
             Location loc = data.getLocation();
             if (loc == null) continue;
-            if (!loc.getChunk().isLoaded()) continue;
+            if (!loc.getWorld().isChunkLoaded(loc.getBlockX() >> 4, loc.getBlockZ() >> 4)) continue;
 
             // Proximity check
             List<Location> players = playerLocs.get(loc.getWorld());
@@ -195,7 +195,7 @@ public class SpawnerManager {
             }
             if (!nearby) continue;
 
-            data.tickCounter++;
+            data.tickCounter += 4;
             if (data.tickCounter < cfg.getInterval(data.getType())) continue;
             data.tickCounter = 0;
             produce(data, loc);

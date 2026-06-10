@@ -9,7 +9,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -21,6 +23,7 @@ public class AfkZoneManager {
     private final JavaPlugin plugin;
     private final EconomyBridge economy;
     private final Set<UUID> playersInZone = new HashSet<>();
+    private final Map<UUID, org.bukkit.scheduler.BukkitTask> pendingTp = new HashMap<>();
 
     private boolean enabled;
     private String world;
@@ -48,7 +51,7 @@ public class AfkZoneManager {
         if (!enabled || loc == null || loc.getWorld() == null) return false;
         if (!loc.getWorld().getName().equals(world)) return false;
         double x = loc.getX(), y = loc.getY(), z = loc.getZ();
-        return x >= minX && x <= maxX && y >= minY && y <= maxY && z >= minZ && z <= maxZ;
+        return x >= minX && x <= maxX && z >= minZ && z <= maxZ;
     }
 
     public void handlePlayerMove(Player player, Location to) {
@@ -63,20 +66,59 @@ public class AfkZoneManager {
         }
     }
 
-    public void handlePlayerQuit(Player player) {
-        playersInZone.remove(player.getUniqueId());
+    public void handlePlayerJoin(Player player) {
+        if (!isInZone(player.getLocation())) return;
+        playersInZone.add(player.getUniqueId());
+        sendAfkTitle(player);
     }
 
-    /** Called on a repeating task to refresh the title for all zone players. */
-    public void sendTitlesToZonePlayers() {
-        for (UUID uid : new HashSet<>(playersInZone)) {
-            Player p = plugin.getServer().getPlayer(uid);
-            if (p == null || !p.isOnline()) {
-                playersInZone.remove(uid);
-                continue;
-            }
-            sendAfkTitle(p);
+    public void handlePlayerQuit(Player player) {
+        playersInZone.remove(player.getUniqueId());
+        cancelTeleport(player.getUniqueId(), false);
+    }
+
+    // ── /afk teleport ─────────────────────────────────────────────────────────
+
+    public void startAfkTeleport(Player player) {
+        cancelTeleport(player.getUniqueId(), false);
+        player.sendMessage(Component.text("Teleporting to AFK Zone in ", NamedTextColor.DARK_PURPLE)
+            .append(Component.text("5 seconds", NamedTextColor.LIGHT_PURPLE))
+            .append(Component.text(". Don't move!", NamedTextColor.DARK_PURPLE)));
+
+        org.bukkit.scheduler.BukkitTask task = plugin.getServer().getScheduler()
+            .runTaskLater(plugin, () -> {
+                pendingTp.remove(player.getUniqueId());
+                if (!player.isOnline()) return;
+                Location dest = getCenterLocation();
+                if (dest == null) {
+                    player.sendMessage(Component.text("The AFK Zone is not configured.", NamedTextColor.RED));
+                    return;
+                }
+                player.teleport(dest);
+            }, 100L); // 5 seconds
+
+        pendingTp.put(player.getUniqueId(), task);
+    }
+
+    public void cancelTeleport(java.util.UUID uuid, boolean notify) {
+        org.bukkit.scheduler.BukkitTask task = pendingTp.remove(uuid);
+        if (task == null) return;
+        task.cancel();
+        if (notify) {
+            Player p = plugin.getServer().getPlayer(uuid);
+            if (p != null) p.sendMessage(Component.text("Teleportation cancelled — you moved.", NamedTextColor.RED));
         }
+    }
+
+    public boolean hasPendingTp(java.util.UUID uuid) { return pendingTp.containsKey(uuid); }
+
+    public Location getCenterLocation() {
+        org.bukkit.World w = org.bukkit.Bukkit.getWorld(world);
+        if (w == null) return null;
+        double cx = (minX + maxX) / 2.0;
+        double cz = (minZ + maxZ) / 2.0;
+        int y = w.getHighestBlockYAt((int) cx, (int) cz) + 1;
+        return new Location(w, cx + 0.5, y, cz + 0.5);
     }
 
     /** Called on a repeating task to pay all zone players. */

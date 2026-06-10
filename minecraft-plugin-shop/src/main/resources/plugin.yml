@@ -15,3 +15,6 @@ commands:
   bitshop:
     description: Open the Bit Shop — spend bits on spawners and crate keys
     usage: /bitshop
+  keys:
+    description: Check your crate key balances
+    usage: /keys [player] | /keys give <player> <type> <amount> | /keys take <player> <type> <amount>

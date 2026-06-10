@@ -22,7 +22,7 @@ commands:
     usage: /createnpc <skin> <command> [hologram text...] | /createnpc delete
   hologram:
     description: Create or delete a hologram at your location
-    usage: /hologram <text...> | /hologram delete
+    usage: /hologram <text...> | /hologram <x> <y> <z> <text...> | /hologram player <name> <text...> | /hologram delete
   spawndrop1:
     description: Set first corner of the drop zone rectangle
     usage: /spawndrop1

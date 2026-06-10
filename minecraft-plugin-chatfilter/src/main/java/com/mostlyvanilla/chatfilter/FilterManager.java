@@ -334,6 +334,11 @@ public class FilterManager {
         filterMutes.put(uuid, expiry);
     }
 
+    public void removeFilterMute(UUID uuid) {
+        filterMutes.remove(uuid);
+        saveData();
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     //  ACTION APPLICATION
     // ─────────────────────────────────────────────────────────────────────────

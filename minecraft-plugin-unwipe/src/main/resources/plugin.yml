@@ -1,0 +1,17 @@
+name: MostlyVanillaUnwipe
+version: ${project.version}
+main: com.mostlyvanilla.unwipe.MostlyVanillaUnwipe
+api-version: '1.20'
+description: Restore wiped player data from snapshots
+soft-depend: [MostlyVanillaEconomy]
+
+commands:
+  unwipe:
+    description: Restore a player's wiped data from snapshot
+    usage: /unwipe <player>
+    permission: mv.unwipe
+
+permissions:
+  mv.unwipe:
+    description: Use /unwipe to restore wiped player data
+    default: op

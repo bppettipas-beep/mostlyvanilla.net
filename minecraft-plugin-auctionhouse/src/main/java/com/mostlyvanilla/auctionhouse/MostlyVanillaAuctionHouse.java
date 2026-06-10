@@ -31,7 +31,7 @@ public class MostlyVanillaAuctionHouse extends JavaPlugin {
         }
 
         getServer().getPluginManager().registerEvents(
-            new AhListener(auctionManager, orderManager), this);
+            new AhListener(this, auctionManager, orderManager), this);
 
         getLogger().info("MostlyVanillaAuctionHouse enabled.");
     }

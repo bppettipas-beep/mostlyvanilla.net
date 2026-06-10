@@ -53,6 +53,7 @@ public class ShopManager {
     private final List<ShopCategory> categories = new ArrayList<>();
     private final Map<Inventory, Session> sessions = new HashMap<>();
     private final Map<Inventory, ConfirmSession> confirmSessions = new HashMap<>();
+    private final Map<Inventory, Map<Integer, ShopCategory>> mainMenuSlots = new HashMap<>();
 
     private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.legacyAmpersand();
 
@@ -140,56 +141,105 @@ public class ShopManager {
         try { return Double.parseDouble(o.toString()); } catch (Exception e) { return def; }
     }
 
-    // ── GUI helpers ───────────────────────────────────────────────────────────
+    // ── Glass helpers ─────────────────────────────────────────────────────────
+
+    private ItemStack glass(Material mat) {
+        ItemStack g = new ItemStack(mat);
+        ItemMeta m = g.getItemMeta();
+        m.displayName(Component.text(" ").decoration(TextDecoration.ITALIC, false));
+        m.lore(List.of());
+        g.setItemMeta(m);
+        return g;
+    }
+
+    private ItemStack blackGlass() { return glass(Material.BLACK_STAINED_GLASS_PANE); }
+    private ItemStack cyanGlass()  { return glass(Material.CYAN_STAINED_GLASS_PANE);  }
+    private ItemStack grayGlass()  { return glass(Material.GRAY_STAINED_GLASS_PANE);  }
 
     private Component parseName(String ampersandStr) {
         return LEGACY.deserialize(ampersandStr).decoration(TextDecoration.ITALIC, false);
-    }
-
-    private ItemStack filler() {
-        ItemStack glass = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta meta = glass.getItemMeta();
-        meta.displayName(Component.text(" ").decoration(TextDecoration.ITALIC, false));
-        glass.setItemMeta(meta);
-        return glass;
-    }
-
-    private void fillAll(Inventory inv) {
-        ItemStack f = filler();
-        for (int i = 0; i < inv.getSize(); i++) inv.setItem(i, f);
-    }
-
-    private ItemStack makeButton(Material mat, String name) {
-        ItemStack btn = new ItemStack(mat);
-        ItemMeta meta = btn.getItemMeta();
-        meta.displayName(parseName(name));
-        meta.lore(List.of());
-        btn.setItemMeta(meta);
-        return btn;
     }
 
     // ── Main menu ─────────────────────────────────────────────────────────────
 
     public void openMainMenu(Player player) {
         Inventory inv = Bukkit.createInventory(null, 54,
-            Component.text("Mostly Vanilla Shop").decoration(TextDecoration.ITALIC, false));
-        fillAll(inv);
+            Component.text("Mostly Vanilla Shop")
+                .color(NamedTextColor.AQUA)
+                .decoration(TextDecoration.ITALIC, false));
 
-        for (ShopCategory cat : categories) {
-            ItemStack icon = new ItemStack(cat.icon());
-            ItemMeta meta = icon.getItemMeta();
-            meta.displayName(parseName(cat.displayName()));
+        // Fill background with black glass
+        ItemStack bg = blackGlass();
+        for (int i = 0; i < 54; i++) inv.setItem(i, bg);
 
-            List<Component> lore = new ArrayList<>();
-            lore.add(parseName("&7Click to browse"));
-            lore.add(parseName("&7" + cat.items().size() + " items"));
-            meta.lore(lore);
-            icon.setItemMeta(meta);
-            inv.setItem(cat.mainSlot(), icon);
+        // Header (row 0) and footer (row 5): cyan glass
+        ItemStack hdr = cyanGlass();
+        for (int i = 0; i < 9; i++)  inv.setItem(i, hdr);
+        for (int i = 45; i < 54; i++) inv.setItem(i, hdr);
+
+        // Middle divider (row 3): gray glass
+        ItemStack div = grayGlass();
+        for (int i = 27; i < 36; i++) inv.setItem(i, div);
+
+        // Title item at header center (slot 4)
+        ItemStack title = new ItemStack(Material.NETHER_STAR);
+        ItemMeta tm = title.getItemMeta();
+        tm.displayName(Component.text("Mostly Vanilla Shop")
+            .color(NamedTextColor.AQUA)
+            .decoration(TextDecoration.BOLD, true)
+            .decoration(TextDecoration.ITALIC, false));
+        tm.lore(List.of(
+            Component.text("Browse all categories below")
+                .color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+        ));
+        title.setItemMeta(tm);
+        inv.setItem(4, title);
+
+        // Place categories centered in rows 2 (base 18) and 4 (base 36)
+        // startCol = 5 - N gives spacing-2 centering for N items in 9 columns
+        Map<Integer, ShopCategory> slotMap = new HashMap<>();
+        int total     = categories.size();
+        int row1Count = Math.min(total, 4);
+        int row2Count = total - row1Count;
+
+        int start1 = 5 - row1Count;
+        for (int i = 0; i < row1Count; i++) {
+            int slot = 18 + start1 + i * 2;
+            ShopCategory cat = categories.get(i);
+            inv.setItem(slot, buildCategoryIcon(cat));
+            slotMap.put(slot, cat);
         }
 
+        if (row2Count > 0) {
+            int start2 = 5 - row2Count;
+            for (int i = 0; i < row2Count; i++) {
+                int slot = 36 + start2 + i * 2;
+                ShopCategory cat = categories.get(row1Count + i);
+                inv.setItem(slot, buildCategoryIcon(cat));
+                slotMap.put(slot, cat);
+            }
+        }
+
+        mainMenuSlots.put(inv, slotMap);
         sessions.put(inv, new Session(true, null, 0));
         player.openInventory(inv);
+    }
+
+    private ItemStack buildCategoryIcon(ShopCategory cat) {
+        ItemStack icon = new ItemStack(cat.icon());
+        ItemMeta meta = icon.getItemMeta();
+        meta.displayName(parseName(cat.displayName())
+            .decoration(TextDecoration.BOLD, true));
+        meta.lore(List.of(
+            Component.empty(),
+            Component.text(cat.items().size() + " items available")
+                .color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
+            Component.empty(),
+            Component.text("Click to browse")
+                .color(NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false)
+        ));
+        icon.setItemMeta(meta);
+        return icon;
     }
 
     // ── Category GUI ──────────────────────────────────────────────────────────
@@ -204,34 +254,70 @@ public class ShopManager {
         if (page > maxPage) page = maxPage;
 
         Inventory inv = Bukkit.createInventory(null, 54, parseName(cat.displayName()));
-        fillAll(inv);
 
+        // Fill all with black glass
+        ItemStack bg = blackGlass();
+        for (int i = 0; i < 54; i++) inv.setItem(i, bg);
+
+        // Header (row 0): cyan glass with category icon at center
+        ItemStack hdr = cyanGlass();
+        for (int i = 0; i < 9; i++) inv.setItem(i, hdr);
+
+        ItemStack catIcon = new ItemStack(cat.icon());
+        ItemMeta cm = catIcon.getItemMeta();
+        cm.displayName(parseName(cat.displayName())
+            .decoration(TextDecoration.BOLD, true));
+        String pageLabel = maxPage > 0 ? " (Page " + (page + 1) + " / " + (maxPage + 1) + ")" : "";
+        cm.lore(List.of(
+            Component.text(cat.items().size() + " items" + pageLabel)
+                .color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+        ));
+        catIcon.setItemMeta(cm);
+        inv.setItem(4, catIcon);
+
+        // Side borders on rows 1-4 (col 0 and col 8): gray glass
+        ItemStack border = grayGlass();
+        for (int row = 1; row <= 4; row++) {
+            inv.setItem(row * 9,     border);
+            inv.setItem(row * 9 + 8, border);
+        }
+
+        // Items
         int start = page * ITEMS_PER_PAGE;
         int end   = Math.min(start + ITEMS_PER_PAGE, items.size());
         for (int i = start; i < end; i++) {
-            ShopItem item = items.get(i);
-            int slotIdx = i - start;
-            inv.setItem(ITEM_SLOTS[slotIdx], buildDisplayItem(item));
+            inv.setItem(ITEM_SLOTS[i - start], buildDisplayItem(items.get(i)));
         }
+
+        // Nav row (row 5): cyan glass
+        for (int i = 45; i < 54; i++) inv.setItem(i, hdr);
 
         if (page > 0) {
             ItemStack prev = new ItemStack(Material.ARROW);
             ItemMeta pm = prev.getItemMeta();
-            pm.displayName(parseName("&7← Previous"));
+            pm.displayName(Component.text("Previous Page")
+                .color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+            pm.lore(List.of(Component.text("Page " + page)
+                .color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
             prev.setItemMeta(pm);
             inv.setItem(SLOT_PREV, prev);
         }
 
-        ItemStack back = new ItemStack(Material.OAK_DOOR);
+        ItemStack back = new ItemStack(Material.BARRIER);
         ItemMeta bm = back.getItemMeta();
-        bm.displayName(parseName("&cBack to Shop"));
+        bm.displayName(Component.text("Back to Shop")
+            .color(NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
+        bm.lore(List.of());
         back.setItemMeta(bm);
         inv.setItem(SLOT_BACK, back);
 
         if (page < maxPage) {
             ItemStack next = new ItemStack(Material.ARROW);
             ItemMeta nm = next.getItemMeta();
-            nm.displayName(parseName("&7Next →"));
+            nm.displayName(Component.text("Next Page")
+                .color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
+            nm.lore(List.of(Component.text("Page " + (page + 2))
+                .color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
             next.setItemMeta(nm);
             inv.setItem(SLOT_NEXT, next);
         }
@@ -253,11 +339,20 @@ public class ShopManager {
         meta.displayName(parseName(rawName));
 
         List<Component> lore = new ArrayList<>();
+        lore.add(Component.empty());
         if (item.amount() > 1) {
-            lore.add(parseName("&7Amount: &f" + item.amount()));
+            lore.add(Component.text("Amount: ")
+                .color(NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
+                .append(Component.text(String.valueOf(item.amount()))
+                    .color(NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false)));
         }
-        lore.add(parseName("&7Price: &e" + bridge.getSymbol() + formatPrice(item.price())));
-        lore.add(parseName("&aLeft-click to purchase"));
+        lore.add(Component.text("Price: ")
+            .color(NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
+            .append(Component.text(bridge.getSymbol() + formatPrice(item.price()))
+                .color(NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false)));
+        lore.add(Component.empty());
+        lore.add(Component.text("Click to purchase")
+            .color(NamedTextColor.GREEN).decoration(TextDecoration.ITALIC, false));
         for (String line : item.lore()) {
             lore.add(parseName(line));
         }
@@ -270,8 +365,19 @@ public class ShopManager {
 
     public void openConfirmMenu(Player player, ShopItem item, String categoryKey, int page) {
         String rawName = item.displayName() != null ? item.displayName() : prettifyMaterial(item.material());
-        Inventory inv = Bukkit.createInventory(null, CONFIRM_SIZE, parseName("&8Buy: " + rawName));
-        fillAll(inv);
+        Inventory inv = Bukkit.createInventory(null, CONFIRM_SIZE,
+            Component.text("Buy: ")
+                .color(NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
+                .append(parseName(rawName)));
+
+        // Fill with black glass
+        ItemStack bg = blackGlass();
+        for (int i = 0; i < CONFIRM_SIZE; i++) inv.setItem(i, bg);
+
+        // Header (row 0) and footer (row 4): cyan glass
+        ItemStack hdr = cyanGlass();
+        for (int i = 0; i < 9; i++)  inv.setItem(i, hdr);
+        for (int i = 36; i < 45; i++) inv.setItem(i, hdr);
 
         int qty = 1;
         inv.setItem(CONFIRM_SLOT_ITEM,    buildConfirmItemDisplay(item, qty));
@@ -302,11 +408,21 @@ public class ShopManager {
         meta.displayName(parseName(rawName));
 
         List<Component> lore = new ArrayList<>();
+        lore.add(Component.empty());
         if (totalAmount > 1) {
-            lore.add(parseName("&7Amount: &f" + totalAmount));
+            lore.add(Component.text("Amount: ")
+                .color(NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
+                .append(Component.text(String.valueOf(totalAmount))
+                    .color(NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false)));
         }
-        lore.add(parseName("&7Unit price: &e" + bridge.getSymbol() + formatPrice(item.price())));
-        lore.add(parseName("&7Total: &e" + bridge.getSymbol() + formatPrice(item.price() * qty)));
+        lore.add(Component.text("Unit price: ")
+            .color(NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
+            .append(Component.text(bridge.getSymbol() + formatPrice(item.price()))
+                .color(NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false)));
+        lore.add(Component.text("Total: ")
+            .color(NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
+            .append(Component.text(bridge.getSymbol() + formatPrice(item.price() * qty))
+                .color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false)));
         for (String line : item.lore()) {
             lore.add(parseName(line));
         }
@@ -318,12 +434,22 @@ public class ShopManager {
     private ItemStack buildQtyDisplay(ShopItem item, int qty) {
         ItemStack paper = new ItemStack(Material.PAPER);
         ItemMeta meta = paper.getItemMeta();
-        meta.displayName(parseName("&fQuantity: &e" + qty));
+        meta.displayName(Component.text("Quantity: ")
+            .color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+            .append(Component.text(String.valueOf(qty))
+                .color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false)));
         List<Component> lore = new ArrayList<>();
+        lore.add(Component.empty());
         if (item.amount() > 1) {
-            lore.add(parseName("&7Items: &f" + (item.amount() * qty)));
+            lore.add(Component.text("Items: ")
+                .color(NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
+                .append(Component.text(String.valueOf(item.amount() * qty))
+                    .color(NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false)));
         }
-        lore.add(parseName("&7Total cost: &e" + bridge.getSymbol() + formatPrice(item.price() * qty)));
+        lore.add(Component.text("Total cost: ")
+            .color(NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
+            .append(Component.text(bridge.getSymbol() + formatPrice(item.price() * qty))
+                .color(NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false)));
         meta.lore(lore);
         paper.setItemMeta(meta);
         return paper;
@@ -376,11 +502,12 @@ public class ShopManager {
         if (session == null) return;
 
         if (session.isMain()) {
-            for (ShopCategory cat : categories) {
-                if (cat.mainSlot() == slot) {
+            Map<Integer, ShopCategory> slotMap = mainMenuSlots.get(inv);
+            if (slotMap != null) {
+                ShopCategory cat = slotMap.get(slot);
+                if (cat != null) {
                     player.closeInventory();
                     openCategory(player, cat.key(), 0);
-                    return;
                 }
             }
             return;
@@ -439,7 +566,6 @@ public class ShopManager {
             return;
         }
 
-        // Give items, splitting across stacks if needed
         int remaining = item.amount() * qty;
         int maxStack = item.material().getMaxStackSize();
         while (remaining > 0) {
@@ -470,6 +596,15 @@ public class ShopManager {
     }
 
     // ── Utilities ─────────────────────────────────────────────────────────────
+
+    private ItemStack makeButton(Material mat, String name) {
+        ItemStack btn = new ItemStack(mat);
+        ItemMeta meta = btn.getItemMeta();
+        meta.displayName(parseName(name));
+        meta.lore(List.of());
+        btn.setItemMeta(meta);
+        return btn;
+    }
 
     private String formatPrice(double price) {
         if (price == Math.floor(price)) return String.valueOf((long) price);
@@ -516,5 +651,6 @@ public class ShopManager {
     public void onClose(Inventory inv) {
         sessions.remove(inv);
         confirmSessions.remove(inv);
+        mainMenuSlots.remove(inv);
     }
 }

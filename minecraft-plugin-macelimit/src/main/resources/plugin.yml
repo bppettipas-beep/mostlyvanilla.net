@@ -1,0 +1,12 @@
+name: MostlyVanillaMaceLimit
+version: ${project.version}
+main: com.mostlyvanilla.macelimit.MostlyVanillaMaceLimit
+api-version: '1.20'
+description: Limits the total number of maces that can be crafted server-wide
+
+commands:
+  macelimit:
+    description: Manage the mace crafting limit
+    usage: /macelimit <set <amount>|info|reset>
+    permission: macelimit.admin
+    permission-message: You must be OP to use this command.

@@ -2,6 +2,7 @@ package com.mostlyvanilla.rtp;
 
 import com.mostlyvanilla.rtp.commands.DimensionDisableCommand;
 import com.mostlyvanilla.rtp.commands.RtpCommand;
+import com.mostlyvanilla.rtp.commands.RtpRangeCommand;
 import com.mostlyvanilla.rtp.gui.RtpGui;
 import com.mostlyvanilla.rtp.listeners.GuiListener;
 import com.mostlyvanilla.rtp.listeners.PlayerListener;
@@ -22,6 +23,10 @@ public class MostlyVanillaRtp extends JavaPlugin {
         getCommand("rtp").setExecutor(new RtpCommand(rtpGui));
         getCommand("dimensiondisable").setExecutor(disableCmd);
         getCommand("dimensiondisable").setTabCompleter(disableCmd);
+
+        RtpRangeCommand rangeCmd = new RtpRangeCommand(this);
+        getCommand("rtprange").setExecutor(rangeCmd);
+        getCommand("rtprange").setTabCompleter(rangeCmd);
 
         getServer().getPluginManager().registerEvents(new GuiListener(rtpManager), this);
         getServer().getPluginManager().registerEvents(new PlayerListener(teleportManager), this);

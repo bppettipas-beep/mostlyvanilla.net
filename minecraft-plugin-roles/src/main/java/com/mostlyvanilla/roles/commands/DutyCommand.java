@@ -35,6 +35,7 @@ public class DutyCommand implements CommandExecutor {
                 .append(Component.text("ON DUTY", NamedTextColor.GREEN).decorate(TextDecoration.BOLD))
                 .append(Component.text(". Staff permissions are now active.", NamedTextColor.GREEN)));
         } else {
+            plugin.getGlowManager().onDutyEnd(player);
             player.sendMessage(Component.text("You are now ", NamedTextColor.YELLOW)
                 .append(Component.text("OFF DUTY", NamedTextColor.YELLOW).decorate(TextDecoration.BOLD))
                 .append(Component.text(". Staff permissions have been disabled.", NamedTextColor.YELLOW)));

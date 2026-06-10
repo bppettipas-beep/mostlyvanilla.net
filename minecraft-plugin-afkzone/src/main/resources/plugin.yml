@@ -10,3 +10,6 @@ commands:
     usage: /afkzone <set1|set2|enable|disable|setcurrency|setamount|setinterval|info|reload>
     permission: afkzone.admin
     permission-message: You must be OP to use this command.
+  afk:
+    description: Teleport to the AFK Zone
+    usage: /afk

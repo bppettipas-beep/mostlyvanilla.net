@@ -1,6 +1,1 @@
-# Discord bot API (for bidirectional role sync with /role link)
-bot-api-url: "http://localhost:3000"
-api-secret: ""
-
-# How often to poll for Discord->Minecraft role changes (seconds)
-poll-interval: 10
+# No configuration needed — all role settings are managed in-game via /role commands.

@@ -8,8 +8,10 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
+import org.bukkit.block.Container;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -147,21 +149,34 @@ public class SellManager {
         sellSessions.remove(inv);
         double total     = 0.0;
         int    soldCount = 0;
-        List<ItemStack> unsellable = new ArrayList<>();
+        List<ItemStack> toReturn = new ArrayList<>();
 
         for (ItemStack item : inv.getContents()) {
             if (item == null || item.getType().isAir()) continue;
+
+            if (isShulkerBox(item.getType())) {
+                double contentsValue = valueOfShulkerContents(item);
+                if (contentsValue > 0) {
+                    total     += contentsValue;
+                    soldCount += countShulkerSellableItems(item);
+                    toReturn.add(emptyShulker(item)); // return the shell
+                } else {
+                    toReturn.add(item.clone()); // nothing sellable inside, give back as-is
+                }
+                continue;
+            }
+
             double price = getSellPrice(item.getType());
             if (price > 0) {
                 total     += price * item.getAmount();
                 soldCount += item.getAmount();
             } else {
-                unsellable.add(item.clone());
+                toReturn.add(item.clone());
             }
         }
         inv.clear();
 
-        for (ItemStack item : unsellable) {
+        for (ItemStack item : toReturn) {
             player.getInventory().addItem(item).values()
                 .forEach(drop -> player.getWorld().dropItemNaturally(player.getLocation(), drop));
         }
@@ -289,6 +304,49 @@ public class SellManager {
     public void onClose(Inventory inv)        { worthSessions.remove(inv); }
 
     public void reload() { plugin.reloadConfig(); loadSellPrices(); }
+
+    // ── Shulker helpers ───────────────────────────────────────────────────────
+
+    private static boolean isShulkerBox(Material mat) {
+        return mat.name().endsWith("SHULKER_BOX");
+    }
+
+    /** Returns the total sell value of all items inside a shulker box (recursive). */
+    private double valueOfShulkerContents(ItemStack shulker) {
+        if (!(shulker.getItemMeta() instanceof BlockStateMeta bsm)) return 0.0;
+        if (!(bsm.getBlockState() instanceof Container container)) return 0.0;
+        double value = 0.0;
+        for (ItemStack item : container.getInventory().getContents()) {
+            if (item == null || item.getType().isAir()) continue;
+            value += getSellPrice(item.getType()) * item.getAmount();
+            if (isShulkerBox(item.getType())) value += valueOfShulkerContents(item);
+        }
+        return value;
+    }
+
+    /** Counts sellable items inside a shulker box (recursive). */
+    private int countShulkerSellableItems(ItemStack shulker) {
+        if (!(shulker.getItemMeta() instanceof BlockStateMeta bsm)) return 0;
+        if (!(bsm.getBlockState() instanceof Container container)) return 0;
+        int count = 0;
+        for (ItemStack item : container.getInventory().getContents()) {
+            if (item == null || item.getType().isAir()) continue;
+            if (getSellPrice(item.getType()) > 0) count += item.getAmount();
+            if (isShulkerBox(item.getType())) count += countShulkerSellableItems(item);
+        }
+        return count;
+    }
+
+    /** Returns a copy of the shulker box with its inventory cleared. */
+    private static ItemStack emptyShulker(ItemStack shulker) {
+        ItemStack empty = shulker.clone();
+        if (empty.getItemMeta() instanceof BlockStateMeta bsm && bsm.getBlockState() instanceof Container c) {
+            c.getInventory().clear();
+            bsm.setBlockState(c);
+            empty.setItemMeta(bsm);
+        }
+        return empty;
+    }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 

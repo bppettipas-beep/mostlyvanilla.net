@@ -1,8 +1,5 @@
 package com.mostlyvanilla.roles;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
@@ -11,17 +8,11 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.*;
 
 public class RoleManager {
@@ -30,7 +21,6 @@ public class RoleManager {
     private final Map<String, String>  roles       = new LinkedHashMap<>();
     private final Map<String, Integer> roleWeights = new HashMap<>();
     private final Map<UUID, String>    playerRoles = new HashMap<>();
-    private final Map<String, String>  roleLinks   = new HashMap<>(); // gameRole → discordRoleId
     private String  joinRole          = null;
     private String  staffRole         = null;
     private String  flyRole           = null;
@@ -40,25 +30,23 @@ public class RoleManager {
     private String  banRole           = null;
     private String  ecSeeRole         = null;
     private String  invSeeRole        = null;
+    private String  stashRole         = null;
+    private String  spawnoreRole      = null;
+    private String  susRole           = null;
     private boolean nameColorMatch    = false;
     private String  dutyRole          = null;
 
-    private final Set<UUID>                 onDutyPlayers = new HashSet<>();
-    private final Map<String, Set<String>> blockedCmds  = new HashMap<>(); // role → blocked prefixes
-    private final Map<String, Set<String>> allowedCmds  = new HashMap<>(); // role → allowed prefixes (block-all exceptions)
-    private final Set<String>              blockAllRoles = new HashSet<>(); // roles with all commands blocked
+    private final Set<UUID>                onDutyPlayers = new HashSet<>();
+    private final Map<String, Set<String>> blockedCmds  = new HashMap<>();
+    private final Map<String, Set<String>> allowedCmds  = new HashMap<>();
+    private final Set<String>             blockAllRoles = new HashSet<>();
 
     private File rolesFile;
     private File playersFile;
-    private File linksFile;
     private File cmdBlocksFile;
     private Scoreboard scoreboard;
 
     private static final String TEAM_PREFIX = "mv_";
-
-    private final HttpClient http = HttpClient.newBuilder()
-        .connectTimeout(Duration.ofSeconds(5))
-        .build();
 
     public RoleManager(MostlyVanillaRoles plugin) {
         this.plugin = plugin;
@@ -67,12 +55,10 @@ public class RoleManager {
     public void load() {
         rolesFile     = new File(plugin.getDataFolder(), "roles.yml");
         playersFile   = new File(plugin.getDataFolder(), "players.yml");
-        linksFile     = new File(plugin.getDataFolder(), "links.yml");
         cmdBlocksFile = new File(plugin.getDataFolder(), "command-blocks.yml");
 
         createIfAbsent(rolesFile);
         createIfAbsent(playersFile);
-        createIfAbsent(linksFile);
         createIfAbsent(cmdBlocksFile);
 
         // Load roles
@@ -86,6 +72,9 @@ public class RoleManager {
         banRole          = rc.getString("ban-role",          null);
         ecSeeRole        = rc.getString("ecsee-role",        null);
         invSeeRole       = rc.getString("invsee-role",       null);
+        stashRole        = rc.getString("stash-role",        null);
+        spawnoreRole     = rc.getString("spawnore-role",     null);
+        susRole          = rc.getString("sus-role",          null);
         nameColorMatch   = rc.getBoolean("name-color-match", false);
         dutyRole         = rc.getString("duty-role",         null);
         if (rc.isConfigurationSection("roles")) {
@@ -104,14 +93,6 @@ public class RoleManager {
                     String role = pc.getString("players." + uuidStr);
                     if (role != null && roles.containsKey(role)) playerRoles.put(uuid, role);
                 } catch (IllegalArgumentException ignored) {}
-            }
-        }
-
-        // Load role links
-        YamlConfiguration lc = YamlConfiguration.loadConfiguration(linksFile);
-        if (lc.isConfigurationSection("links")) {
-            for (String gameRole : lc.getConfigurationSection("links").getKeys(false)) {
-                roleLinks.put(gameRole, lc.getString("links." + gameRole));
             }
         }
 
@@ -135,16 +116,7 @@ public class RoleManager {
         for (Player p : Bukkit.getOnlinePlayers()) syncPlayerTeam(p);
 
         plugin.getLogger().info("Loaded " + roles.size() + " role(s), " +
-            playerRoles.size() + " assignment(s), " + roleLinks.size() + " link(s).");
-
-        startPollTask();
-    }
-
-    private void startPollTask() {
-        int interval = plugin.getConfig().getInt("poll-interval", 10);
-        new BukkitRunnable() {
-            @Override public void run() { pollPendingGameRoles(); }
-        }.runTaskTimerAsynchronously(plugin, 200L, interval * 20L);
+            playerRoles.size() + " assignment(s).");
     }
 
     // ── Persistence ──────────────────────────────────────────────────────────
@@ -165,6 +137,9 @@ public class RoleManager {
         if (banRole          != null) c.set("ban-role",          banRole);
         if (ecSeeRole        != null) c.set("ecsee-role",        ecSeeRole);
         if (invSeeRole       != null) c.set("invsee-role",       invSeeRole);
+        if (stashRole        != null) c.set("stash-role",        stashRole);
+        if (spawnoreRole     != null) c.set("spawnore-role",     spawnoreRole);
+        if (susRole          != null) c.set("sus-role",          susRole);
         c.set("name-color-match", nameColorMatch);
         if (dutyRole         != null) c.set("duty-role",         dutyRole);
         for (Map.Entry<String, String> e : roles.entrySet()) {
@@ -178,12 +153,6 @@ public class RoleManager {
         YamlConfiguration c = new YamlConfiguration();
         for (Map.Entry<UUID, String> e : playerRoles.entrySet()) c.set("players." + e.getKey(), e.getValue());
         save(c, playersFile);
-    }
-
-    private void saveLinks() {
-        YamlConfiguration c = new YamlConfiguration();
-        for (Map.Entry<String, String> e : roleLinks.entrySet()) c.set("links." + e.getKey(), e.getValue());
-        save(c, linksFile);
     }
 
     private void saveCmdBlocks() {
@@ -236,7 +205,6 @@ public class RoleManager {
         String roleName = playerRoles.get(player.getUniqueId());
         String playerName = player.getName();
 
-        // Remove from any existing mv_ team by entry name (more reliable than getPlayerTeam)
         for (Team t : scoreboard.getTeams()) {
             if (t.getName().startsWith(TEAM_PREFIX) && t.hasEntry(playerName)) {
                 t.removeEntry(playerName);
@@ -250,6 +218,14 @@ public class RoleManager {
 
         TabManager tabMgr = plugin.getTabManager();
         if (tabMgr != null) tabMgr.updateTabName(player);
+    }
+
+    public void syncPlayerTeamIfNeeded(Player player) {
+        String roleName = playerRoles.get(player.getUniqueId());
+        if (roleName == null) return;
+        Team expected = scoreboard.getTeam(teamName(roleName));
+        if (expected == null) return;
+        if (!expected.hasEntry(player.getName())) syncPlayerTeam(player);
     }
 
     // ── Role CRUD ────────────────────────────────────────────────────────────
@@ -276,23 +252,24 @@ public class RoleManager {
         if (name.equals(banRole))          banRole          = null;
         if (name.equals(ecSeeRole))        ecSeeRole        = null;
         if (name.equals(invSeeRole))       invSeeRole       = null;
-        roleLinks.remove(name);
+        if (name.equals(stashRole))        stashRole        = null;
+        if (name.equals(spawnoreRole))     spawnoreRole     = null;
+        if (name.equals(susRole))          susRole          = null;
         blockedCmds.remove(name);
         allowedCmds.remove(name);
         blockAllRoles.remove(name);
         removeTeam(name);
         saveRoles();
         savePlayers();
-        saveLinks();
         saveCmdBlocks();
         return true;
     }
 
     public boolean setWeight(String roleName, int weight) {
         if (!roles.containsKey(roleName)) return false;
-        removeTeam(roleName);                          // remove old team name (uses current weight)
-        roleWeights.put(roleName, weight);             // update weight
-        setupTeam(roleName, roles.get(roleName));      // register new team name
+        removeTeam(roleName);
+        roleWeights.put(roleName, weight);
+        setupTeam(roleName, roles.get(roleName));
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (roleName.equals(playerRoles.get(p.getUniqueId()))) syncPlayerTeam(p);
         }
@@ -306,24 +283,15 @@ public class RoleManager {
         Player player = Bukkit.getPlayer(uuid);
         if (player != null) syncPlayerTeam(player);
         savePlayers();
-        if (roleLinks.containsKey(roleName)) {
-            plugin.getServer().getScheduler().runTaskAsynchronously(plugin,
-                () -> syncToDiscord(uuid, roleName, true));
-        }
         return true;
     }
 
     public boolean removePlayerRole(UUID uuid) {
-        String roleName = playerRoles.get(uuid);
-        if (roleName == null) return false;
+        if (!playerRoles.containsKey(uuid)) return false;
         playerRoles.remove(uuid);
         Player player = Bukkit.getPlayer(uuid);
         if (player != null) syncPlayerTeam(player);
         savePlayers();
-        if (roleLinks.containsKey(roleName)) {
-            plugin.getServer().getScheduler().runTaskAsynchronously(plugin,
-                () -> syncToDiscord(uuid, roleName, false));
-        }
         return true;
     }
 
@@ -382,7 +350,6 @@ public class RoleManager {
         saveCmdBlocks();
     }
 
-    /** Returns true for roles at or below the join role's weight (i.e. regular players, not staff). */
     private boolean isLowPriorityRole(String roleName) {
         if (joinRole == null) return true;
         int joinWeight = roleWeights.getOrDefault(joinRole, 50);
@@ -400,7 +367,6 @@ public class RoleManager {
     public boolean allowCommand(String roleName, String cmd) {
         if (!roles.containsKey(roleName)) return false;
         String c = cmd.toLowerCase();
-        // Always record the explicit allow so it works regardless of whether commandblockall was run first or after
         allowedCmds.computeIfAbsent(roleName, k -> new HashSet<>()).add(c);
         Set<String> blocked = blockedCmds.get(roleName);
         if (blocked != null) blocked.remove(c);
@@ -413,15 +379,12 @@ public class RoleManager {
         String cmd = input.toLowerCase();
         if (cmd.startsWith("/")) cmd = cmd.substring(1);
 
-        // An explicit allow on the player's own role beats any cascade block from higher-priority roles.
-        // This makes gmmod/gmadmin/commandallow work regardless of blockAll on other roles.
         for (String a : allowedCmds.getOrDefault(roleName, Set.of())) {
             if (cmdMatches(a, cmd)) return false;
         }
 
         int playerWeight = roleWeights.getOrDefault(roleName, 50);
 
-        // A block at any higher-priority role (lower weight) cascades down.
         for (Map.Entry<String, Integer> e : roleWeights.entrySet()) {
             if (e.getValue() <= playerWeight && isNetBlockedForRole(e.getKey(), cmd)) return true;
         }
@@ -429,7 +392,6 @@ public class RoleManager {
     }
 
     private boolean isNetBlockedForRole(String role, String cmd) {
-        // Explicit allows always win, even for block-all roles
         for (String a : allowedCmds.getOrDefault(role, Set.of())) {
             if (cmdMatches(a, cmd)) return false;
         }
@@ -444,11 +406,6 @@ public class RoleManager {
         return input.equals(prefix) || input.startsWith(prefix + " ");
     }
 
-    /**
-     * Returns true if the player's role grants them access to this command via one of the
-     * addfly / addmute / addannouncement / addban / addecsee / addinvsee / addstaff role thresholds.
-     * Used by CommandListener to let these override a general command block.
-     */
     public boolean hasRolePermission(UUID uuid, String input) {
         String cmd = input.toLowerCase();
         if (cmd.startsWith("/")) cmd = cmd.substring(1);
@@ -460,200 +417,8 @@ public class RoleManager {
         if (cmdMatches("checkec", cmd) && canUseEcSee(uuid)) return true;
         if (cmdMatches("invsee", cmd) && canUseInvSee(uuid)) return true;
         if (staffRole != null && cmdMatches("staff", cmd) && canUseStaff(uuid)) return true;
+        if (cmdMatches("sus", cmd) && canNotifySus(uuid) && isOnDuty(uuid)) return true;
         return false;
-    }
-
-    // ── Role links ───────────────────────────────────────────────────────────
-
-    public boolean linkRole(String gameRole, String discordRoleId) {
-        if (!roles.containsKey(gameRole)) return false;
-        roleLinks.put(gameRole, discordRoleId);
-        saveLinks();
-        // Register link with bot
-        int weight = roleWeights.getOrDefault(gameRole, 50);
-        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () ->
-            postJson("/api/role-links",
-                String.format("{\"game_role\":\"%s\",\"discord_role_id\":\"%s\",\"weight\":%d}",
-                    gameRole, discordRoleId, weight))
-        );
-        return true;
-    }
-
-    public boolean unlinkRole(String gameRole) {
-        if (!roleLinks.containsKey(gameRole)) return false;
-        roleLinks.remove(gameRole);
-        saveLinks();
-        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () ->
-            deleteRequest("/api/role-links/" + gameRole)
-        );
-        return true;
-    }
-
-    public Map<String, String> getRoleLinks() {
-        return Collections.unmodifiableMap(roleLinks);
-    }
-
-    // ── Discord sync ─────────────────────────────────────────────────────────
-
-    private void syncToDiscord(UUID uuid, String gameRole, boolean assign) {
-        String discordRoleId = roleLinks.get(gameRole);
-        if (discordRoleId == null) return;
-        String body = getJson("/api/verified/" + uuid);
-        if (body == null) return;
-        try {
-            JsonObject resp = JsonParser.parseString(body).getAsJsonObject();
-            if (!resp.get("verified").getAsBoolean()) return;
-            String discordUserId = resp.getAsJsonObject("data").get("discord_id").getAsString();
-            postJson("/api/discord-role/assign",
-                String.format("{\"discord_user_id\":\"%s\",\"discord_role_id\":\"%s\",\"assign\":%s}",
-                    discordUserId, discordRoleId, assign));
-        } catch (Exception e) {
-            plugin.getLogger().warning("[RoleSync] Discord sync failed: " + e.getMessage());
-        }
-    }
-
-    public void pollPendingGameRoles() {
-        String body = getJson("/api/pending-game-roles");
-        if (body == null || body.equals("[]")) return;
-        try {
-            JsonArray pending = JsonParser.parseString(body).getAsJsonArray();
-            if (pending.isEmpty()) return;
-            plugin.getLogger().info("[RoleSync] Processing " + pending.size() + " pending assignment(s)");
-            for (var elem : pending) {
-                JsonObject item = elem.getAsJsonObject();
-                String uuidStr  = item.get("mc_uuid").getAsString();
-                String gameRole = item.get("game_role").getAsString();
-                String action   = item.get("action").getAsString();
-                new BukkitRunnable() {
-                    @Override public void run() {
-                        try {
-                            UUID uuid = UUID.fromString(uuidStr);
-                            if ("assign".equals(action) && roleExists(gameRole)) {
-                                playerRoles.put(uuid, gameRole);
-                                Player online = Bukkit.getPlayer(uuid);
-                                if (online != null) syncPlayerTeam(online);
-                                savePlayers();
-                                // After assigning, upgrade to highest Discord role if one exists
-                                new BukkitRunnable() {
-                                    @Override public void run() { syncFromDiscord(uuid); }
-                                }.runTaskAsynchronously(plugin);
-                            } else if ("remove".equals(action) && gameRole.equals(playerRoles.get(uuid))) {
-                                playerRoles.remove(uuid);
-                                Player online = Bukkit.getPlayer(uuid);
-                                if (online != null) syncPlayerTeam(online);
-                                savePlayers();
-                            }
-                        } catch (Exception e) {
-                            plugin.getLogger().warning("[RoleSync] Error applying pending role: " + e.getMessage());
-                        }
-                    }
-                }.runTask(plugin);
-            }
-        } catch (Exception e) {
-            plugin.getLogger().warning("[RoleSync] Failed to parse pending roles: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Queries the bot for all Discord roles the player currently holds, finds the
-     * highest-priority (lowest weight) linked game role among them, and assigns it.
-     * Must be called from an async thread.
-     */
-    public void syncFromDiscord(UUID mcUuid) {
-        String body = getJson("/api/discord-roles/" + mcUuid);
-        if (body == null || body.isBlank() || body.equals("[]")) return;
-
-        List<String> discordRoleIds = parseJsonStringArray(body);
-        if (discordRoleIds.isEmpty()) return;
-
-        String bestRole  = null;
-        int    bestWeight = Integer.MAX_VALUE;
-        for (Map.Entry<String, String> link : roleLinks.entrySet()) {
-            if (discordRoleIds.contains(link.getValue())) {
-                int w = roleWeights.getOrDefault(link.getKey(), 50);
-                if (w < bestWeight) { bestWeight = w; bestRole = link.getKey(); }
-            }
-        }
-
-        if (bestRole == null) return;
-
-        final String roleToAssign = bestRole;
-        new BukkitRunnable() {
-            @Override public void run() {
-                if (roleToAssign.equals(playerRoles.get(mcUuid))) return;
-                playerRoles.put(mcUuid, roleToAssign);
-                Player online = Bukkit.getPlayer(mcUuid);
-                if (online != null) syncPlayerTeam(online);
-                savePlayers();
-                plugin.getLogger().info("[RoleSync] Assigned '" + roleToAssign + "' to " + mcUuid + " via Discord role sync.");
-            }
-        }.runTask(plugin);
-    }
-
-    /** Parses a JSON array of strings: ["a","b","c"] → List<String>. */
-    private static List<String> parseJsonStringArray(String json) {
-        List<String> result = new ArrayList<>();
-        json = json.trim();
-        if (!json.startsWith("[") || !json.endsWith("]")) return result;
-        json = json.substring(1, json.length() - 1).trim();
-        if (json.isBlank()) return result;
-        for (String part : json.split(",")) {
-            String s = part.trim().replaceAll("^\"|\"$", "");
-            if (!s.isBlank()) result.add(s);
-        }
-        return result;
-    }
-
-    // ── HTTP helpers ─────────────────────────────────────────────────────────
-
-    private String apiUrl(String path) {
-        return plugin.getConfig().getString("bot-api-url", "http://localhost:3000") + path;
-    }
-
-    private String apiSecret() {
-        return plugin.getConfig().getString("api-secret", "");
-    }
-
-    private String getJson(String path) {
-        try {
-            var req = HttpRequest.newBuilder()
-                .uri(URI.create(apiUrl(path)))
-                .header("x-api-secret", apiSecret())
-                .timeout(Duration.ofSeconds(5))
-                .GET().build();
-            var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-            return resp.statusCode() == 200 ? resp.body() : null;
-        } catch (Exception e) {
-            plugin.getLogger().warning("[RoleSync] GET " + path + " failed: " + e.getMessage());
-            return null;
-        }
-    }
-
-    private void postJson(String path, String body) {
-        try {
-            var req = HttpRequest.newBuilder()
-                .uri(URI.create(apiUrl(path)))
-                .header("Content-Type", "application/json")
-                .header("x-api-secret", apiSecret())
-                .timeout(Duration.ofSeconds(5))
-                .POST(HttpRequest.BodyPublishers.ofString(body)).build();
-            http.send(req, HttpResponse.BodyHandlers.ofString());
-        } catch (Exception e) {
-            plugin.getLogger().warning("[RoleSync] POST " + path + " failed: " + e.getMessage());
-        }
-    }
-
-    private void deleteRequest(String path) {
-        try {
-            var req = HttpRequest.newBuilder()
-                .uri(URI.create(apiUrl(path)))
-                .header("x-api-secret", apiSecret())
-                .timeout(Duration.ofSeconds(5))
-                .DELETE().build();
-            http.send(req, HttpResponse.BodyHandlers.ofString());
-        } catch (Exception e) {
-            plugin.getLogger().warning("[RoleSync] DELETE " + path + " failed: " + e.getMessage());
-        }
     }
 
     // ── Getters ──────────────────────────────────────────────────────────────
@@ -663,7 +428,6 @@ public class RoleManager {
         return role != null ? roles.get(role) : null;
     }
 
-    /** Returns the role prefix serialized to §-format legacy string (handles gradients). */
     public String getPrefixLegacy(UUID uuid) {
         String role = playerRoles.get(uuid);
         if (role == null) return null;
@@ -677,23 +441,20 @@ public class RoleManager {
     public boolean roleExists(String name)        { return roles.containsKey(name); }
     public Set<String> getRoleNames()             { return Collections.unmodifiableSet(roles.keySet()); }
     public Map<String, String> getRoles()         { return Collections.unmodifiableMap(roles); }
+    public Map<String, Integer> getRoleWeights()  { return Collections.unmodifiableMap(roleWeights); }
 
     public boolean setJoinRole(String name) {
         if (!roles.containsKey(name)) return false;
         joinRole = name; saveRoles(); return true;
     }
-
     public void clearJoinRole() { joinRole = null; saveRoles(); }
 
     public boolean setMuteRole(String name) {
         if (!roles.containsKey(name)) return false;
         muteRole = name; saveRoles(); return true;
     }
-
     public void clearMuteRole() { muteRole = null; saveRoles(); }
-
     public String getMuteRole() { return muteRole; }
-
     public boolean canUseMute(UUID uuid) {
         if (muteRole == null) return false;
         Integer threshold = roleWeights.get(muteRole);
@@ -708,11 +469,8 @@ public class RoleManager {
         if (!roles.containsKey(name)) return false;
         banRole = name; saveRoles(); return true;
     }
-
     public void clearBanRole() { banRole = null; saveRoles(); }
-
     public String getBanRole() { return banRole; }
-
     public boolean canUseBan(UUID uuid) {
         if (banRole == null) return false;
         Integer threshold = roleWeights.get(banRole);
@@ -727,11 +485,8 @@ public class RoleManager {
         if (!roles.containsKey(name)) return false;
         ecSeeRole = name; saveRoles(); return true;
     }
-
     public void clearEcSeeRole() { ecSeeRole = null; saveRoles(); }
-
     public String getEcSeeRole() { return ecSeeRole; }
-
     public boolean canUseEcSee(UUID uuid) {
         if (ecSeeRole == null) return false;
         Integer threshold = roleWeights.get(ecSeeRole);
@@ -746,11 +501,8 @@ public class RoleManager {
         if (!roles.containsKey(name)) return false;
         invSeeRole = name; saveRoles(); return true;
     }
-
     public void clearInvSeeRole() { invSeeRole = null; saveRoles(); }
-
     public String getInvSeeRole() { return invSeeRole; }
-
     public boolean canUseInvSee(UUID uuid) {
         if (invSeeRole == null) return false;
         Integer threshold = roleWeights.get(invSeeRole);
@@ -765,11 +517,8 @@ public class RoleManager {
         if (!roles.containsKey(name)) return false;
         announcementRole = name; saveRoles(); return true;
     }
-
     public void clearAnnouncementRole() { announcementRole = null; saveRoles(); }
-
     public String getAnnouncementRole() { return announcementRole; }
-
     public boolean canUseAnnouncement(UUID uuid) {
         if (announcementRole == null) return false;
         Integer threshold = roleWeights.get(announcementRole);
@@ -784,11 +533,8 @@ public class RoleManager {
         if (!roles.containsKey(name)) return false;
         flyRole = name; saveRoles(); return true;
     }
-
     public void clearFlyRole() { flyRole = null; saveRoles(); }
-
     public String getFlyRole() { return flyRole; }
-
     public boolean canUseFly(UUID uuid) {
         if (flyRole == null) return false;
         Integer threshold = roleWeights.get(flyRole);
@@ -803,11 +549,8 @@ public class RoleManager {
         if (!roles.containsKey(name)) return false;
         allowTpRole = name; saveRoles(); return true;
     }
-
     public void clearAllowTpRole() { allowTpRole = null; saveRoles(); }
-
     public String getAllowTpRole() { return allowTpRole; }
-
     public boolean canUseTp(UUID uuid) {
         if (allowTpRole == null) return false;
         Integer threshold = roleWeights.get(allowTpRole);
@@ -822,16 +565,59 @@ public class RoleManager {
         if (!roles.containsKey(name)) return false;
         staffRole = name; saveRoles(); return true;
     }
-
     public void clearStaffRole() { staffRole = null; saveRoles(); }
-
     public String getStaffRole() { return staffRole; }
-
-    /** Returns true if the player is allowed to use the staff panel.
-     *  If no staff-role is set, everyone is allowed. */
     public boolean canUseStaff(UUID uuid) {
         if (staffRole == null) return true;
         Integer threshold = roleWeights.get(staffRole);
+        if (threshold == null) return false;
+        String playerRole = playerRoles.get(uuid);
+        if (playerRole == null) return false;
+        Integer playerWeight = roleWeights.get(playerRole);
+        return playerWeight != null && playerWeight <= threshold;
+    }
+
+    public boolean setStashRole(String name) {
+        if (!roles.containsKey(name)) return false;
+        stashRole = name; saveRoles(); return true;
+    }
+    public void clearStashRole() { stashRole = null; saveRoles(); }
+    public String getStashRole() { return stashRole; }
+    public boolean canUseStash(UUID uuid) {
+        if (stashRole == null) return false;
+        Integer threshold = roleWeights.get(stashRole);
+        if (threshold == null) return false;
+        String playerRole = playerRoles.get(uuid);
+        if (playerRole == null) return false;
+        Integer playerWeight = roleWeights.get(playerRole);
+        return playerWeight != null && playerWeight <= threshold;
+    }
+
+    public boolean setSpawnoreRole(String name) {
+        if (!roles.containsKey(name)) return false;
+        spawnoreRole = name; saveRoles(); return true;
+    }
+    public void clearSpawnoreRole() { spawnoreRole = null; saveRoles(); }
+    public String getSpawnoreRole() { return spawnoreRole; }
+    public boolean canUseSpawnore(UUID uuid) {
+        if (spawnoreRole == null) return false;
+        Integer threshold = roleWeights.get(spawnoreRole);
+        if (threshold == null) return false;
+        String playerRole = playerRoles.get(uuid);
+        if (playerRole == null) return false;
+        Integer playerWeight = roleWeights.get(playerRole);
+        return playerWeight != null && playerWeight <= threshold;
+    }
+
+    public boolean setSusRole(String name) {
+        if (!roles.containsKey(name)) return false;
+        susRole = name; saveRoles(); return true;
+    }
+    public void clearSusRole() { susRole = null; saveRoles(); }
+    public String getSusRole() { return susRole; }
+    public boolean canNotifySus(UUID uuid) {
+        if (susRole == null) return false;
+        Integer threshold = roleWeights.get(susRole);
         if (threshold == null) return false;
         String playerRole = playerRoles.get(uuid);
         if (playerRole == null) return false;
@@ -845,12 +631,9 @@ public class RoleManager {
         if (!roles.containsKey(name)) return false;
         dutyRole = name; saveRoles(); return true;
     }
-
     public void clearDutyRole() { dutyRole = null; saveRoles(); }
-
     public String getDutyRole() { return dutyRole; }
 
-    /** True if the player's role is at or above the duty threshold (lower weight = higher rank). */
     public boolean isDutyRequired(UUID uuid) {
         if (dutyRole == null) return false;
         Integer threshold = roleWeights.get(dutyRole);
@@ -863,7 +646,6 @@ public class RoleManager {
 
     public boolean isOnDuty(UUID uuid) { return onDutyPlayers.contains(uuid); }
 
-    /** Toggles duty status. Returns true if now on duty, false if now off duty. */
     public boolean toggleDuty(UUID uuid) {
         if (onDutyPlayers.remove(uuid)) return false;
         onDutyPlayers.add(uuid);
@@ -872,7 +654,6 @@ public class RoleManager {
 
     public void clearDutyStatus(UUID uuid) { onDutyPlayers.remove(uuid); }
 
-    /** True if the command is a staff command gated by one of the configured role thresholds. */
     public boolean isDutyGatedCommand(String input) {
         String cmd = input.toLowerCase();
         if (cmd.startsWith("/")) cmd = cmd.substring(1);
@@ -888,10 +669,9 @@ public class RoleManager {
         if (announcementRole != null && (cmdMatches("announcement", cmd) || cmdMatches("announce", cmd))) return true;
         if (ecSeeRole != null && cmdMatches("checkec", cmd)) return true;
         if (invSeeRole != null && cmdMatches("invsee", cmd)) return true;
+        if (susRole != null && cmdMatches("sus", cmd)) return true;
         return false;
     }
-
-    public Map<String, Integer> getRoleWeights() { return Collections.unmodifiableMap(roleWeights); }
 
     // ── Name color match ─────────────────────────────────────────────────────
 
@@ -903,7 +683,6 @@ public class RoleManager {
         return nameColorMatch;
     }
 
-    /** Returns the first color found in the player's role prefix, or null. */
     public TextColor extractRoleColor(UUID uuid) {
         String legacy = getPrefixLegacy(uuid);
         if (legacy == null) return null;

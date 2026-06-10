@@ -1,0 +1,7 @@
+# MostlyVanilla MOTD Configuration
+# Uses MiniMessage formatting: https://docs.advntr.dev/minimessage/format.html
+# Each frame = exactly 2 lines. Frames rotate on every server list ping.
+
+motd-frames:
+  - - "<center><green><bold>🌿 MOSTLYVANILLA SMP 🌿</bold></green>"
+    - "<center><gold><bold>✦ 1.21 • SEASON 1 ✦</bold></gold>"

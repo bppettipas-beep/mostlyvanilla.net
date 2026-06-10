@@ -25,8 +25,8 @@ public class ChatFilterListener implements Listener {
     public void onChat(AsyncChatEvent event) {
         Player player = event.getPlayer();
 
-        // Ops / staff with bypass skip the filter entirely
-        if (player.hasPermission("mv.chatfilter.bypass")) return;
+        // Ops and staff with bypass permission skip the filter entirely
+        if (player.isOp() || player.hasPermission("mv.chatfilter.bypass")) return;
 
         UUID uuid = player.getUniqueId();
 

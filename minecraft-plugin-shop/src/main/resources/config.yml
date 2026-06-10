@@ -59,12 +59,6 @@ bitshop:
       price: 700
       lore:
         - "&8A netherite tier crate key"
-    amethyst:
-      display-name: "&dAmethyst Key"
-      material: TRIPWIRE_HOOK
-      price: 600
-      lore:
-        - "&dA rare amethyst tier crate key"
 
 # ── Shop categories ───────────────────────────────────────────────────────────
 categories:
@@ -111,122 +105,90 @@ categories:
     icon: SMOOTH_STONE
     main-slot: 21
     items:
+      # Stone
       - {material: STONE, name: "&fStone", amount: 1, price: 10.0}
       - {material: COBBLESTONE, name: "&fCobblestone", amount: 1, price: 5.0}
       - {material: SMOOTH_STONE, name: "&fSmooth Stone", amount: 1, price: 15.0}
       - {material: STONE_BRICKS, name: "&fStone Bricks", amount: 1, price: 20.0}
-      - {material: GRANITE, name: "&fGranite", amount: 1, price: 10.0}
-      - {material: POLISHED_GRANITE, name: "&fPolished Granite", amount: 1, price: 15.0}
-      - {material: DIORITE, name: "&fDiorite", amount: 1, price: 10.0}
-      - {material: POLISHED_DIORITE, name: "&fPolished Diorite", amount: 1, price: 15.0}
-      - {material: ANDESITE, name: "&fAndesite", amount: 1, price: 10.0}
-      - {material: POLISHED_ANDESITE, name: "&fPolished Andesite", amount: 1, price: 15.0}
-      - {material: DEEPSLATE, name: "&fDeepslate", amount: 1, price: 15.0}
       - {material: COBBLED_DEEPSLATE, name: "&fCobbled Deepslate", amount: 1, price: 10.0}
-      - {material: DEEPSLATE_BRICKS, name: "&fDeepslate Bricks", amount: 1, price: 25.0}
-      - {material: POLISHED_DEEPSLATE, name: "&fPolished Deepslate", amount: 1, price: 20.0}
       - {material: BLACKSTONE, name: "&fBlackstone", amount: 1, price: 15.0}
-      - {material: POLISHED_BLACKSTONE, name: "&fPolished Blackstone", amount: 1, price: 20.0}
-      - {material: POLISHED_BLACKSTONE_BRICKS, name: "&fPolished Blackstone Bricks", amount: 1, price: 25.0}
-      - {material: BASALT, name: "&fBasalt", amount: 1, price: 10.0}
-      - {material: SMOOTH_BASALT, name: "&fSmooth Basalt", amount: 1, price: 15.0}
       - {material: BRICKS, name: "&fBricks", amount: 1, price: 25.0}
       - {material: NETHER_BRICKS, name: "&fNether Bricks", amount: 1, price: 25.0}
+      # Terrain
       - {material: DIRT, name: "&fDirt", amount: 1, price: 5.0}
       - {material: GRASS_BLOCK, name: "&fGrass Block", amount: 1, price: 10.0}
       - {material: SAND, name: "&fSand", amount: 1, price: 10.0}
-      - {material: RED_SAND, name: "&fRed Sand", amount: 1, price: 10.0}
       - {material: GRAVEL, name: "&fGravel", amount: 1, price: 10.0}
       - {material: CLAY, name: "&fClay", amount: 1, price: 15.0}
       - {material: TERRACOTTA, name: "&fTerracotta", amount: 1, price: 15.0}
       - {material: SANDSTONE, name: "&fSandstone", amount: 1, price: 15.0}
-      - {material: SMOOTH_SANDSTONE, name: "&fSmooth Sandstone", amount: 1, price: 25.0}
-      - {material: RED_SANDSTONE, name: "&fRed Sandstone", amount: 1, price: 15.0}
-      - {material: SMOOTH_RED_SANDSTONE, name: "&fSmooth Red Sandstone", amount: 1, price: 25.0}
+      # Special
       - {material: QUARTZ_BLOCK, name: "&fQuartz Block", amount: 1, price: 40.0}
-      - {material: SMOOTH_QUARTZ, name: "&fSmooth Quartz", amount: 1, price: 50.0}
       - {material: PURPUR_BLOCK, name: "&fPurpur Block", amount: 1, price: 50.0}
       - {material: END_STONE, name: "&fEnd Stone", amount: 1, price: 25.0}
-      - {material: END_STONE_BRICKS, name: "&fEnd Stone Bricks", amount: 1, price: 40.0}
       - {material: OBSIDIAN, name: "&fObsidian", amount: 1, price: 350.0}
       - {material: CRYING_OBSIDIAN, name: "&fCrying Obsidian", amount: 1, price: 500.0}
       - {material: ICE, name: "&fIce", amount: 1, price: 25.0}
       - {material: PACKED_ICE, name: "&fPacked Ice", amount: 1, price: 50.0}
       - {material: BLUE_ICE, name: "&fBlue Ice", amount: 1, price: 100.0}
       - {material: PRISMARINE, name: "&fPrismarine", amount: 1, price: 50.0}
-      - {material: PRISMARINE_BRICKS, name: "&fPrismarine Bricks", amount: 1, price: 60.0}
-      - {material: DARK_PRISMARINE, name: "&fDark Prismarine", amount: 1, price: 60.0}
       - {material: SEA_LANTERN, name: "&fSea Lantern", amount: 1, price: 100.0}
       - {material: GLOWSTONE, name: "&fGlowstone", amount: 1, price: 200.0}
       - {material: SHROOMLIGHT, name: "&fShroomlight", amount: 1, price: 100.0}
       - {material: LANTERN, name: "&fLantern", amount: 1, price: 50.0}
-      - {material: SOUL_LANTERN, name: "&fSoul Lantern", amount: 1, price: 50.0}
+      # Logs & Planks
       - {material: OAK_LOG, name: "&fOak Log", amount: 1, price: 20.0}
       - {material: SPRUCE_LOG, name: "&fSpruce Log", amount: 1, price: 20.0}
       - {material: BIRCH_LOG, name: "&fBirch Log", amount: 1, price: 20.0}
       - {material: JUNGLE_LOG, name: "&fJungle Log", amount: 1, price: 20.0}
       - {material: ACACIA_LOG, name: "&fAcacia Log", amount: 1, price: 20.0}
       - {material: DARK_OAK_LOG, name: "&fDark Oak Log", amount: 1, price: 20.0}
-      - {material: MANGROVE_LOG, name: "&fMangrove Log", amount: 1, price: 25.0}
-      - {material: CHERRY_LOG, name: "&fCherry Log", amount: 1, price: 25.0}
       - {material: OAK_PLANKS, name: "&fOak Planks", amount: 1, price: 10.0}
       - {material: SPRUCE_PLANKS, name: "&fSpruce Planks", amount: 1, price: 10.0}
       - {material: BIRCH_PLANKS, name: "&fBirch Planks", amount: 1, price: 10.0}
       - {material: JUNGLE_PLANKS, name: "&fJungle Planks", amount: 1, price: 10.0}
       - {material: ACACIA_PLANKS, name: "&fAcacia Planks", amount: 1, price: 10.0}
       - {material: DARK_OAK_PLANKS, name: "&fDark Oak Planks", amount: 1, price: 10.0}
-      - {material: MANGROVE_PLANKS, name: "&fMangrove Planks", amount: 1, price: 12.0}
-      - {material: CHERRY_PLANKS, name: "&fCherry Planks", amount: 1, price: 12.0}
+      # Glass
       - {material: GLASS, name: "&fGlass", amount: 1, price: 25.0}
       - {material: GLASS_PANE, name: "&fGlass Pane", amount: 1, price: 10.0}
       - {material: WHITE_STAINED_GLASS, name: "&fWhite Stained Glass", amount: 1, price: 30.0}
-      - {material: ORANGE_STAINED_GLASS, name: "&6Orange Stained Glass", amount: 1, price: 30.0}
-      - {material: MAGENTA_STAINED_GLASS, name: "&dMagenta Stained Glass", amount: 1, price: 30.0}
-      - {material: LIGHT_BLUE_STAINED_GLASS, name: "&bLight Blue Stained Glass", amount: 1, price: 30.0}
-      - {material: YELLOW_STAINED_GLASS, name: "&eYellow Stained Glass", amount: 1, price: 30.0}
-      - {material: LIME_STAINED_GLASS, name: "&aLime Stained Glass", amount: 1, price: 30.0}
-      - {material: PINK_STAINED_GLASS, name: "&dPink Stained Glass", amount: 1, price: 30.0}
       - {material: GRAY_STAINED_GLASS, name: "&8Gray Stained Glass", amount: 1, price: 30.0}
-      - {material: LIGHT_GRAY_STAINED_GLASS, name: "&7Light Gray Stained Glass", amount: 1, price: 30.0}
-      - {material: CYAN_STAINED_GLASS, name: "&3Cyan Stained Glass", amount: 1, price: 30.0}
-      - {material: PURPLE_STAINED_GLASS, name: "&5Purple Stained Glass", amount: 1, price: 30.0}
-      - {material: BLUE_STAINED_GLASS, name: "&9Blue Stained Glass", amount: 1, price: 30.0}
-      - {material: BROWN_STAINED_GLASS, name: "&6Brown Stained Glass", amount: 1, price: 30.0}
-      - {material: GREEN_STAINED_GLASS, name: "&2Green Stained Glass", amount: 1, price: 30.0}
-      - {material: RED_STAINED_GLASS, name: "&cRed Stained Glass", amount: 1, price: 30.0}
       - {material: BLACK_STAINED_GLASS, name: "&0Black Stained Glass", amount: 1, price: 30.0}
+      - {material: RED_STAINED_GLASS, name: "&cRed Stained Glass", amount: 1, price: 30.0}
+      - {material: YELLOW_STAINED_GLASS, name: "&eYellow Stained Glass", amount: 1, price: 30.0}
+      - {material: BLUE_STAINED_GLASS, name: "&9Blue Stained Glass", amount: 1, price: 30.0}
+      - {material: GREEN_STAINED_GLASS, name: "&2Green Stained Glass", amount: 1, price: 30.0}
+      # Concrete
       - {material: WHITE_CONCRETE, name: "&fWhite Concrete", amount: 1, price: 25.0}
+      - {material: LIGHT_GRAY_CONCRETE, name: "&7Light Gray Concrete", amount: 1, price: 25.0}
+      - {material: GRAY_CONCRETE, name: "&8Gray Concrete", amount: 1, price: 25.0}
+      - {material: BLACK_CONCRETE, name: "&0Black Concrete", amount: 1, price: 25.0}
+      - {material: RED_CONCRETE, name: "&cRed Concrete", amount: 1, price: 25.0}
       - {material: ORANGE_CONCRETE, name: "&6Orange Concrete", amount: 1, price: 25.0}
-      - {material: MAGENTA_CONCRETE, name: "&dMagenta Concrete", amount: 1, price: 25.0}
-      - {material: LIGHT_BLUE_CONCRETE, name: "&bLight Blue Concrete", amount: 1, price: 25.0}
       - {material: YELLOW_CONCRETE, name: "&eYellow Concrete", amount: 1, price: 25.0}
       - {material: LIME_CONCRETE, name: "&aLime Concrete", amount: 1, price: 25.0}
-      - {material: PINK_CONCRETE, name: "&dPink Concrete", amount: 1, price: 25.0}
-      - {material: GRAY_CONCRETE, name: "&8Gray Concrete", amount: 1, price: 25.0}
-      - {material: LIGHT_GRAY_CONCRETE, name: "&7Light Gray Concrete", amount: 1, price: 25.0}
+      - {material: BLUE_CONCRETE, name: "&9Blue Concrete", amount: 1, price: 25.0}
       - {material: CYAN_CONCRETE, name: "&3Cyan Concrete", amount: 1, price: 25.0}
       - {material: PURPLE_CONCRETE, name: "&5Purple Concrete", amount: 1, price: 25.0}
-      - {material: BLUE_CONCRETE, name: "&9Blue Concrete", amount: 1, price: 25.0}
       - {material: BROWN_CONCRETE, name: "&6Brown Concrete", amount: 1, price: 25.0}
       - {material: GREEN_CONCRETE, name: "&2Green Concrete", amount: 1, price: 25.0}
-      - {material: RED_CONCRETE, name: "&cRed Concrete", amount: 1, price: 25.0}
-      - {material: BLACK_CONCRETE, name: "&0Black Concrete", amount: 1, price: 25.0}
+      - {material: PINK_CONCRETE, name: "&dPink Concrete", amount: 1, price: 25.0}
+      # Wool
       - {material: WHITE_WOOL, name: "&fWhite Wool", amount: 1, price: 15.0}
+      - {material: LIGHT_GRAY_WOOL, name: "&7Light Gray Wool", amount: 1, price: 15.0}
+      - {material: GRAY_WOOL, name: "&8Gray Wool", amount: 1, price: 15.0}
+      - {material: BLACK_WOOL, name: "&0Black Wool", amount: 1, price: 15.0}
+      - {material: RED_WOOL, name: "&cRed Wool", amount: 1, price: 15.0}
       - {material: ORANGE_WOOL, name: "&6Orange Wool", amount: 1, price: 15.0}
-      - {material: MAGENTA_WOOL, name: "&dMagenta Wool", amount: 1, price: 15.0}
-      - {material: LIGHT_BLUE_WOOL, name: "&bLight Blue Wool", amount: 1, price: 15.0}
       - {material: YELLOW_WOOL, name: "&eYellow Wool", amount: 1, price: 15.0}
       - {material: LIME_WOOL, name: "&aLime Wool", amount: 1, price: 15.0}
-      - {material: PINK_WOOL, name: "&dPink Wool", amount: 1, price: 15.0}
-      - {material: GRAY_WOOL, name: "&8Gray Wool", amount: 1, price: 15.0}
-      - {material: LIGHT_GRAY_WOOL, name: "&7Light Gray Wool", amount: 1, price: 15.0}
+      - {material: BLUE_WOOL, name: "&9Blue Wool", amount: 1, price: 15.0}
       - {material: CYAN_WOOL, name: "&3Cyan Wool", amount: 1, price: 15.0}
       - {material: PURPLE_WOOL, name: "&5Purple Wool", amount: 1, price: 15.0}
-      - {material: BLUE_WOOL, name: "&9Blue Wool", amount: 1, price: 15.0}
       - {material: BROWN_WOOL, name: "&6Brown Wool", amount: 1, price: 15.0}
       - {material: GREEN_WOOL, name: "&2Green Wool", amount: 1, price: 15.0}
-      - {material: RED_WOOL, name: "&cRed Wool", amount: 1, price: 15.0}
-      - {material: BLACK_WOOL, name: "&0Black Wool", amount: 1, price: 15.0}
+      - {material: PINK_WOOL, name: "&dPink Wool", amount: 1, price: 15.0}
 
   fighting:
     name: "&c⚔ Fighting"

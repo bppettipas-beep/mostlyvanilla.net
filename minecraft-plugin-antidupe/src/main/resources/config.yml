@@ -1,0 +1,16 @@
+# MostlyVanilla AntiDupe configuration
+
+# Minimum unexplained item gain (in total item count) to trigger a detection.
+# 32 = half a stack appearing from nowhere. Lower = more sensitive but more false positives.
+# Hoppers feeding into a container while a player has it open can cause small increases,
+# so don't set this below 16.
+detection-threshold: 32
+
+# Ban duration in days for confirmed duplication.
+ban-days: 7
+
+# Whether to wipe the player's data when they are banned for duping.
+wipe-on-ban: true
+
+# Log detections to console even when the player is in creative (for debugging).
+log-creative: false

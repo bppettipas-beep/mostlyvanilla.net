@@ -1,0 +1,3 @@
+# Maximum number of maces that can be crafted server-wide.
+# 0 = no limit.
+limit: 10

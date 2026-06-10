@@ -43,21 +43,23 @@ public class TeleportManager {
 
         player.sendMessage(Component.text("Don't move for " + delay + " seconds!", NamedTextColor.YELLOW));
 
+        long endTimeMs = System.currentTimeMillis() + (delay * 1000L);
+
         BukkitTask task = new BukkitRunnable() {
-            int remaining  = delay;
             int extraTicks = 0;
 
             @Override
             public void run() {
                 if (!player.isOnline()) { cleanup(); cancel(); return; }
 
-                if (remaining > 0) {
+                long msLeft = endTimeMs - System.currentTimeMillis();
+                if (msLeft > 0) {
+                    int secsLeft = (int) Math.ceil(msLeft / 1000.0);
                     player.sendActionBar(
                         Component.text("Don't move! Teleporting in ")
                             .color(NamedTextColor.YELLOW)
-                            .append(Component.text(remaining + "s")
+                            .append(Component.text(secsLeft + "s")
                                 .color(NamedTextColor.GOLD)));
-                    remaining--;
                     return;
                 }
 
@@ -89,7 +91,7 @@ public class TeleportManager {
                 startLocations.remove(uuid);
                 destinations.remove(uuid);
             }
-        }.runTaskTimer(plugin, 0L, 20L);
+        }.runTaskTimer(plugin, 0L, 5L);
 
         countdownTasks.put(uuid, task);
     }

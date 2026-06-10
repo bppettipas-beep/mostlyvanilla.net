@@ -17,14 +17,19 @@ import java.util.UUID;
 
 public class StaffListener implements Listener {
 
-    private final StaffManager manager;
-    private final WipeManager  wipeManager;
-    private final MuteManager  muteManager;
+    private final StaffManager      manager;
+    private final WipeManager       wipeManager;
+    private final MuteManager       muteManager;
+    private final WorldRegenManager worldRegenManager;
+    private final GlobalWipeManager globalWipeManager;
 
-    public StaffListener(StaffManager manager, WipeManager wipeManager, MuteManager muteManager) {
-        this.manager     = manager;
-        this.wipeManager = wipeManager;
-        this.muteManager = muteManager;
+    public StaffListener(StaffManager manager, WipeManager wipeManager, MuteManager muteManager,
+                         WorldRegenManager worldRegenManager, GlobalWipeManager globalWipeManager) {
+        this.manager           = manager;
+        this.wipeManager       = wipeManager;
+        this.muteManager       = muteManager;
+        this.worldRegenManager = worldRegenManager;
+        this.globalWipeManager = globalWipeManager;
     }
 
     @EventHandler
@@ -32,14 +37,17 @@ public class StaffListener implements Listener {
         if (!(e.getWhoClicked() instanceof Player player)) return;
         Inventory top = e.getView().getTopInventory();
 
-        if (manager.isStaffPanel(top) || manager.isConfirmPanel(top) || wipeManager.isWipePanel(top)) {
+        if (manager.isStaffPanel(top) || manager.isConfirmPanel(top) || wipeManager.isWipePanel(top)
+                || worldRegenManager.isRegenPanel(top) || globalWipeManager.isGlobalWipePanel(top)) {
             e.setCancelled(true);
             // Only react to clicks inside the GUI, not the player's own inventory below
             if (e.getClickedInventory() == null || e.getClickedInventory() != top) return;
 
-            if (manager.isStaffPanel(top))         manager.handleStaffClick(player, top, e.getSlot());
-            else if (manager.isConfirmPanel(top))  manager.handleConfirmClick(player, top, e.getSlot());
-            else                                   wipeManager.handleClick(player, top, e.getSlot());
+            if (manager.isStaffPanel(top))                    manager.handleStaffClick(player, top, e.getSlot());
+            else if (manager.isConfirmPanel(top))             manager.handleConfirmClick(player, top, e.getSlot());
+            else if (wipeManager.isWipePanel(top))            wipeManager.handleClick(player, top, e.getSlot());
+            else if (worldRegenManager.isRegenPanel(top))     worldRegenManager.handleClick(player, top, e.getSlot());
+            else                                              globalWipeManager.handleClick(player, top, e.getSlot());
         }
     }
 
@@ -47,6 +55,8 @@ public class StaffListener implements Listener {
     public void onInventoryClose(InventoryCloseEvent e) {
         manager.onInventoryClose(e.getInventory());
         wipeManager.onInventoryClose(e.getInventory());
+        worldRegenManager.onInventoryClose(e.getInventory());
+        globalWipeManager.onInventoryClose(e.getInventory());
     }
 
     @EventHandler(priority = EventPriority.LOWEST)

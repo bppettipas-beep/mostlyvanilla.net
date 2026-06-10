@@ -39,6 +39,12 @@ commands:
   checkec:
     description: View a player's ender chest
     usage: /checkec <player>
+  regenworld:
+    description: Delete all terrain in overworld, nether, and end then restart (op only)
+    usage: /regenworld
+  globalwipe:
+    description: Wipe all player data for every player who has ever joined (op only)
+    usage: /globalwipe
 
 permissions:
   mv.staff:

@@ -1,0 +1,16 @@
+name: MostlyVanillaSettings
+version: ${project.version}
+main: com.mostlyvanilla.settings.MostlyVanillaSettings
+api-version: '1.20'
+description: Per-player settings GUI
+
+commands:
+  settings:
+    description: Open your personal settings
+    usage: /settings
+    aliases: [prefs, preferences]
+
+permissions:
+  mostlyvanilla.settings.use:
+    description: Access to /settings GUI
+    default: true

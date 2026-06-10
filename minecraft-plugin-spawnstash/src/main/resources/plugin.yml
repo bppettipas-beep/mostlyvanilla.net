@@ -7,9 +7,6 @@ softdepend:
   - MostlyVanillaRoles
 
 commands:
-  allowspawnstash:
-    description: Set the minimum role allowed to use /spawnstash
-    usage: /allowspawnstash <role>
   spawnstash:
     description: Spawn a personal stash room around you
     usage: /spawnstash

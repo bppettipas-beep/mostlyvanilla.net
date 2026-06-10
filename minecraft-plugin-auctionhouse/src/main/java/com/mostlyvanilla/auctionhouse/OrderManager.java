@@ -34,20 +34,35 @@ public class OrderManager {
     private static final int SLOT_PREV      = 48;
     private static final int SLOT_CLOSE     = 49;
     private static final int SLOT_NEXT      = 50;
+    private static final int SLOT_NEW_ORDER = 53;
+
+    // ── Tradeable materials (computed once) ────────────────────────────────────
+
+    static final List<Material> TRADEABLE_MATERIALS;
+    static {
+        TRADEABLE_MATERIALS = Arrays.stream(Material.values())
+            .filter(m -> m.isItem() && !m.isAir())
+            .sorted(Comparator.comparing(Material::name))
+            .collect(Collectors.toUnmodifiableList());
+    }
 
     // ── Inner types ────────────────────────────────────────────────────────────
 
     public enum GuiMode { ALL, MY_ORDERS }
 
     private record OrderSession(UUID playerUuid, GuiMode mode, int page) {}
+    private record PickerSession(UUID playerUuid, int page) {}
 
     // ── Fields ─────────────────────────────────────────────────────────────────
 
     private final MostlyVanillaAuctionHouse plugin;
     private final EconomyBridge bridge;
     private final List<BuyOrder> orders = new ArrayList<>();
-    private final Map<UUID, List<ItemStack>> pendingDeliveries = new HashMap<>();
-    private final Map<Inventory, OrderSession> sessions = new HashMap<>();
+    private final Map<UUID, List<ItemStack>> pendingDeliveries  = new HashMap<>();
+    private final Map<Inventory, OrderSession> sessions         = new HashMap<>();
+    private final Map<Inventory, PickerSession> pickerSessions  = new HashMap<>();
+    // Players who clicked an item in the picker and are waiting for chat input
+    private final Map<UUID, Material> pendingOrderMaterial      = new HashMap<>();
     private File ordersFile;
 
     private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.legacyAmpersand();
@@ -71,7 +86,6 @@ public class OrderManager {
 
         YamlConfiguration c = YamlConfiguration.loadConfiguration(ordersFile);
 
-        // Load orders
         ConfigurationSection orderSec = c.getConfigurationSection("orders");
         if (orderSec != null) {
             for (String id : orderSec.getKeys(false)) {
@@ -96,7 +110,6 @@ public class OrderManager {
             }
         }
 
-        // Load pending deliveries
         ConfigurationSection pendSec = c.getConfigurationSection("pending-deliveries");
         if (pendSec != null) {
             for (String uuidStr : pendSec.getKeys(false)) {
@@ -123,7 +136,6 @@ public class OrderManager {
         if (ordersFile == null) ordersFile = new File(plugin.getDataFolder(), "orders.yml");
         YamlConfiguration c = new YamlConfiguration();
 
-        // Save active orders only
         for (BuyOrder o : orders) {
             if (!o.isActive()) continue;
             String base = "orders." + o.getId() + ".";
@@ -137,8 +149,6 @@ public class OrderManager {
             c.set(base + "cancelled",     o.isCancelled());
         }
 
-        // Save pending deliveries
-        int i = 0;
         for (Map.Entry<UUID, List<ItemStack>> entry : pendingDeliveries.entrySet()) {
             String base = "pending-deliveries." + entry.getKey() + ".";
             int idx = 0;
@@ -154,16 +164,24 @@ public class OrderManager {
 
     // ── Order management ───────────────────────────────────────────────────────
 
-    /** Called by /orders create. Escrows money and creates a buy order. */
+    /** Called by /orders create — requires player to hold the item. */
     public void createOrder(Player player, int amount, double priceEach) {
         ItemStack hand = player.getInventory().getItemInMainHand();
         if (hand.getType().isAir()) {
-            player.sendMessage(Component.text("Hold the item you want to buy.", NamedTextColor.RED));
+            player.sendMessage(Component.text("Hold the item you want to buy, or use /orders to pick via GUI.", NamedTextColor.RED));
             return;
         }
+        createOrderByMaterial(player, hand.getType(), amount, priceEach);
+    }
+
+    /**
+     * Creates a buy order for a specific material. Does NOT require the player to hold anything.
+     * Returns true if the order was successfully created, false otherwise (messages sent to player).
+     */
+    public boolean createOrderByMaterial(Player player, Material mat, int amount, double priceEach) {
         if (amount <= 0 || priceEach <= 0) {
             player.sendMessage(Component.text("Amount and price must be greater than zero.", NamedTextColor.RED));
-            return;
+            return false;
         }
 
         long myOrders = orders.stream()
@@ -171,31 +189,36 @@ public class OrderManager {
             .count();
         if (myOrders >= getMaxOrders()) {
             player.sendMessage(Component.text("You have reached your order limit (" + getMaxOrders() + ").", NamedTextColor.RED));
-            return;
+            return false;
         }
 
         double total = amount * priceEach;
         if (!bridge.withdraw(player.getUniqueId(), total)) {
-            player.sendMessage(Component.text("You cannot afford to place this order (" + bridge.getSymbol() + AuctionManager.fmt(total) + " required).", NamedTextColor.RED));
-            return;
+            player.sendMessage(Component.text("You cannot afford to place this order ("
+                + bridge.getSymbol() + AuctionManager.fmt(total) + " required).", NamedTextColor.RED));
+            return false;
         }
 
         String id = UUID.randomUUID().toString();
-        BuyOrder order = new BuyOrder(id, player.getUniqueId(), player.getName(), hand.getType(), amount, priceEach, System.currentTimeMillis());
+        BuyOrder order = new BuyOrder(id, player.getUniqueId(), player.getName(), mat, amount, priceEach,
+            System.currentTimeMillis());
         orders.add(order);
         save();
 
         player.sendMessage(Component.text("[Orders] ", NamedTextColor.GOLD)
             .append(Component.text("Buy order created: ", NamedTextColor.GREEN))
-            .append(Component.text(amount + "x " + prettify(hand.getType()), NamedTextColor.WHITE))
+            .append(Component.text(amount + "x " + prettify(mat), NamedTextColor.WHITE))
             .append(Component.text(" at ", NamedTextColor.GREEN))
             .append(Component.text(bridge.getSymbol() + AuctionManager.fmt(priceEach) + " each", NamedTextColor.YELLOW))
             .append(Component.text(". Escrowed: " + bridge.getSymbol() + AuctionManager.fmt(total) + ".", NamedTextColor.GREEN)));
+        return true;
     }
 
     /** Called by /orders cancel <id>. */
     public void cancelOrder(Player player, String id) {
-        BuyOrder order = orders.stream().filter(o -> o.getId().equals(id) && o.getBuyerUuid().equals(player.getUniqueId())).findFirst().orElse(null);
+        BuyOrder order = orders.stream()
+            .filter(o -> o.getId().equals(id) && o.getBuyerUuid().equals(player.getUniqueId()))
+            .findFirst().orElse(null);
         if (order == null) {
             player.sendMessage(Component.text("Order not found or not yours.", NamedTextColor.RED));
             return;
@@ -213,7 +236,51 @@ public class OrderManager {
             .append(Component.text(bridge.getSymbol() + AuctionManager.fmt(refund) + " refunded.", NamedTextColor.GREEN)));
     }
 
-    // ── GUI opening ────────────────────────────────────────────────────────────
+    // ── Pending order creation (chat input after item picker) ──────────────────
+
+    public boolean hasPendingOrder(UUID uuid) { return pendingOrderMaterial.containsKey(uuid); }
+
+    public void cancelPendingOrder(UUID uuid) { pendingOrderMaterial.remove(uuid); }
+
+    /** Called from AsyncChatEvent (scheduled back to main thread). */
+    public void handleChatInput(Player player, String message) {
+        Material mat = pendingOrderMaterial.get(player.getUniqueId());
+        if (mat == null) return;
+
+        if (message.trim().equalsIgnoreCase("cancel")) {
+            pendingOrderMaterial.remove(player.getUniqueId());
+            player.sendMessage(Component.text("[Orders] Order creation cancelled.", NamedTextColor.YELLOW));
+            return;
+        }
+
+        String[] parts = message.trim().split("\\s+");
+        if (parts.length < 2) {
+            player.sendMessage(Component.text("[Orders] ", NamedTextColor.GOLD)
+                .append(Component.text("Type ", NamedTextColor.RED))
+                .append(Component.text("<amount> <price>", NamedTextColor.YELLOW))
+                .append(Component.text(" — e.g. ", NamedTextColor.RED))
+                .append(Component.text("64 1.5", NamedTextColor.YELLOW))
+                .append(Component.text(". Type ", NamedTextColor.RED))
+                .append(Component.text("cancel", NamedTextColor.RED))
+                .append(Component.text(" to abort.", NamedTextColor.RED)));
+            return;
+        }
+
+        int amount;
+        double priceEach;
+        try {
+            amount    = Integer.parseInt(parts[0]);
+            priceEach = Double.parseDouble(parts[1]);
+        } catch (NumberFormatException e) {
+            player.sendMessage(Component.text("[Orders] Invalid number. Try again or type cancel to abort.", NamedTextColor.RED));
+            return;
+        }
+
+        pendingOrderMaterial.remove(player.getUniqueId());
+        createOrderByMaterial(player, mat, amount, priceEach);
+    }
+
+    // ── Orders GUI ─────────────────────────────────────────────────────────────
 
     public void openGui(Player player, GuiMode mode, int page) {
         List<BuyOrder> view = buildView(player, mode);
@@ -235,12 +302,12 @@ public class OrderManager {
             inv.setItem(ITEM_SLOTS[i - start], buildOrderDisplay(view.get(i), player));
         }
 
-        // Nav
         String myLabel = mode == GuiMode.MY_ORDERS ? "&e&lMy Orders" : "&fMy Orders";
-        inv.setItem(SLOT_MY_ORDERS, makeButton(Material.BOOK, myLabel, List.of("&7View your buy orders", "&7Click to cancel")));
-        if (page > 0)       inv.setItem(SLOT_PREV, makeButton(Material.ARROW, "&7← Previous", List.of()));
-        inv.setItem(SLOT_CLOSE, makeButton(Material.OAK_DOOR, "&cClose", List.of()));
-        if (page < maxPage) inv.setItem(SLOT_NEXT, makeButton(Material.ARROW, "&7Next →", List.of()));
+        inv.setItem(SLOT_MY_ORDERS, makeButton(Material.BOOK,      myLabel,          List.of("&7View your buy orders", "&7Click to cancel")));
+        inv.setItem(SLOT_NEW_ORDER, makeButton(Material.WRITABLE_BOOK, "&a+ New Order", List.of("&7Create a buy order", "&7without holding the item")));
+        if (page > 0)       inv.setItem(SLOT_PREV,  makeButton(Material.ARROW,    "&7← Previous", List.of()));
+        inv.setItem(SLOT_CLOSE,  makeButton(Material.OAK_DOOR, "&cClose",      List.of()));
+        if (page < maxPage) inv.setItem(SLOT_NEXT,  makeButton(Material.ARROW,    "&7Next →",    List.of()));
 
         sessions.put(inv, new OrderSession(player.getUniqueId(), mode, page));
         player.openInventory(inv);
@@ -259,7 +326,7 @@ public class OrderManager {
         };
     }
 
-    // ── Click handling ─────────────────────────────────────────────────────────
+    // ── Orders GUI click handling ──────────────────────────────────────────────
 
     public void handleClick(Player player, Inventory inv, int slot) {
         OrderSession session = sessions.get(inv);
@@ -268,6 +335,7 @@ public class OrderManager {
         switch (slot) {
             case SLOT_CLOSE     -> player.closeInventory();
             case SLOT_MY_ORDERS -> { player.closeInventory(); openGui(player, GuiMode.MY_ORDERS, 0); }
+            case SLOT_NEW_ORDER -> { player.closeInventory(); openItemPicker(player, 0); }
             case SLOT_PREV      -> { player.closeInventory(); openGui(player, session.mode(), session.page() - 1); }
             case SLOT_NEXT      -> { player.closeInventory(); openGui(player, session.mode(), session.page() + 1); }
             default -> {
@@ -279,12 +347,10 @@ public class OrderManager {
                 BuyOrder order = view.get(orderIdx);
 
                 if (session.mode() == GuiMode.MY_ORDERS) {
-                    // Cancel your own order
                     player.closeInventory();
                     cancelOrder(player, order.getId());
                     openGui(player, GuiMode.MY_ORDERS, 0);
                 } else {
-                    // Fill the order
                     fillOrder(player, order, inv, session);
                 }
             }
@@ -303,7 +369,6 @@ public class OrderManager {
             return;
         }
 
-        // Count matching items in seller's inventory
         ItemStack[] contents = player.getInventory().getContents();
         int available = 0;
         for (ItemStack s : contents) {
@@ -318,7 +383,6 @@ public class OrderManager {
         int toFill    = Math.min(available, order.getRemainingAmount());
         double payment = toFill * order.getPriceEach();
 
-        // Remove items from seller
         int remaining = toFill;
         for (int i = 0; i < contents.length && remaining > 0; i++) {
             if (contents[i] == null || contents[i].getType() != order.getMaterial()) continue;
@@ -329,10 +393,8 @@ public class OrderManager {
         }
         player.getInventory().setContents(contents);
 
-        // Pay seller
         bridge.deposit(player.getUniqueId(), payment);
 
-        // Deliver items to buyer (or queue for pending delivery if offline)
         Player buyer = Bukkit.getPlayer(order.getBuyerUuid());
         if (buyer != null && buyer.isOnline()) {
             giveOrDrop(buyer, new ItemStack(order.getMaterial(), toFill));
@@ -341,13 +403,11 @@ public class OrderManager {
                 .append(Component.text(toFill + "x " + prettify(order.getMaterial()), NamedTextColor.WHITE))
                 .append(Component.text(" from your order!", NamedTextColor.GREEN)));
         } else {
-            // Queue for delivery on login
             pendingDeliveries
                 .computeIfAbsent(order.getBuyerUuid(), k -> new ArrayList<>())
                 .add(new ItemStack(order.getMaterial(), toFill));
         }
 
-        // Update order
         order.setFilledAmount(order.getFilledAmount() + toFill);
         save();
 
@@ -362,14 +422,83 @@ public class OrderManager {
                 .append(Component.text("That order is now fully filled!", NamedTextColor.AQUA)));
         }
 
-        // Refresh GUI
         player.closeInventory();
         openGui(player, GuiMode.ALL, session.page());
     }
 
+    // ── Item picker GUI ────────────────────────────────────────────────────────
+
+    public void openItemPicker(Player player, int page) {
+        int maxPage = (TRADEABLE_MATERIALS.size() - 1) / ITEMS_PER_PAGE;
+        if (page < 0) page = 0;
+        if (page > maxPage) page = maxPage;
+
+        String title = "Pick Item — New Order  (" + (page + 1) + "/" + (maxPage + 1) + ")";
+        Inventory inv = Bukkit.createInventory(null, 54,
+            Component.text(title).decoration(TextDecoration.ITALIC, false));
+
+        fillBorder(inv);
+
+        int start = page * ITEMS_PER_PAGE;
+        int end   = Math.min(start + ITEMS_PER_PAGE, TRADEABLE_MATERIALS.size());
+        for (int i = start; i < end; i++) {
+            Material mat = TRADEABLE_MATERIALS.get(i);
+            ItemStack display = new ItemStack(mat);
+            ItemMeta meta = display.getItemMeta();
+            meta.displayName(comp("&f" + prettify(mat)));
+            meta.lore(List.of(
+                comp("&8" + mat.name()),
+                Component.empty(),
+                comp("&aClick to create a buy order")
+            ));
+            display.setItemMeta(meta);
+            inv.setItem(ITEM_SLOTS[i - start], display);
+        }
+
+        if (page > 0)       inv.setItem(SLOT_PREV,  makeButton(Material.ARROW,    "&7← Previous", List.of()));
+        inv.setItem(SLOT_CLOSE,  makeButton(Material.OAK_DOOR, "&cBack",       List.of("&7Return to orders board")));
+        if (page < maxPage) inv.setItem(SLOT_NEXT,  makeButton(Material.ARROW,    "&7Next →",    List.of()));
+
+        pickerSessions.put(inv, new PickerSession(player.getUniqueId(), page));
+        player.openInventory(inv);
+    }
+
+    public boolean isPickerGui(Inventory inv) { return pickerSessions.containsKey(inv); }
+
+    public void handlePickerClick(Player player, Inventory inv, int slot) {
+        PickerSession session = pickerSessions.get(inv);
+        if (session == null) return;
+
+        if (slot == SLOT_CLOSE) { player.closeInventory(); openGui(player, GuiMode.ALL, 0); return; }
+        if (slot == SLOT_PREV)  { player.closeInventory(); openItemPicker(player, session.page() - 1); return; }
+        if (slot == SLOT_NEXT)  { player.closeInventory(); openItemPicker(player, session.page() + 1); return; }
+
+        int idx = slotToIndex(slot);
+        if (idx < 0) return;
+
+        int matIdx = session.page() * ITEMS_PER_PAGE + idx;
+        if (matIdx >= TRADEABLE_MATERIALS.size()) return;
+
+        Material mat = TRADEABLE_MATERIALS.get(matIdx);
+        pendingOrderMaterial.put(player.getUniqueId(), mat);
+        player.closeInventory();
+
+        player.sendMessage(Component.text("[Orders] ", NamedTextColor.GOLD)
+            .append(Component.text("Selected: ", NamedTextColor.GREEN))
+            .append(Component.text(prettify(mat), NamedTextColor.WHITE))
+            .append(Component.text(". Type ", NamedTextColor.GREEN))
+            .append(Component.text("<amount> <price>", NamedTextColor.YELLOW))
+            .append(Component.text(" in chat (e.g. ", NamedTextColor.GREEN))
+            .append(Component.text("64 1.5", NamedTextColor.YELLOW))
+            .append(Component.text("). Type ", NamedTextColor.GREEN))
+            .append(Component.text("cancel", NamedTextColor.RED))
+            .append(Component.text(" to abort.", NamedTextColor.GREEN)));
+    }
+
+    public void onPickerClose(Inventory inv) { pickerSessions.remove(inv); }
+
     // ── Pending deliveries ─────────────────────────────────────────────────────
 
-    /** Called on PlayerJoinEvent to give any items that were filled while the buyer was offline. */
     public void deliverPending(Player player) {
         List<ItemStack> items = pendingDeliveries.remove(player.getUniqueId());
         if (items == null || items.isEmpty()) return;
@@ -390,7 +519,11 @@ public class OrderManager {
     // ── Session management ─────────────────────────────────────────────────────
 
     public boolean isOrdersGui(Inventory inv) { return sessions.containsKey(inv); }
-    public void    onClose(Inventory inv)     { sessions.remove(inv); }
+
+    public void onClose(Inventory inv) {
+        sessions.remove(inv);
+        pickerSessions.remove(inv);
+    }
 
     // ── Item display builder ───────────────────────────────────────────────────
 
@@ -459,12 +592,33 @@ public class OrderManager {
         overflow.values().forEach(drop -> player.getWorld().dropItemNaturally(player.getLocation(), drop));
     }
 
-    private String prettify(Material mat) {
+    // ── Static utilities (used by AhListener for sign handling) ───────────────
+
+    public static String prettify(Material mat) {
         String raw = mat.name().replace('_', ' ');
         StringBuilder sb = new StringBuilder();
         for (String w : raw.split(" ")) {
             if (!w.isEmpty()) sb.append(Character.toUpperCase(w.charAt(0))).append(w.substring(1).toLowerCase()).append(' ');
         }
         return sb.toString().trim();
+    }
+
+    /** Tries to resolve a material from a player-typed string (case-insensitive, spaces=underscores). */
+    public static Material parseMaterial(String input) {
+        if (input == null || input.isBlank()) return null;
+        String normalized = input.trim().toUpperCase().replace(' ', '_');
+        try {
+            Material m = Material.valueOf(normalized);
+            return (m.isItem() && !m.isAir()) ? m : null;
+        } catch (IllegalArgumentException e) {
+            // Try partial / pretty-name match
+            for (Material m : TRADEABLE_MATERIALS) {
+                if (m.name().equalsIgnoreCase(normalized)
+                        || prettify(m).equalsIgnoreCase(input.trim())) {
+                    return m;
+                }
+            }
+            return null;
+        }
     }
 }

@@ -56,8 +56,8 @@ public class DonutSpawners extends JavaPlugin {
         getCommand("ds").setExecutor(cmd);
         getCommand("ds").setTabCompleter(cmd);
 
-        // Global production tick (every tick)
-        getServer().getScheduler().runTaskTimer(this, spawnerManager::tick, 1L, 1L);
+        // Global production tick — runs every 4 ticks; SpawnerManager.tick() compensates counters
+        getServer().getScheduler().runTaskTimer(this, spawnerManager::tick, 4L, 4L);
 
         // Periodic async save
         long saveInterval = (long) spawnerConfig.getSaveInterval() * 20L;

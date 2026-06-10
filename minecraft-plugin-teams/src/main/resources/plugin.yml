@@ -1,0 +1,14 @@
+name: MostlyVanillaTeams
+version: ${project.version}
+main: com.mostlyvanilla.teams.MostlyVanillaTeams
+api-version: '1.20'
+description: Player teams with GUI, friendly fire, team home, and name tags
+
+commands:
+  team:
+    description: Team management
+    usage: /team [create|disband|invite|accept|deny|kick|leave|home|sethome|chat|color|ff|open|leader|info]
+  teamadmin:
+    description: Team admin commands
+    usage: /teamadmin <list|info|disband|kick|add|reload>
+    permission: mostlyvanilla.teams.admin

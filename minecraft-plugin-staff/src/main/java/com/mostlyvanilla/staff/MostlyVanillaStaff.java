@@ -12,8 +12,10 @@ public class MostlyVanillaStaff extends JavaPlugin {
         BanReasonManager banReasonManager = new BanReasonManager(this);
         banReasonManager.load();
 
-        StaffManager manager     = new StaffManager(this, muteManager);
-        WipeManager  wipeManager = new WipeManager(this);
+        StaffManager      manager          = new StaffManager(this, muteManager);
+        WipeManager       wipeManager      = new WipeManager(this);
+        WorldRegenManager worldRegenManager = new WorldRegenManager(this);
+        GlobalWipeManager globalWipeManager = new GlobalWipeManager(this);
 
         StaffCommand     staffCmd    = new StaffCommand(manager);
         WipeCommand      wipe        = new WipeCommand(wipeManager);
@@ -45,7 +47,10 @@ public class MostlyVanillaStaff extends JavaPlugin {
         getCommand("invsee").setTabCompleter(invSee);
         getCommand("checkec").setExecutor(invSee);
         getCommand("checkec").setTabCompleter(invSee);
-        getServer().getPluginManager().registerEvents(new StaffListener(manager, wipeManager, muteManager), this);
+        getCommand("regenworld").setExecutor(new WorldRegenCommand(worldRegenManager));
+        getCommand("globalwipe").setExecutor(new GlobalWipeCommand(globalWipeManager));
+        getServer().getPluginManager().registerEvents(
+            new StaffListener(manager, wipeManager, muteManager, worldRegenManager, globalWipeManager), this);
         getServer().getPluginManager().registerEvents(new SpectatorVanishListener(this), this);
 
         getLogger().info("MostlyVanilla Staff enabled.");

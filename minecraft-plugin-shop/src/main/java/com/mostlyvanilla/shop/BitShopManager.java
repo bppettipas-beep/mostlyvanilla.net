@@ -21,26 +21,24 @@ public class BitShopManager {
 
     private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.legacyAmpersand();
 
-    // ── Layout ────────────────────────────────────────────────────────────────
-    //
-    //  Row 0  (0 –  8)  glass
-    //  Row 1  (9 – 17)  glass + "Spawners" label at slot 13 (center)
-    //  Row 2  (18– 26)  9 spawner items  (fills row perfectly)
-    //  Row 3  (27– 35)  glass + "Crate Keys" label at slot 31 (center)
-    //  Row 4  (36– 44)  glass at 36 & 44, 7 keys at 37–43  (centered)
-    //  Row 5  (45– 53)  glass + close at slot 49 (center)
-
-    private static final int SPAWNER_ROW_START  = 18;   // first spawner slot
-    private static final int KEY_ROW_START      = 37;   // first key slot (offset 1 for centering)
+    // Row 0 (header): gold glass, title at 4, close at 8
+    // Row 1: black, spawner label at 13
+    // Row 2 (18-26): spawner items (up to 9)
+    // Row 3 (27-35): orange divider
+    // Row 4: black, crate key label at 40
+    // Row 5 (45-53): crate keys centered
+    private static final int SLOT_TITLE         = 4;
+    private static final int SLOT_CLOSE         = 8;
     private static final int SLOT_SPAWNER_LABEL = 13;
-    private static final int SLOT_KEY_LABEL     = 31;
-    private static final int SLOT_CLOSE         = 49;
+    private static final int SPAWNER_ROW_START  = 18;
+    private static final int SLOT_KEY_LABEL     = 40;
+    private static final int KEY_ROW_BASE       = 45;
 
-    // PDC keys
     private static final NamespacedKey SPAWNER_TYPE_KEY = new NamespacedKey("mvspawners", "type");
 
     private final JavaPlugin    plugin;
     private final EconomyBridge bits;
+    private final KeyStore      keyStore;
 
     private final List<SpawnerEntry> spawners  = new ArrayList<>();
     private final List<CrateEntry>   crateKeys = new ArrayList<>();
@@ -49,8 +47,9 @@ public class BitShopManager {
     private record SpawnerEntry(String typeName, String displayName, double price) {}
     private record CrateEntry(String id, String displayName, Material material, double price, List<String> lore) {}
 
-    public BitShopManager(JavaPlugin plugin) {
-        this.plugin = plugin;
+    public BitShopManager(JavaPlugin plugin, KeyStore keyStore) {
+        this.plugin   = plugin;
+        this.keyStore = keyStore;
         String currency = plugin.getConfig().getString("bitshop.bits-currency", "bits");
         this.bits = new EconomyBridge(plugin, currency);
         load();
@@ -91,30 +90,112 @@ public class BitShopManager {
         load();
     }
 
+    public List<String> getKeyIds() {
+        return crateKeys.stream().map(CrateEntry::id).toList();
+    }
+
+    // ── Glass helpers ──────────────────────────────────────────────────────────
+
+    private ItemStack glass(Material mat) {
+        ItemStack g = new ItemStack(mat);
+        ItemMeta m = g.getItemMeta();
+        m.displayName(Component.text(" ").decoration(TextDecoration.ITALIC, false));
+        m.lore(List.of());
+        g.setItemMeta(m);
+        return g;
+    }
+
+    private ItemStack blackGlass()  { return glass(Material.BLACK_STAINED_GLASS_PANE);  }
+    private ItemStack goldGlass()   { return glass(Material.YELLOW_STAINED_GLASS_PANE); }
+    private ItemStack orangeGlass() { return glass(Material.ORANGE_STAINED_GLASS_PANE); }
+
+    // ── Key slot helper ────────────────────────────────────────────────────────
+
+    // startCol = 5 - N centers N items in 9 columns with spacing 2
+    private int keySlot(int idx) {
+        int n = Math.min(crateKeys.size(), 5);
+        return KEY_ROW_BASE + (5 - n) + idx * 2;
+    }
+
     // ── GUI ─────────────────────────────────────────────────────────────────────
 
     public void openGui(Player player) {
         Inventory inv = Bukkit.createInventory(null, 54,
-            Component.text("⚡ Bit Shop").color(NamedTextColor.GOLD)
+            Component.text("Bit Shop").color(NamedTextColor.GOLD)
                 .decoration(TextDecoration.ITALIC, false));
 
-        fillGlass(inv);
+        // Fill all with black glass
+        ItemStack bg = blackGlass();
+        for (int i = 0; i < 54; i++) inv.setItem(i, bg);
 
-        // Section labels
-        inv.setItem(SLOT_SPAWNER_LABEL, makeSectionLabel(Material.SPAWNER,       "&6&lSpawners"));
-        inv.setItem(SLOT_KEY_LABEL,     makeSectionLabel(Material.TRIPWIRE_HOOK, "&b&lCrate Keys"));
+        // Header (row 0): gold glass
+        ItemStack hdr = goldGlass();
+        for (int i = 0; i < 9; i++) inv.setItem(i, hdr);
 
-        // Spawners — up to 9, fills row 2 perfectly
+        // Title at slot 4
+        ItemStack title = new ItemStack(Material.NETHER_STAR);
+        ItemMeta tm = title.getItemMeta();
+        tm.displayName(Component.text("Bit Shop")
+            .color(NamedTextColor.GOLD)
+            .decoration(TextDecoration.BOLD, true)
+            .decoration(TextDecoration.ITALIC, false));
+        tm.lore(List.of(
+            Component.text("Spend your bits here")
+                .color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+        ));
+        title.setItemMeta(tm);
+        inv.setItem(SLOT_TITLE, title);
+
+        // Close button at slot 8 (top-right corner)
+        ItemStack close = new ItemStack(Material.BARRIER);
+        ItemMeta clm = close.getItemMeta();
+        clm.displayName(Component.text("Close")
+            .color(NamedTextColor.RED).decoration(TextDecoration.ITALIC, false));
+        clm.lore(List.of());
+        close.setItemMeta(clm);
+        inv.setItem(SLOT_CLOSE, close);
+
+        // Spawner section label at slot 13
+        ItemStack spawnLabel = new ItemStack(Material.SPAWNER);
+        ItemMeta slm = spawnLabel.getItemMeta();
+        slm.displayName(Component.text("Spawners")
+            .color(NamedTextColor.GOLD)
+            .decoration(TextDecoration.BOLD, true)
+            .decoration(TextDecoration.ITALIC, false));
+        slm.lore(List.of(
+            Component.text("Purchase spawners with bits")
+                .color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+        ));
+        spawnLabel.setItemMeta(slm);
+        inv.setItem(SLOT_SPAWNER_LABEL, spawnLabel);
+
+        // Spawner items (row 2, slots 18-26 — up to 9)
         for (int i = 0; i < Math.min(spawners.size(), 9); i++) {
             inv.setItem(SPAWNER_ROW_START + i, buildSpawnerDisplayItem(spawners.get(i)));
         }
 
-        // Crate keys — up to 7, centered in row 4 (one glass on each side)
-        for (int i = 0; i < Math.min(crateKeys.size(), 7); i++) {
-            inv.setItem(KEY_ROW_START + i, buildCrateDisplayItem(crateKeys.get(i)));
-        }
+        // Divider (row 3, slots 27-35): orange glass
+        ItemStack div = orangeGlass();
+        for (int i = 27; i < 36; i++) inv.setItem(i, div);
 
-        inv.setItem(SLOT_CLOSE, makeCloseButton());
+        // Crate key section label at slot 40
+        ItemStack keyLabel = new ItemStack(Material.TRIPWIRE_HOOK);
+        ItemMeta klm = keyLabel.getItemMeta();
+        klm.displayName(Component.text("Crate Keys")
+            .color(NamedTextColor.AQUA)
+            .decoration(TextDecoration.BOLD, true)
+            .decoration(TextDecoration.ITALIC, false));
+        klm.lore(List.of(
+            Component.text("Open crates at spawn")
+                .color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+        ));
+        keyLabel.setItemMeta(klm);
+        inv.setItem(SLOT_KEY_LABEL, keyLabel);
+
+        // Crate keys centered in row 5 (slots 45-53)
+        for (int i = 0; i < Math.min(crateKeys.size(), 5); i++) {
+            inv.setItem(keySlot(i), buildCrateDisplayItem(crateKeys.get(i), player));
+        }
 
         sessions.add(inv);
         player.openInventory(inv);
@@ -126,17 +207,24 @@ public class BitShopManager {
     // ── Click handler ─────────────────────────────────────────────────────────
 
     public void handleClick(Player player, Inventory inv, int slot) {
-        if (slot == SLOT_CLOSE) { player.closeInventory(); return; }
+        if (slot == SLOT_CLOSE) {
+            player.closeInventory();
+            return;
+        }
 
+        // Spawner row (slots 18-26)
         if (slot >= SPAWNER_ROW_START && slot < SPAWNER_ROW_START + 9) {
             int idx = slot - SPAWNER_ROW_START;
             if (idx < spawners.size()) purchaseSpawner(player, spawners.get(idx));
             return;
         }
 
-        if (slot >= KEY_ROW_START && slot < KEY_ROW_START + 7) {
-            int idx = slot - KEY_ROW_START;
-            if (idx < crateKeys.size()) purchaseCrateKey(player, crateKeys.get(idx));
+        // Crate key row (centered in row 5)
+        for (int i = 0; i < Math.min(crateKeys.size(), 5); i++) {
+            if (slot == keySlot(i)) {
+                purchaseCrateKey(player, crateKeys.get(i), inv);
+                return;
+            }
         }
     }
 
@@ -152,17 +240,23 @@ public class BitShopManager {
             + " &7for &e" + fmt(entry.price()) + " bits&7."));
     }
 
-    private void purchaseCrateKey(Player player, CrateEntry entry) {
+    private void purchaseCrateKey(Player player, CrateEntry entry, Inventory inv) {
         if (!hasFunds(player, entry.price())) return;
         if (!bits.withdraw(player.getUniqueId(), entry.price())) {
             player.sendMessage(LEGACY.deserialize("&c[BitShop] Transaction failed."));
             return;
         }
-        giveOrDrop(player, buildCrateGiveItem(entry));
+        keyStore.addKeys(player.getUniqueId(), entry.id(), 1);
+
+        // Refresh key display in open GUI
+        int idx = crateKeys.indexOf(entry);
+        inv.setItem(keySlot(idx), buildCrateDisplayItem(entry, player));
+
         player.sendMessage(LEGACY.deserialize(
             "&a[BitShop] &7Purchased "
             + LEGACY.serialize(LEGACY.deserialize(entry.displayName()))
-            + " &7for &e" + fmt(entry.price()) + " bits&7."));
+            + " &7for &e" + fmt(entry.price()) + " bits&7. "
+            + "&7You now have &e" + keyStore.getKeys(player.getUniqueId(), entry.id()) + "&7."));
     }
 
     private boolean hasFunds(Player player, double price) {
@@ -188,9 +282,9 @@ public class BitShopManager {
             .decoration(TextDecoration.ITALIC, false));
         meta.lore(List.of(
             Component.empty(),
-            Component.text("Price: ").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+            Component.text("Price: ").color(NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
                 .append(Component.text(fmt(entry.price()) + " bits")
-                    .color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false)),
+                    .color(NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false)),
             Component.empty(),
             Component.text("Click to purchase").color(NamedTextColor.GREEN)
                 .decoration(TextDecoration.ITALIC, false)
@@ -209,7 +303,7 @@ public class BitShopManager {
                 .color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false),
             Component.text("Right-click a placed spawner to stack")
                 .color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false),
-            Component.text("⚠ Breaking destroys stored items!")
+            Component.text("Breaking destroys stored items!")
                 .color(NamedTextColor.RED).decoration(TextDecoration.ITALIC, false)
         ));
         meta.getPersistentDataContainer()
@@ -218,7 +312,8 @@ public class BitShopManager {
         return item;
     }
 
-    private ItemStack buildCrateDisplayItem(CrateEntry entry) {
+    private ItemStack buildCrateDisplayItem(CrateEntry entry, Player player) {
+        int owned = keyStore.getKeys(player.getUniqueId(), entry.id());
         ItemStack item = new ItemStack(entry.material());
         ItemMeta  meta = item.getItemMeta();
         meta.displayName(LEGACY.deserialize(entry.displayName())
@@ -227,56 +322,19 @@ public class BitShopManager {
         for (String line : entry.lore())
             lore.add(LEGACY.deserialize(line).decoration(TextDecoration.ITALIC, false));
         lore.add(Component.empty());
-        lore.add(Component.text("Price: ").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+        lore.add(Component.text("Price: ").color(NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
             .append(Component.text(fmt(entry.price()) + " bits")
-                .color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false)));
+                .color(NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false)));
+        lore.add(Component.text("Owned: ").color(NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false)
+            .append(Component.text(String.valueOf(owned))
+                .color(owned > 0 ? NamedTextColor.GREEN : NamedTextColor.DARK_GRAY)
+                .decoration(TextDecoration.ITALIC, false)));
         lore.add(Component.empty());
         lore.add(Component.text("Click to purchase").color(NamedTextColor.GREEN)
             .decoration(TextDecoration.ITALIC, false));
         meta.lore(lore);
         item.setItemMeta(meta);
         return item;
-    }
-
-    private ItemStack buildCrateGiveItem(CrateEntry entry) {
-        ItemStack item = new ItemStack(entry.material());
-        ItemMeta  meta = item.getItemMeta();
-        meta.displayName(LEGACY.deserialize(entry.displayName())
-            .decoration(TextDecoration.ITALIC, false));
-        List<Component> lore = new ArrayList<>();
-        for (String line : entry.lore())
-            lore.add(LEGACY.deserialize(line).decoration(TextDecoration.ITALIC, false));
-        meta.lore(lore);
-        NamespacedKey crateTag = new NamespacedKey(plugin, "crate_key");
-        meta.getPersistentDataContainer().set(crateTag, PersistentDataType.STRING, entry.id());
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    private ItemStack makeSectionLabel(Material mat, String ampName) {
-        ItemStack item = new ItemStack(mat);
-        ItemMeta  meta = item.getItemMeta();
-        meta.displayName(LEGACY.deserialize(ampName).decoration(TextDecoration.ITALIC, false));
-        meta.lore(List.of());
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    private ItemStack makeCloseButton() {
-        ItemStack item = new ItemStack(Material.OAK_DOOR);
-        ItemMeta  meta = item.getItemMeta();
-        meta.displayName(LEGACY.deserialize("&cClose").decoration(TextDecoration.ITALIC, false));
-        meta.lore(List.of());
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    private void fillGlass(Inventory inv) {
-        ItemStack g = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta  m = g.getItemMeta();
-        m.displayName(Component.text(" ").decoration(TextDecoration.ITALIC, false));
-        g.setItemMeta(m);
-        for (int i = 0; i < inv.getSize(); i++) inv.setItem(i, g);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

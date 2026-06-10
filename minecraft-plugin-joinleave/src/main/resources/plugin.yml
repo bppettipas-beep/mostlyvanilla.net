@@ -1,0 +1,5 @@
+name: MostlyVanillaJoinLeave
+version: '${project.version}'
+main: com.mostlyvanilla.joinleave.MostlyVanillaJoinLeave
+api-version: '1.20'
+description: Suppresses join/leave messages and shows a first-join welcome.
