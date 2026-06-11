@@ -13,7 +13,10 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.potion.PotionData;
+import org.bukkit.potion.PotionType;
 
 import java.util.*;
 
@@ -128,7 +131,18 @@ public class ShopManager {
             }
         }
 
-        return new ShopItem(material, name, enchants, lore, amount, price);
+        PotionType potionType = null;
+        if (raw.containsKey("potion-type")) {
+            String ptStr = raw.get("potion-type").toString().toUpperCase();
+            try { potionType = PotionType.valueOf(ptStr); }
+            catch (IllegalArgumentException e) {
+                plugin.getLogger().warning("[Shop] Unknown potion-type: " + ptStr);
+            }
+        }
+        boolean potionExtended = raw.containsKey("potion-extended") && Boolean.parseBoolean(raw.get("potion-extended").toString());
+        boolean potionUpgraded = raw.containsKey("potion-upgraded") && Boolean.parseBoolean(raw.get("potion-upgraded").toString());
+
+        return new ShopItem(material, name, enchants, lore, amount, price, potionType, potionExtended, potionUpgraded);
     }
 
     private int toInt(Object o, int def) {
@@ -139,6 +153,16 @@ public class ShopManager {
     private double toDouble(Object o, double def) {
         if (o == null) return def;
         try { return Double.parseDouble(o.toString()); } catch (Exception e) { return def; }
+    }
+
+    // ── Potion helper ─────────────────────────────────────────────────────────
+
+    @SuppressWarnings("deprecation")
+    private void applyPotionMeta(ItemStack stack, ShopItem item) {
+        if (item.potionType() == null) return;
+        if (!(stack.getItemMeta() instanceof PotionMeta pm)) return;
+        pm.setBasePotionData(new PotionData(item.potionType(), item.potionExtended(), item.potionUpgraded()));
+        stack.setItemMeta(pm);
     }
 
     // ── Glass helpers ─────────────────────────────────────────────────────────
@@ -331,6 +355,7 @@ public class ShopManager {
         for (Map.Entry<Enchantment, Integer> e : item.enchants().entrySet()) {
             stack.addUnsafeEnchantment(e.getKey(), e.getValue());
         }
+        applyPotionMeta(stack, item);
 
         ItemMeta meta = stack.getItemMeta();
         String rawName = item.displayName() != null
@@ -402,6 +427,7 @@ public class ShopManager {
         for (Map.Entry<Enchantment, Integer> e : item.enchants().entrySet()) {
             stack.addUnsafeEnchantment(e.getKey(), e.getValue());
         }
+        applyPotionMeta(stack, item);
 
         ItemMeta meta = stack.getItemMeta();
         String rawName = item.displayName() != null ? item.displayName() : prettifyMaterial(item.material());
@@ -574,6 +600,7 @@ public class ShopManager {
             for (Map.Entry<Enchantment, Integer> e : item.enchants().entrySet()) {
                 stack.addUnsafeEnchantment(e.getKey(), e.getValue());
             }
+            applyPotionMeta(stack, item);
             Map<Integer, ItemStack> overflow = player.getInventory().addItem(stack);
             overflow.values().forEach(drop ->
                 player.getWorld().dropItemNaturally(player.getLocation(), drop));

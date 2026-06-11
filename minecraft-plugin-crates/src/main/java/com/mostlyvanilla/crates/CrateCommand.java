@@ -79,8 +79,11 @@ public class CrateCommand implements CommandExecutor, TabCompleter {
             return;
         }
         manager.setCrate(target, typeId);
-        sender.sendMessage(Component.text("Crate set to \"" + typeId + "\" at "
-            + target.getX() + "," + target.getY() + "," + target.getZ(), NamedTextColor.GREEN));
+        int rewardCount = manager.getType(typeId).rewards().size();
+        sender.sendMessage(Component.text(
+            "\"" + typeId + "\" crate set at "
+            + target.getX() + "," + target.getY() + "," + target.getZ()
+            + " with " + rewardCount + " reward(s).", NamedTextColor.GREEN));
     }
 
     // ── /crate remove ─────────────────────────────────────────────────────────

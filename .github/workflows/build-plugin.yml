@@ -4,14 +4,14 @@ on:
   push:
     branches: [main]
     paths:
-      - 'minecraft-plugin-verify/**'
+      - 'minecraft-plugin-roles/**'
       - 'minecraft-plugin-economy/**'
       - 'minecraft-plugin-scoreboard/**'
   workflow_dispatch:
 
 jobs:
-  build-verify:
-    name: Build Verify Plugin
+  build-roles:
+    name: Build Roles Plugin
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,13 +22,13 @@ jobs:
           distribution: 'temurin'
 
       - name: Build with Maven
-        run: mvn -f minecraft-plugin-verify/pom.xml package -DskipTests
+        run: mvn -f minecraft-plugin-roles/pom.xml package -DskipTests
 
       - name: Upload jar
         uses: actions/upload-artifact@v4
         with:
-          name: MostlyVanillaVerify
-          path: minecraft-plugin-verify/target/mostly-vanilla-verify-*.jar
+          name: MostlyVanillaRoles
+          path: minecraft-plugin-roles/target/mostly-vanilla-roles-*.jar
           retention-days: 30
 
   build-economy:

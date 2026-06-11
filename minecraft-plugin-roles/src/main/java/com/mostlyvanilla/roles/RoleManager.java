@@ -18,6 +18,8 @@ import java.util.*;
 public class RoleManager {
 
     private final MostlyVanillaRoles plugin;
+    private ApiClient apiClient;
+
     private final Map<String, String>  roles       = new LinkedHashMap<>();
     private final Map<String, Integer> roleWeights = new HashMap<>();
     private final Map<UUID, String>    playerRoles = new HashMap<>();
@@ -277,22 +279,66 @@ public class RoleManager {
         return true;
     }
 
+    public void setApiClient(ApiClient client) { this.apiClient = client; }
+
     public boolean assignRole(UUID uuid, String roleName) {
         if (!roles.containsKey(roleName)) return false;
+        String oldRole = playerRoles.get(uuid);
         playerRoles.put(uuid, roleName);
         Player player = Bukkit.getPlayer(uuid);
         if (player != null) syncPlayerTeam(player);
         savePlayers();
+        if (apiClient != null) {
+            final String mcUuid = uuid.toString();
+            final String old    = oldRole;
+            final String newR   = roleName;
+            plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+                if (old != null && !old.equals(newR)) apiClient.notifyRoleChange(mcUuid, old, false);
+                apiClient.notifyRoleChange(mcUuid, newR, true);
+            });
+        }
         return true;
     }
 
+    /** Assign a role coming from Discord sync — removes old Discord role if changed, never pings back. */
+    public void assignRoleFromDiscord(UUID uuid, String roleName) {
+        if (!roles.containsKey(roleName)) return;
+        String oldRole = playerRoles.get(uuid);
+        if (roleName.equals(oldRole)) return;
+        playerRoles.put(uuid, roleName);
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null) syncPlayerTeam(player);
+        savePlayers();
+        if (apiClient != null && oldRole != null) {
+            final String mcUuid = uuid.toString();
+            final String old    = oldRole;
+            plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () ->
+                apiClient.notifyRoleChange(mcUuid, old, false));
+        }
+    }
+
     public boolean removePlayerRole(UUID uuid) {
-        if (!playerRoles.containsKey(uuid)) return false;
+        String roleName = playerRoles.remove(uuid);
+        if (roleName == null) return false;
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null) syncPlayerTeam(player);
+        savePlayers();
+        if (apiClient != null) {
+            final String mcUuid = uuid.toString();
+            final String role   = roleName;
+            plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () ->
+                apiClient.notifyRoleChange(mcUuid, role, false));
+        }
+        return true;
+    }
+
+    /** Remove a role only if it matches the player's current role (used by Discord→MC sync). */
+    public void removePlayerRoleIfMatches(UUID uuid, String roleName) {
+        if (!roleName.equals(playerRoles.get(uuid))) return;
         playerRoles.remove(uuid);
         Player player = Bukkit.getPlayer(uuid);
         if (player != null) syncPlayerTeam(player);
         savePlayers();
-        return true;
     }
 
     // ── Command blocking ─────────────────────────────────────────────────────
@@ -418,6 +464,8 @@ public class RoleManager {
         if (cmdMatches("invsee", cmd) && canUseInvSee(uuid)) return true;
         if (staffRole != null && cmdMatches("staff", cmd) && canUseStaff(uuid)) return true;
         if (cmdMatches("sus", cmd) && canNotifySus(uuid) && isOnDuty(uuid)) return true;
+        if ((cmdMatches("spawnstash", cmd) || cmdMatches("delstash", cmd)) && canUseStash(uuid)) return true;
+        if ((cmdMatches("spawnore", cmd) || cmdMatches("delore", cmd)) && canUseSpawnore(uuid)) return true;
         return false;
     }
 

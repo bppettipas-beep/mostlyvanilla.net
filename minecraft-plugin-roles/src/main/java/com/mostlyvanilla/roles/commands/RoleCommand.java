@@ -1,5 +1,6 @@
 package com.mostlyvanilla.roles.commands;
 
+import com.mostlyvanilla.roles.ApiClient;
 import com.mostlyvanilla.roles.MostlyVanillaRoles;
 import com.mostlyvanilla.roles.RoleManager;
 import net.kyori.adventure.text.Component;
@@ -13,6 +14,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.Arrays;
 import java.util.ArrayList;
@@ -661,6 +663,61 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
                 }
             }
 
+            case "discordlink" -> {
+                if (args.length < 3) {
+                    sender.sendMessage(Component.text("Usage: /role discordlink <game_role> <discord_role_id>", NamedTextColor.RED));
+                    return true;
+                }
+                String roleName      = args[1].toLowerCase();
+                String discordRoleId = args[2];
+                if (!rm.roleExists(roleName)) {
+                    sender.sendMessage(Component.text("Role '" + roleName + "' does not exist.", NamedTextColor.RED));
+                    return true;
+                }
+                ApiClient api = plugin.getApiClient();
+                if (api == null) {
+                    sender.sendMessage(Component.text("Discord API is not configured (check config.yml).", NamedTextColor.RED));
+                    return true;
+                }
+                sender.sendMessage(Component.text("Linking...", NamedTextColor.GRAY));
+                new BukkitRunnable() {
+                    @Override public void run() {
+                        boolean ok = api.setRoleLink(roleName, discordRoleId);
+                        new BukkitRunnable() {
+                            @Override public void run() {
+                                if (ok) sender.sendMessage(Component.text("Linked game role '" + roleName + "' → Discord role " + discordRoleId + ".", NamedTextColor.GREEN));
+                                else    sender.sendMessage(Component.text("Failed — is the bot running?", NamedTextColor.RED));
+                            }
+                        }.runTask(plugin);
+                    }
+                }.runTaskAsynchronously(plugin);
+            }
+
+            case "discordunlink" -> {
+                if (args.length < 2) {
+                    sender.sendMessage(Component.text("Usage: /role discordunlink <game_role>", NamedTextColor.RED));
+                    return true;
+                }
+                String roleName = args[1].toLowerCase();
+                ApiClient api = plugin.getApiClient();
+                if (api == null) {
+                    sender.sendMessage(Component.text("Discord API is not configured (check config.yml).", NamedTextColor.RED));
+                    return true;
+                }
+                sender.sendMessage(Component.text("Unlinking...", NamedTextColor.GRAY));
+                new BukkitRunnable() {
+                    @Override public void run() {
+                        boolean ok = api.deleteRoleLink(roleName);
+                        new BukkitRunnable() {
+                            @Override public void run() {
+                                if (ok) sender.sendMessage(Component.text("Unlinked game role '" + roleName + "' from Discord.", NamedTextColor.GREEN));
+                                else    sender.sendMessage(Component.text("Failed — is the bot running?", NamedTextColor.RED));
+                            }
+                        }.runTask(plugin);
+                    }
+                }.runTaskAsynchronously(plugin);
+            }
+
             default -> sendUsage(sender);
         }
 
@@ -672,14 +729,14 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("mostlyvanilla.roles.admin")) return List.of();
 
         if (args.length == 1) {
-            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "commandblockglobal", "commandblockallglobal", "commandallowglobal", "unblockallglobal", "addmute", "addban", "addannouncement", "addfly", "addallowtp", "addstaff", "addecsee", "addinvsee", "addstash", "addspawnore", "notifysus", "gmmod", "gmadmin", "namecolormatch"), args[0]);
+            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "commandblockglobal", "commandblockallglobal", "commandallowglobal", "unblockallglobal", "addmute", "addban", "addannouncement", "addfly", "addallowtp", "addstaff", "addecsee", "addinvsee", "addstash", "addspawnore", "notifysus", "gmmod", "gmadmin", "namecolormatch", "discordlink", "discordunlink"), args[0]);
         }
 
         RoleManager rm = plugin.getRoleManager();
 
         if (args.length == 2) {
             return switch (args[0].toLowerCase()) {
-                case "delete", "join", "setweight", "commandblockall", "commandblock", "commandallow", "unblockallcommands", "addstaff", "addfly", "addallowtp", "addannouncement", "addmute", "addban", "addecsee", "addinvsee", "addstash", "addspawnore", "notifysus", "gmmod", "gmadmin" ->
+                case "delete", "join", "setweight", "commandblockall", "commandblock", "commandallow", "unblockallcommands", "addstaff", "addfly", "addallowtp", "addannouncement", "addmute", "addban", "addecsee", "addinvsee", "addstash", "addspawnore", "notifysus", "gmmod", "gmadmin", "discordlink", "discordunlink" ->
                     filter(new ArrayList<>(rm.getRoleNames()), args[1]);
                 case "assign", "remove", "info" -> filter(
                     Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList()), args[1]

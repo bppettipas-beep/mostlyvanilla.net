@@ -198,10 +198,10 @@ categories:
       - {material: TOTEM_OF_UNDYING, name: "&6Totem of Undying", amount: 1, price: 10000.0}
       - {material: GOLDEN_APPLE, name: "&6Golden Apple", amount: 1, price: 250.0}
       - {material: ENDER_PEARL, name: "&aEnder Pearl", amount: 1, price: 100.0}
-      - {material: POTION, name: "&cPotion of Strength II", amount: 1, price: 1000.0}
-      - {material: POTION, name: "&9Potion of Speed II", amount: 1, price: 1000.0}
-      - {material: POTION, name: "&9Potion of Speed I", amount: 1, price: 500.0}
-      - {material: POTION, name: "&6Potion of Fire Resistance", amount: 1, price: 500.0}
+      - {material: POTION, name: "&cPotion of Strength II", amount: 1, price: 1000.0, potion-type: STRENGTH, potion-upgraded: true}
+      - {material: POTION, name: "&9Potion of Speed II", amount: 1, price: 1000.0, potion-type: SWIFTNESS, potion-upgraded: true}
+      - {material: POTION, name: "&9Potion of Speed I", amount: 1, price: 500.0, potion-type: SWIFTNESS}
+      - {material: POTION, name: "&6Potion of Fire Resistance", amount: 1, price: 500.0, potion-type: FIRE_RESISTANCE}
       - {material: COBWEB, name: "&fCobweb", amount: 1, price: 100.0}
       - {material: BREEZE_ROD, name: "&eBreeze Rod", amount: 1, price: 500.0}
       - {material: EXPERIENCE_BOTTLE, name: "&aBottle o' Enchanting", amount: 1, price: 200.0}

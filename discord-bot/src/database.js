@@ -293,6 +293,72 @@ const chatLogStmts = {
     `),
 };
 
+// ── Verification & linking ────────────────────────────────────────────────────
+db.exec(`
+    CREATE TABLE IF NOT EXISTS pending_codes (
+        code       TEXT PRIMARY KEY,
+        mc_uuid    TEXT NOT NULL,
+        mc_name    TEXT NOT NULL,
+        expires_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS verified_players (
+        mc_uuid    TEXT PRIMARY KEY,
+        discord_id TEXT NOT NULL UNIQUE,
+        mc_name    TEXT NOT NULL,
+        linked_at  INTEGER DEFAULT (strftime('%s','now'))
+    );
+`);
+
+db.prepare('DELETE FROM pending_codes WHERE expires_at < ?').run(Math.floor(Date.now() / 1000));
+
+const codeStmts = {
+    insert:         db.prepare('INSERT OR REPLACE INTO pending_codes (code, mc_uuid, mc_name, expires_at) VALUES (?, ?, ?, ?)'),
+    get:            db.prepare('SELECT * FROM pending_codes WHERE code = ?'),
+    del:            db.prepare('DELETE FROM pending_codes WHERE code = ?'),
+    cleanupExpired: db.prepare('DELETE FROM pending_codes WHERE expires_at < ?'),
+};
+
+const verifiedStmts = {
+    link:           db.prepare('INSERT OR REPLACE INTO verified_players (mc_uuid, discord_id, mc_name) VALUES (?, ?, ?)'),
+    getByMcUuid:    db.prepare('SELECT * FROM verified_players WHERE mc_uuid = ?'),
+    getByDiscordId: db.prepare('SELECT * FROM verified_players WHERE discord_id = ?'),
+};
+
+// ── Role sync ─────────────────────────────────────────────────────────────────
+db.exec(`
+    CREATE TABLE IF NOT EXISTS role_links (
+        game_role       TEXT PRIMARY KEY,
+        discord_role_id TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS pending_game_roles (
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        mc_uuid   TEXT NOT NULL,
+        game_role TEXT,
+        assign    INTEGER NOT NULL
+    );
+`);
+
+const roleLinkStmts = {
+    set:    db.prepare('INSERT OR REPLACE INTO role_links (game_role, discord_role_id) VALUES (?, ?)'),
+    get:    db.prepare('SELECT discord_role_id FROM role_links WHERE game_role = ?'),
+    del:    db.prepare('DELETE FROM role_links WHERE game_role = ?'),
+    getAll: db.prepare('SELECT * FROM role_links'),
+};
+
+const pendingRoleStmts = {
+    enqueue:   db.prepare('INSERT INTO pending_game_roles (mc_uuid, game_role, assign) VALUES (?, ?, ?)'),
+    selectAll: db.prepare('SELECT * FROM pending_game_roles ORDER BY id ASC'),
+    deleteAll: db.prepare('DELETE FROM pending_game_roles'),
+};
+
+const drainPendingRoles = db.transaction(() => {
+    const rows = pendingRoleStmts.selectAll.all();
+    pendingRoleStmts.deleteAll.run();
+    return rows;
+});
+
 // ── Settings ──────────────────────────────────────────────────────────────────
 const stmts = {
     getSetting:    db.prepare('SELECT value FROM settings WHERE key = ?'),
@@ -304,6 +370,27 @@ module.exports = {
     getSetting:    (key)        => stmts.getSetting.get(key)?.value ?? null,
     setSetting:    (key, value) => stmts.setSetting.run(key, value),
     deleteSetting: (key)        => stmts.deleteSetting.run(key),
+    codes: {
+        insert:         (code, mcUuid, mcName, expiresAt) => codeStmts.insert.run(code, mcUuid, mcName, expiresAt),
+        get:            (code) => codeStmts.get.get(code),
+        delete:         (code) => codeStmts.del.run(code),
+        cleanupExpired: ()     => codeStmts.cleanupExpired.run(Math.floor(Date.now() / 1000)),
+    },
+    verified: {
+        link:           (mcUuid, discordId, mcName) => verifiedStmts.link.run(mcUuid, discordId, mcName),
+        getByMcUuid:    (mcUuid)    => verifiedStmts.getByMcUuid.get(mcUuid),
+        getByDiscordId: (discordId) => verifiedStmts.getByDiscordId.get(discordId),
+    },
+    roleLinks: {
+        set:    (gameRole, discordRoleId) => roleLinkStmts.set.run(gameRole, discordRoleId),
+        get:    (gameRole) => roleLinkStmts.get.get(gameRole)?.discord_role_id ?? null,
+        delete: (gameRole) => roleLinkStmts.del.run(gameRole),
+        getAll: ()         => roleLinkStmts.getAll.all(),
+    },
+    pendingGameRoles: {
+        enqueue:  (mcUuid, gameRole, assign) => pendingRoleStmts.enqueue.run(mcUuid, gameRole ?? null, assign ? 1 : 0),
+        drainAll: () => drainPendingRoles(),
+    },
     ticketConfig,
     getSupportRoleIds,
     ticketQuestions,

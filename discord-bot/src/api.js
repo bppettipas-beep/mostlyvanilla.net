@@ -51,15 +51,16 @@ app.post('/api/register-code', requireSecret, async (req, res) => {
         return res.status(400).json({ error: 'Missing minecraft_uuid or minecraft_name' });
     }
 
-    db.cleanupExpired();
+    db.codes.cleanupExpired();
 
     // Ensure unique code
     let code;
     let tries = 0;
-    do { code = generateCode(); } while (db.getCode(code) && ++tries < 10);
+    do { code = generateCode(); } while (db.codes.get(code) && ++tries < 10);
 
     const expiryMinutes = parseInt(process.env.CODE_EXPIRY_MINUTES) || 10;
-    db.insertCode(code, minecraft_uuid, minecraft_name, expiryMinutes);
+    const expiresAt = Math.floor(Date.now() / 1000) + expiryMinutes * 60;
+    db.codes.insert(code, minecraft_uuid, minecraft_name, expiresAt);
 
     // Generate a fresh single-use invite alongside the code
     const inviteUrl = await createInvite(minecraft_name, expiryMinutes);
@@ -70,7 +71,7 @@ app.post('/api/register-code', requireSecret, async (req, res) => {
 
 // Called by the Minecraft plugin to check if a player is verified
 app.get('/api/verified/:uuid', requireSecret, (req, res) => {
-    const row = db.getByMinecraft(req.params.uuid);
+    const row = db.verified.getByMcUuid(req.params.uuid);
     res.json({ verified: !!row, data: row ?? null });
 });
 
@@ -116,7 +117,7 @@ app.post('/api/discord-role/assign', requireSecret, async (req, res) => {
 
 // Returns all Discord role IDs held by the verified player (used by Minecraft to sync highest role)
 app.get('/api/discord-roles/:uuid', requireSecret, async (req, res) => {
-    const row = db.getByMinecraft(req.params.uuid);
+    const row = db.verified.getByMcUuid(req.params.uuid);
     if (!row) return res.json([]);
     try {
         const guild = client.guilds.cache.get(process.env.GUILD_ID);
@@ -178,7 +179,38 @@ app.post('/api/chat-message', requireSecret, async (req, res) => {
     res.json({ success: true });
 });
 
-// Polled by the Minecraft plugin every poll-interval seconds
+// Called by the Minecraft plugin when a game role is assigned/removed (MC→Discord sync)
+app.post('/api/mc-role-change', requireSecret, async (req, res) => {
+    const { mc_uuid, game_role, assign } = req.body;
+    if (!mc_uuid || !game_role) return res.status(400).json({ error: 'Missing mc_uuid or game_role' });
+
+    const player = db.verified.getByMcUuid(mc_uuid);
+    if (!player) return res.json({ success: true, skipped: 'not linked' });
+
+    const discordRoleId = db.roleLinks.get(game_role);
+    if (!discordRoleId) return res.json({ success: true, skipped: 'no role link' });
+
+    try {
+        const guild = client.guilds.cache.get(process.env.GUILD_ID);
+        if (!guild) return res.status(503).json({ error: 'Guild not available' });
+        const member = await guild.members.fetch(player.discord_id).catch(() => null);
+        if (!member) return res.json({ success: true, skipped: 'not in guild' });
+        const role = guild.roles.cache.get(discordRoleId);
+        if (!role) return res.json({ success: true, skipped: 'discord role not found' });
+        if (assign) {
+            await member.roles.add(role);
+        } else {
+            await member.roles.remove(role);
+        }
+        console.log(`[API] MC→Discord: ${assign ? 'assigned' : 'removed'} ${role.name} for ${member.user.tag}`);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[API] mc-role-change error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Polled by the Minecraft plugin every few seconds for Discord→MC role changes
 app.get('/api/pending-game-roles', requireSecret, (req, res) => {
     const rows = db.pendingGameRoles.drainAll();
     res.json(rows);

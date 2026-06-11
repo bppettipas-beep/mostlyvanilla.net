@@ -40,7 +40,7 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.DirectMessages,
     ],
-    partials: [Partials.Channel],
+    partials: [Partials.Channel, Partials.Message],
 });
 
 client.once(Events.ClientReady, async (c) => {
@@ -111,9 +111,51 @@ client.on(Events.MessageCreate, async (message) => {
         return;
     }
 
-    // DM — handle staff application flow
+    // DM — handle staff application flow first
     const appHandled = await staffappHandleDm(message).catch(err => { console.error('[Bot] StaffApp DM error:', err.message); return false; });
     if (appHandled) return;
+
+    // DM — check if it's a verification code (6 chars from our code alphabet)
+    const content = message.content.trim().toUpperCase();
+    if (/^[A-HJ-NP-Z2-9]{6}$/.test(content)) {
+        db.codes.cleanupExpired();
+        const row = db.codes.get(content);
+        if (!row) {
+            await message.reply('That code is invalid or has already been used. Run `/link` in-game to get a new one.');
+            return;
+        }
+        if (row.expires_at < Math.floor(Date.now() / 1000)) {
+            db.codes.delete(content);
+            await message.reply('That code has expired. Run `/link` in-game to get a new one.');
+            return;
+        }
+        const alreadyLinked = db.verified.getByDiscordId(message.author.id);
+        if (alreadyLinked) {
+            await message.reply(`Your Discord is already linked to **${alreadyLinked.mc_name}**. Contact an admin if you need to change this.`);
+            return;
+        }
+        db.verified.link(row.mc_uuid, message.author.id, row.mc_name);
+        db.codes.delete(content);
+        console.log(`[Bot] Linked ${row.mc_name} (${row.mc_uuid}) to Discord ${message.author.tag}`);
+
+        // Grant verified role if one is configured
+        try {
+            const guild = client.guilds.cache.get(process.env.GUILD_ID);
+            const member = await guild?.members.fetch(message.author.id).catch(() => null);
+            if (member) {
+                const verifiedRoleId = db.getSetting('verified_role_id');
+                if (verifiedRoleId) {
+                    const role = guild.roles.cache.get(verifiedRoleId);
+                    if (role) await member.roles.add(role);
+                }
+            }
+        } catch (err) {
+            console.error('[Bot] Failed to grant verified role:', err.message);
+        }
+
+        await message.reply(`✅ Linked! Your Minecraft account **${row.mc_name}** is now connected to your Discord.`);
+        return;
+    }
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -177,6 +219,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (interaction.customId.startsWith('embed_'))         await embedHandleModalSubmit(interaction).catch(err => console.error('[Bot] Embed modal error:', err.message));
         else if (interaction.customId.startsWith('ticket_'))   await ticketHandleModal(interaction).catch(err => console.error('[Bot] Ticket modal error:', err.message));
         else if (interaction.customId.startsWith('staffapp_')) await staffappHandleModal(interaction).catch(err => console.error('[Bot] StaffApp modal error:', err.message));
+    }
+});
+
+// ── Discord→MC role sync ──────────────────────────────────────────────────────
+client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
+    const allLinks = db.roleLinks.getAll();
+    if (allLinks.length === 0) return;
+
+    const verifiedRow = db.verified.getByDiscordId(newMember.id);
+    if (!verifiedRow) return;
+
+    for (const { game_role, discord_role_id } of allLinks) {
+        const hadRole = oldMember.roles.cache.has(discord_role_id);
+        const hasRole = newMember.roles.cache.has(discord_role_id);
+        if (hadRole === hasRole) continue;
+        db.pendingGameRoles.enqueue(verifiedRow.mc_uuid, game_role, hasRole);
+        console.log(`[Bot] Discord→MC queued: ${hasRole ? 'assign' : 'remove'} ${game_role} for ${verifiedRow.mc_name}`);
     }
 });
 

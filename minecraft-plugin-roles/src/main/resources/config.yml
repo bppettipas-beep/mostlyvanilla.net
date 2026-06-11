@@ -1,1 +1,2 @@
-# No configuration needed — all role settings are managed in-game via /role commands.
+bot-api-url: "https://mostlyvanillanet-production.up.railway.app"
+api-secret: "mostlyvanilla2026"

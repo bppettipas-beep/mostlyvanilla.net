@@ -54,8 +54,54 @@ public class CrateManager {
     public void load() {
         rewardsFile = new File(plugin.getDataFolder(), "rewards.yml");
         rewardsCfg  = YamlConfiguration.loadConfiguration(rewardsFile);
+        seedDefaultTypes();
         loadTypes();
         loadLocations();
+    }
+
+    private void seedDefaultTypes() {
+        plugin.getConfig().addDefault("crate-types.iron.display-name", "&fIron Crate");
+        plugin.getConfig().addDefault("crate-types.iron.key-type", "iron");
+        plugin.getConfig().addDefault("crate-types.iron.rewards", List.of(
+            Map.of("weight", 40, "material", "IRON_INGOT",   "amount", 32, "name", "&7x32 Iron Ingots"),
+            Map.of("weight", 30, "material", "COAL",          "amount", 64, "name", "&8x64 Coal"),
+            Map.of("weight", 15, "material", "GOLD_INGOT",    "amount",  8, "name", "&6x8 Gold Ingots"),
+            Map.of("weight", 10, "material", "DIAMOND",       "amount",  1, "name", "&bDiamond"),
+            Map.of("weight",  5, "material", "EMERALD",       "amount",  1, "name", "&aEmerald")
+        ));
+
+        plugin.getConfig().addDefault("crate-types.gold.display-name", "&6Gold Crate");
+        plugin.getConfig().addDefault("crate-types.gold.key-type", "gold");
+        plugin.getConfig().addDefault("crate-types.gold.rewards", List.of(
+            Map.of("weight", 35, "material", "GOLD_INGOT",   "amount", 32, "name", "&6x32 Gold Ingots"),
+            Map.of("weight", 25, "material", "IRON_INGOT",   "amount", 64, "name", "&7x64 Iron Ingots"),
+            Map.of("weight", 20, "material", "DIAMOND",      "amount",  3, "name", "&bx3 Diamonds"),
+            Map.of("weight", 15, "material", "EMERALD",      "amount",  3, "name", "&ax3 Emeralds"),
+            Map.of("weight",  5, "material", "GOLDEN_APPLE", "amount",  2, "name", "&6x2 Golden Apples")
+        ));
+
+        plugin.getConfig().addDefault("crate-types.diamond.display-name", "&bDiamond Crate");
+        plugin.getConfig().addDefault("crate-types.diamond.key-type", "diamond");
+        plugin.getConfig().addDefault("crate-types.diamond.rewards", List.of(
+            Map.of("weight", 30, "material", "DIAMOND",            "amount",  5, "name", "&bx5 Diamonds"),
+            Map.of("weight", 25, "material", "EMERALD",            "amount",  5, "name", "&ax5 Emeralds"),
+            Map.of("weight", 20, "material", "GOLDEN_APPLE",       "amount",  3, "name", "&6x3 Golden Apples"),
+            Map.of("weight", 15, "material", "NETHERITE_SCRAP",    "amount",  1, "name", "&8Netherite Scrap"),
+            Map.of("weight", 10, "material", "TOTEM_OF_UNDYING",   "amount",  1, "name", "&6Totem of Undying")
+        ));
+
+        plugin.getConfig().addDefault("crate-types.netherite.display-name", "&8Netherite Crate");
+        plugin.getConfig().addDefault("crate-types.netherite.key-type", "netherite");
+        plugin.getConfig().addDefault("crate-types.netherite.rewards", List.of(
+            Map.of("weight", 30, "material", "NETHERITE_SCRAP",  "amount",  2, "name", "&8x2 Netherite Scrap"),
+            Map.of("weight", 25, "material", "DIAMOND",          "amount", 10, "name", "&bx10 Diamonds"),
+            Map.of("weight", 20, "material", "TOTEM_OF_UNDYING", "amount",  1, "name", "&6Totem of Undying"),
+            Map.of("weight", 15, "material", "NETHERITE_INGOT",  "amount",  1, "name", "&8Netherite Ingot"),
+            Map.of("weight", 10, "material", "ELYTRA",           "amount",  1, "name", "&7Elytra")
+        ));
+
+        plugin.getConfig().options().copyDefaults(true);
+        plugin.saveConfig();
     }
 
     private void loadTypes() {
@@ -132,6 +178,7 @@ public class CrateManager {
             map.put("name", r.name());
             map.put("weight", r.weight());
             if (r.spawnerType() != null) map.put("spawner-type", r.spawnerType());
+            if (!r.enchantments().isEmpty()) map.put("enchantments", r.enchantments());
             list.add(map);
         }
         rewardsCfg.set(typeId + ".rewards", list);
@@ -169,11 +216,41 @@ public class CrateManager {
         crateLocations.put(locKey(block), typeId);
         saveLocations();
         if (block.getState() instanceof ShulkerBox shulker) {
+            List<CrateReward> imported = new ArrayList<>();
+            for (ItemStack item : shulker.getInventory().getContents()) {
+                if (item != null && !item.getType().isAir()) imported.add(itemToReward(item));
+            }
+            if (!imported.isEmpty()) {
+                CrateType old = crateTypes.get(typeId);
+                crateTypes.put(typeId, new CrateType(old.id(), old.displayName(), old.keyType(), imported));
+                saveRewards(typeId);
+                shulker.getInventory().clear();
+            }
             CrateType type = crateTypes.get(typeId);
             shulker.customName(LEGACY.deserialize(type.displayName()));
             shulker.update(true);
         }
         return true;
+    }
+
+    private CrateReward itemToReward(ItemStack item) {
+        ItemMeta meta       = item.getItemMeta();
+        String spawnerType  = readSpawnerType(item);
+        String name;
+        if (meta != null && meta.hasDisplayName()) {
+            name = LEGACY.serialize(meta.displayName());
+        } else if (spawnerType != null) {
+            name = "&6" + formatMaterialName(Material.valueOf(spawnerType.toUpperCase())) + " Spawner";
+        } else {
+            name = "&f" + formatMaterialName(item.getType());
+        }
+        Map<String, Integer> enchants = new LinkedHashMap<>();
+        Map<Enchantment, Integer> raw = (item.getType() == Material.ENCHANTED_BOOK
+                && meta instanceof EnchantmentStorageMeta esm)
+            ? esm.getStoredEnchants() : item.getEnchantments();
+        for (Map.Entry<Enchantment, Integer> e : raw.entrySet())
+            enchants.put(e.getKey().getKey().getKey(), e.getValue());
+        return new CrateReward(name, item.getType(), item.getAmount(), 10, spawnerType, enchants);
     }
 
     public boolean removeCrate(Block block) {
@@ -275,7 +352,6 @@ public class CrateManager {
         List<CrateReward> rewards = type.rewards();
         int count = rewards.size();
 
-        // Always at least 3 rows so there's a top and bottom border
         int contentRows = Math.max(1, (int) Math.ceil((double) count / REWARDS_PER_ROW));
         int totalRows   = Math.min(6, contentRows + 2);
         int size        = totalRows * 9;
@@ -287,15 +363,22 @@ public class CrateManager {
                 .decoration(TextDecoration.ITALIC, false));
         holder.setInventory(inv);
 
-        // Fill everything with gray glass panes
-        ItemStack filler = makeFiller();
-        for (int i = 0; i < size; i++) inv.setItem(i, filler);
+        ItemStack border = makeFiller(borderMaterial(type.id()));
+        ItemStack gray   = makeFiller(Material.GRAY_STAINED_GLASS_PANE);
 
-        // Place rewards in interior slots (skip first and last row, skip cols 0 and 8)
+        for (int i = 0; i < size; i++) {
+            int row = i / 9, col = i % 9;
+            boolean isBorder = row == 0 || row == totalRows - 1 || col == 0 || col == 8;
+            inv.setItem(i, isBorder ? border : gray);
+        }
+
+        // Crate icon centered in the top border row
+        inv.setItem(4, makeCrateIcon(type, preview));
+
+        // Place rewards centered in each content row
         int rewardIndex = 0;
         for (int row = 1; row < totalRows - 1 && rewardIndex < count; row++) {
-            int inRow = Math.min(REWARDS_PER_ROW, count - rewardIndex);
-            // Center the rewards within the 7 interior columns
+            int inRow    = Math.min(REWARDS_PER_ROW, count - rewardIndex);
             int startCol = 1 + (REWARDS_PER_ROW - inRow) / 2;
             for (int c = 0; c < inRow; c++) {
                 int slot = row * 9 + startCol + c;
@@ -340,12 +423,44 @@ public class CrateManager {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private static ItemStack makeFiller() {
-        ItemStack item = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+    private static ItemStack makeFiller(Material mat) {
+        ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
         meta.displayName(Component.empty());
         item.setItemMeta(meta);
         return item;
+    }
+
+    private static Material borderMaterial(String crateId) {
+        return switch (crateId) {
+            case "iron"      -> Material.WHITE_STAINED_GLASS_PANE;
+            case "gold"      -> Material.YELLOW_STAINED_GLASS_PANE;
+            case "diamond"   -> Material.CYAN_STAINED_GLASS_PANE;
+            case "netherite" -> Material.BLACK_STAINED_GLASS_PANE;
+            default          -> Material.GRAY_STAINED_GLASS_PANE;
+        };
+    }
+
+    private ItemStack makeCrateIcon(CrateType type, boolean preview) {
+        Material mat = switch (type.id()) {
+            case "iron"      -> Material.IRON_INGOT;
+            case "gold"      -> Material.GOLD_INGOT;
+            case "diamond"   -> Material.DIAMOND;
+            case "netherite" -> Material.NETHERITE_INGOT;
+            default          -> Material.CHEST;
+        };
+        ItemStack icon = new ItemStack(mat);
+        ItemMeta meta  = icon.getItemMeta();
+        meta.displayName(LEGACY.deserialize(type.displayName()).decoration(TextDecoration.ITALIC, false));
+        List<Component> lore = new ArrayList<>();
+        lore.add(Component.empty());
+        lore.add((preview
+            ? Component.text("Right-click with a key to open.", NamedTextColor.YELLOW)
+            : Component.text("Select a reward below.", NamedTextColor.GRAY))
+            .decoration(TextDecoration.ITALIC, false));
+        meta.lore(lore);
+        icon.setItemMeta(meta);
+        return icon;
     }
 
     private ItemStack makeRewardItem(CrateReward reward, boolean preview) {

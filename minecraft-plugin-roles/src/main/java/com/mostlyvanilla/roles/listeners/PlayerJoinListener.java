@@ -1,5 +1,6 @@
 package com.mostlyvanilla.roles.listeners;
 
+import com.mostlyvanilla.roles.ApiClient;
 import com.mostlyvanilla.roles.MostlyVanillaRoles;
 import com.mostlyvanilla.roles.RoleManager;
 import net.kyori.adventure.text.Component;
@@ -38,6 +39,25 @@ public class PlayerJoinListener implements Listener {
                 if (player.isOnline()) rm.syncPlayerTeam(player);
             }
         }.runTaskLater(plugin, 1L);
+
+        // Remind unverified players to link their Discord (async so we don't block the join tick)
+        ApiClient api = plugin.getApiClient();
+        if (api != null) {
+            new BukkitRunnable() {
+                @Override public void run() {
+                    if (!player.isOnline()) return;
+                    if (api.isVerified(uuid.toString())) return;
+                    new BukkitRunnable() {
+                        @Override public void run() {
+                            if (!player.isOnline()) return;
+                            player.sendMessage(Component.text("Link your Discord with ", NamedTextColor.GRAY)
+                                .append(Component.text("/link", NamedTextColor.GREEN, TextDecoration.BOLD))
+                                .append(Component.text(" to get the verified role.", NamedTextColor.GRAY)));
+                        }
+                    }.runTask(plugin);
+                }
+            }.runTaskLaterAsynchronously(plugin, 60L);
+        }
 
         // Remind duty-required staff that they are off duty on join
         if (rm.isDutyRequired(uuid)) {
