@@ -5,12 +5,14 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.logging.Logger;
 
 public class ApiClient {
 
     private final String baseUrl;
     private final String secret;
     private final HttpClient http;
+    private Logger logger;
 
     public ApiClient(String baseUrl, String secret) {
         this.baseUrl = baseUrl.replaceAll("/+$", "");
@@ -18,6 +20,13 @@ public class ApiClient {
         this.http    = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
             .build();
+    }
+
+    public void setLogger(Logger logger) { this.logger = logger; }
+
+    private void warn(String msg) {
+        if (logger != null) logger.warning("[DiscordAPI] " + msg);
+        else System.err.println("[DiscordAPI] " + msg);
     }
 
     public CodeResult requestCode(String uuid, String name) {
@@ -98,8 +107,12 @@ public class ApiClient {
                 .timeout(Duration.ofSeconds(10))
                 .build();
             HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
+            if (res.statusCode() != 200) {
+                warn("setRoleLink HTTP " + res.statusCode() + ": " + res.body());
+            }
             return res.statusCode() == 200;
         } catch (Exception e) {
+            warn("setRoleLink exception: " + e.getMessage());
             return false;
         }
     }
@@ -113,8 +126,12 @@ public class ApiClient {
                 .timeout(Duration.ofSeconds(10))
                 .build();
             HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
+            if (res.statusCode() != 200) {
+                warn("deleteRoleLink HTTP " + res.statusCode() + ": " + res.body());
+            }
             return res.statusCode() == 200;
         } catch (Exception e) {
+            warn("deleteRoleLink exception: " + e.getMessage());
             return false;
         }
     }

@@ -40,6 +40,7 @@ public class MostlyVanillaRoles extends JavaPlugin {
         String apiSecret = getConfig().getString("api-secret",   "").trim();
         if (!botUrl.isEmpty() && !apiSecret.isEmpty()) {
             apiClient = new ApiClient(botUrl, apiSecret);
+            apiClient.setLogger(getLogger());
         } else {
             getLogger().info("Bot API not configured — Discord sync disabled. Set bot-api-url and api-secret in config.yml.");
         }
