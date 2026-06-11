@@ -336,9 +336,14 @@ db.exec(`
         id        INTEGER PRIMARY KEY AUTOINCREMENT,
         mc_uuid   TEXT NOT NULL,
         game_role TEXT,
-        assign    INTEGER NOT NULL
+        assign    INTEGER NOT NULL DEFAULT 0
     );
 `);
+
+// Migrations for tables that may already exist without these columns
+try { db.exec('ALTER TABLE pending_game_roles ADD COLUMN mc_uuid TEXT NOT NULL DEFAULT ""'); } catch {}
+try { db.exec('ALTER TABLE pending_game_roles ADD COLUMN game_role TEXT'); } catch {}
+try { db.exec('ALTER TABLE pending_game_roles ADD COLUMN assign INTEGER NOT NULL DEFAULT 0'); } catch {}
 
 const roleLinkStmts = {
     set:    db.prepare('INSERT OR REPLACE INTO role_links (game_role, discord_role_id) VALUES (?, ?)'),
