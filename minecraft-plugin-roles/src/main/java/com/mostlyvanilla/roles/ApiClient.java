@@ -15,7 +15,9 @@ public class ApiClient {
     private Logger logger;
 
     public ApiClient(String baseUrl, String secret) {
-        this.baseUrl = baseUrl.replaceAll("/+$", "");
+        String url = baseUrl.trim();
+        if (!url.startsWith("http://") && !url.startsWith("https://")) url = "https://" + url;
+        this.baseUrl = url.replaceAll("/+$", "");
         this.secret  = secret;
         this.http    = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
