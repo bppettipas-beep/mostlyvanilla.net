@@ -4,6 +4,7 @@ import com.mostlyvanilla.roles.ApiClient;
 import com.mostlyvanilla.roles.MostlyVanillaRoles;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.command.Command;
@@ -61,10 +62,15 @@ public class LinkCommand implements CommandExecutor {
                                 .clickEvent(ClickEvent.openUrl(result.inviteUrl()))));
                     }
                     player.sendMessage(Component.empty());
-                    player.sendMessage(Component.text("DM this code to the bot:", NamedTextColor.WHITE));
+                    player.sendMessage(Component.text("DM the code below to ", NamedTextColor.WHITE)
+                        .append(Component.text("MostlyVanilla Beacon", NamedTextColor.AQUA, TextDecoration.BOLD))
+                        .append(Component.text(" on Discord:", NamedTextColor.WHITE)));
+                    player.sendMessage(Component.empty());
                     player.sendMessage(Component.text("  " + result.code())
                         .color(NamedTextColor.YELLOW)
-                        .decorate(TextDecoration.BOLD));
+                        .decorate(TextDecoration.BOLD)
+                        .clickEvent(ClickEvent.copyToClipboard(result.code()))
+                        .hoverEvent(HoverEvent.showText(Component.text("Click to copy code", NamedTextColor.GRAY))));
                     player.sendMessage(Component.empty());
                     player.sendMessage(Component.text("Code expires in 10 minutes.", NamedTextColor.GRAY));
                     player.sendMessage(Component.text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", NamedTextColor.GREEN, TextDecoration.BOLD));
