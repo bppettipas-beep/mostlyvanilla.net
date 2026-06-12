@@ -302,7 +302,10 @@ public class RoleManager {
 
     /** Assign a role coming from Discord sync — removes old Discord role if changed, never pings back. */
     public void assignRoleFromDiscord(UUID uuid, String roleName) {
-        if (!roles.containsKey(roleName)) return;
+        if (!roles.containsKey(roleName)) {
+            plugin.getLogger().warning("[Discord Sync] Cannot assign role '" + roleName + "' — it does not exist in-game. Use /role create to create it.");
+            return;
+        }
         String oldRole = playerRoles.get(uuid);
         if (roleName.equals(oldRole)) return;
         playerRoles.put(uuid, roleName);
