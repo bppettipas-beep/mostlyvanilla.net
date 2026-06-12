@@ -46,27 +46,32 @@ async function createInvite(mcName, expiryMinutes) {
 
 // Called by the Minecraft plugin when a player runs /discord or joins unverified
 app.post('/api/register-code', requireSecret, async (req, res) => {
-    const { minecraft_uuid, minecraft_name } = req.body;
-    if (!minecraft_uuid || !minecraft_name) {
-        return res.status(400).json({ error: 'Missing minecraft_uuid or minecraft_name' });
+    try {
+        const { minecraft_uuid, minecraft_name } = req.body;
+        if (!minecraft_uuid || !minecraft_name) {
+            return res.status(400).json({ error: 'Missing minecraft_uuid or minecraft_name' });
+        }
+
+        db.codes.cleanupExpired();
+
+        // Ensure unique code
+        let code;
+        let tries = 0;
+        do { code = generateCode(); } while (db.codes.get(code) && ++tries < 10);
+
+        const expiryMinutes = parseInt(process.env.CODE_EXPIRY_MINUTES) || 10;
+        const expiresAt = Math.floor(Date.now() / 1000) + expiryMinutes * 60;
+        db.codes.insert(code, minecraft_uuid, minecraft_name, expiresAt);
+
+        // Generate a fresh single-use invite alongside the code
+        const inviteUrl = await createInvite(minecraft_name, expiryMinutes);
+
+        console.log(`[API] Code ${code} issued for ${minecraft_name} (${minecraft_uuid})${inviteUrl ? ' with invite' : ''}`);
+        res.json({ success: true, code, invite_url: inviteUrl, expires_in_minutes: expiryMinutes });
+    } catch (err) {
+        console.error('[API] register-code error:', err.message, err.stack);
+        res.status(500).json({ error: err.message });
     }
-
-    db.codes.cleanupExpired();
-
-    // Ensure unique code
-    let code;
-    let tries = 0;
-    do { code = generateCode(); } while (db.codes.get(code) && ++tries < 10);
-
-    const expiryMinutes = parseInt(process.env.CODE_EXPIRY_MINUTES) || 10;
-    const expiresAt = Math.floor(Date.now() / 1000) + expiryMinutes * 60;
-    db.codes.insert(code, minecraft_uuid, minecraft_name, expiresAt);
-
-    // Generate a fresh single-use invite alongside the code
-    const inviteUrl = await createInvite(minecraft_name, expiryMinutes);
-
-    console.log(`[API] Code ${code} issued for ${minecraft_name} (${minecraft_uuid})${inviteUrl ? ' with invite' : ''}`);
-    res.json({ success: true, code, invite_url: inviteUrl, expires_in_minutes: expiryMinutes });
 });
 
 // Called by the Minecraft plugin to check if a player is verified
