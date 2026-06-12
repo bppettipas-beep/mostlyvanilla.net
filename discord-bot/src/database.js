@@ -312,8 +312,11 @@ db.exec(`
 
 db.prepare('DELETE FROM pending_codes WHERE expires_at < ?').run(Math.floor(Date.now() / 1000));
 
+// Migration: existing DB may have a NOT NULL created_at column from a prior schema
+try { db.exec('ALTER TABLE pending_codes ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0'); } catch {}
+
 const codeStmts = {
-    insert:         db.prepare('INSERT OR REPLACE INTO pending_codes (code, mc_uuid, mc_name, expires_at) VALUES (?, ?, ?, ?)'),
+    insert:         db.prepare('INSERT OR REPLACE INTO pending_codes (code, mc_uuid, mc_name, expires_at, created_at) VALUES (?, ?, ?, ?, ?)'),
     get:            db.prepare('SELECT * FROM pending_codes WHERE code = ?'),
     del:            db.prepare('DELETE FROM pending_codes WHERE code = ?'),
     cleanupExpired: db.prepare('DELETE FROM pending_codes WHERE expires_at < ?'),
@@ -377,7 +380,7 @@ module.exports = {
     setSetting:    (key, value) => stmts.setSetting.run(key, value),
     deleteSetting: (key)        => stmts.deleteSetting.run(key),
     codes: {
-        insert:         (code, mcUuid, mcName, expiresAt) => codeStmts.insert.run(code, mcUuid, mcName, expiresAt),
+        insert:         (code, mcUuid, mcName, expiresAt) => codeStmts.insert.run(code, mcUuid, mcName, expiresAt, Math.floor(Date.now() / 1000)),
         get:            (code) => codeStmts.get.get(code),
         delete:         (code) => codeStmts.del.run(code),
         cleanupExpired: ()     => codeStmts.cleanupExpired.run(Math.floor(Date.now() / 1000)),
