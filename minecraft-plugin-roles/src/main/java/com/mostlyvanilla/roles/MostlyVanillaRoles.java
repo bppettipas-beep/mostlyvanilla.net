@@ -5,6 +5,7 @@ import com.mostlyvanilla.roles.commands.DelStashCommand;
 import com.mostlyvanilla.roles.commands.DutyCommand;
 import com.mostlyvanilla.roles.commands.DutyRequireCommand;
 import com.mostlyvanilla.roles.commands.LinkCommand;
+import com.mostlyvanilla.roles.commands.UnlinkCommand;
 import com.mostlyvanilla.roles.commands.RoleCommand;
 import com.mostlyvanilla.roles.commands.SpawnOreCommand;
 import com.mostlyvanilla.roles.commands.SpawnStashCommand;
@@ -57,6 +58,13 @@ public class MostlyVanillaRoles extends JavaPlugin {
 
         var linkCmd = getCommand("link");
         if (linkCmd != null) linkCmd.setExecutor(new LinkCommand(this));
+
+        var unlinkCmd = getCommand("unlink");
+        if (unlinkCmd != null) {
+            var exec = new UnlinkCommand(this);
+            unlinkCmd.setExecutor(exec);
+            unlinkCmd.setTabCompleter(exec);
+        }
 
         var roleCmd = getCommand("role");
         if (roleCmd != null) {

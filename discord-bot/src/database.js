@@ -323,6 +323,7 @@ const verifiedStmts = {
     link:           db.prepare('INSERT OR REPLACE INTO verified_players (mc_uuid, discord_id, mc_name) VALUES (?, ?, ?)'),
     getByMcUuid:    db.prepare('SELECT * FROM verified_players WHERE mc_uuid = ?'),
     getByDiscordId: db.prepare('SELECT * FROM verified_players WHERE discord_id = ?'),
+    unlinkByMcUuid: db.prepare('DELETE FROM verified_players WHERE mc_uuid = ?'),
 };
 
 // ── Role sync ─────────────────────────────────────────────────────────────────
@@ -385,6 +386,7 @@ module.exports = {
         link:           (mcUuid, discordId, mcName) => verifiedStmts.link.run(mcUuid, discordId, mcName),
         getByMcUuid:    (mcUuid)    => verifiedStmts.getByMcUuid.get(mcUuid),
         getByDiscordId: (discordId) => verifiedStmts.getByDiscordId.get(discordId),
+        unlink:         (mcUuid)    => verifiedStmts.unlinkByMcUuid.run(mcUuid),
     },
     roleLinks: {
         set:    (gameRole, discordRoleId) => roleLinkStmts.set.run(gameRole, discordRoleId),

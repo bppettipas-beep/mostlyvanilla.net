@@ -98,6 +98,25 @@ public class ApiClient {
         return null;
     }
 
+    public boolean unlinkPlayer(String uuid) {
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/verified/" + uuid))
+                .header("X-Api-Secret", secret)
+                .DELETE()
+                .timeout(Duration.ofSeconds(10))
+                .build();
+            HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
+            if (res.statusCode() != 200 && res.statusCode() != 404) {
+                warn("unlinkPlayer HTTP " + res.statusCode() + ": " + res.body());
+            }
+            return res.statusCode() == 200;
+        } catch (Exception e) {
+            warn("unlinkPlayer exception: " + e.getMessage());
+            return false;
+        }
+    }
+
     public boolean setRoleLink(String gameRole, String discordRoleId) {
         String body = "{\"game_role\":\"" + escape(gameRole) + "\",\"discord_role_id\":\"" + escape(discordRoleId) + "\"}";
         try {

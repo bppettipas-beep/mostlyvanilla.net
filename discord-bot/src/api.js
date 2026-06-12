@@ -75,6 +75,15 @@ app.get('/api/verified/:uuid', requireSecret, (req, res) => {
     res.json({ verified: !!row, data: row ?? null });
 });
 
+// Called by the Minecraft plugin when an op runs /unlink <player>
+app.delete('/api/verified/:uuid', requireSecret, (req, res) => {
+    const row = db.verified.getByMcUuid(req.params.uuid);
+    if (!row) return res.status(404).json({ error: 'Player not linked' });
+    db.verified.unlink(req.params.uuid);
+    console.log(`[API] Unlinked MC UUID ${req.params.uuid} (was Discord ${row.discord_id})`);
+    res.json({ success: true, discord_id: row.discord_id });
+});
+
 // Called by the Minecraft plugin when /role link is used
 app.post('/api/role-links', requireSecret, (req, res) => {
     const { game_role, discord_role_id } = req.body;
