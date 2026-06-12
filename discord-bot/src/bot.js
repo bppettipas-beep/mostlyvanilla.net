@@ -117,45 +117,53 @@ client.on(Events.MessageCreate, async (message) => {
 
     // DM — check if it's a verification code (6 chars from our code alphabet)
     const content = message.content.trim().toUpperCase();
+    console.log(`[Bot] DM from ${message.author.tag}: "${content}" (length ${content.length})`);
     if (/^[A-HJ-NP-Z2-9]{6}$/.test(content)) {
-        db.codes.cleanupExpired();
-        const row = db.codes.get(content);
-        if (!row) {
-            await message.reply('That code is invalid or has already been used. Run `/link` in-game to get a new one.');
-            return;
-        }
-        if (row.expires_at < Math.floor(Date.now() / 1000)) {
-            db.codes.delete(content);
-            await message.reply('That code has expired. Run `/link` in-game to get a new one.');
-            return;
-        }
-        const alreadyLinked = db.verified.getByDiscordId(message.author.id);
-        if (alreadyLinked) {
-            await message.reply(`Your Discord is already linked to **${alreadyLinked.mc_name}**. Contact an admin if you need to change this.`);
-            return;
-        }
-        db.verified.link(row.mc_uuid, message.author.id, row.mc_name);
-        db.codes.delete(content);
-        console.log(`[Bot] Linked ${row.mc_name} (${row.mc_uuid}) to Discord ${message.author.tag}`);
-
-        // Grant verified role if one is configured
         try {
-            const guild = client.guilds.cache.get(process.env.GUILD_ID);
-            const member = await guild?.members.fetch(message.author.id).catch(() => null);
-            if (member) {
-                const verifiedRoleId = db.getSetting('verified_role_id');
-                if (verifiedRoleId) {
-                    const role = guild.roles.cache.get(verifiedRoleId);
-                    if (role) await member.roles.add(role);
-                }
+            db.codes.cleanupExpired();
+            const row = db.codes.get(content);
+            console.log(`[Bot] Code lookup for "${content}": ${row ? 'found' : 'not found'}`);
+            if (!row) {
+                await message.reply('That code is invalid or has already been used. Run `/link` in-game to get a new one.');
+                return;
             }
-        } catch (err) {
-            console.error('[Bot] Failed to grant verified role:', err.message);
-        }
+            if (row.expires_at < Math.floor(Date.now() / 1000)) {
+                db.codes.delete(content);
+                await message.reply('That code has expired. Run `/link` in-game to get a new one.');
+                return;
+            }
+            const alreadyLinked = db.verified.getByDiscordId(message.author.id);
+            if (alreadyLinked) {
+                await message.reply(`Your Discord is already linked to **${alreadyLinked.mc_name}**. Contact an admin if you need to change this.`);
+                return;
+            }
+            db.verified.link(row.mc_uuid, message.author.id, row.mc_name);
+            db.codes.delete(content);
+            console.log(`[Bot] Linked ${row.mc_name} (${row.mc_uuid}) to Discord ${message.author.tag}`);
 
-        await message.reply(`✅ Linked! Your Minecraft account **${row.mc_name}** is now connected to your Discord.`);
+            // Grant verified role if one is configured
+            try {
+                const guild = client.guilds.cache.get(process.env.GUILD_ID);
+                const member = await guild?.members.fetch(message.author.id).catch(() => null);
+                if (member) {
+                    const verifiedRoleId = db.getSetting('verified_role_id');
+                    if (verifiedRoleId) {
+                        const role = guild.roles.cache.get(verifiedRoleId);
+                        if (role) await member.roles.add(role);
+                    }
+                }
+            } catch (err) {
+                console.error('[Bot] Failed to grant verified role:', err.message);
+            }
+
+            await message.reply(`✅ Linked! Your Minecraft account **${row.mc_name}** is now connected to your Discord.`);
+        } catch (err) {
+            console.error('[Bot] DM verification error:', err.message, err.stack);
+            await message.reply('Something went wrong. Please try again or contact an admin.').catch(() => {});
+        }
         return;
     }
+    console.log(`[Bot] DM did not match code regex — ignoring`);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
