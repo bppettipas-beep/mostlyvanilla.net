@@ -322,8 +322,11 @@ const codeStmts = {
     cleanupExpired: db.prepare('DELETE FROM pending_codes WHERE expires_at < ?'),
 };
 
+// Migration: existing DB may have NOT NULL columns from a prior schema
+try { db.exec('ALTER TABLE verified_players ADD COLUMN verified_at INTEGER NOT NULL DEFAULT 0'); } catch {}
+
 const verifiedStmts = {
-    link:           db.prepare('INSERT OR REPLACE INTO verified_players (mc_uuid, discord_id, mc_name) VALUES (?, ?, ?)'),
+    link:           db.prepare('INSERT OR REPLACE INTO verified_players (mc_uuid, discord_id, mc_name, verified_at) VALUES (?, ?, ?, ?)'),
     getByMcUuid:    db.prepare('SELECT * FROM verified_players WHERE mc_uuid = ?'),
     getByDiscordId: db.prepare('SELECT * FROM verified_players WHERE discord_id = ?'),
     unlinkByMcUuid: db.prepare('DELETE FROM verified_players WHERE mc_uuid = ?'),
@@ -386,7 +389,7 @@ module.exports = {
         cleanupExpired: ()     => codeStmts.cleanupExpired.run(Math.floor(Date.now() / 1000)),
     },
     verified: {
-        link:           (mcUuid, discordId, mcName) => verifiedStmts.link.run(mcUuid, discordId, mcName),
+        link:           (mcUuid, discordId, mcName) => verifiedStmts.link.run(mcUuid, discordId, mcName, Math.floor(Date.now() / 1000)),
         getByMcUuid:    (mcUuid)    => verifiedStmts.getByMcUuid.get(mcUuid),
         getByDiscordId: (discordId) => verifiedStmts.getByDiscordId.get(discordId),
         unlink:         (mcUuid)    => verifiedStmts.unlinkByMcUuid.run(mcUuid),
