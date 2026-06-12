@@ -15,6 +15,7 @@ const { data: memberembedData, execute: memberembedExecute, startMemberEmbed } =
 const { data: strikeData, execute: strikeExecute, startStrikeBoard, startStrikeWipe, strikewipeData, strikewipeExecute, strikemaxData, strikemaxExecute } = require('./commands/strike');
 const { data: gamesData, execute: gamesExecute, handleInteraction: gamesHandleInteraction } = require('./commands/games');
 const { data: chatlogData, execute: chatlogExecute } = require('./commands/chatlog');
+const { data: verifiedRoleData, execute: verifiedRoleExecute } = require('./commands/verifiedrole');
 const {
     banData, banExecute,
     unbanData, unbanExecute,
@@ -83,6 +84,7 @@ client.once(Events.ClientReady, async (c) => {
                     strikemaxData.toJSON(),
                     gamesData.toJSON(),
                     chatlogData.toJSON(),
+                    verifiedRoleData.toJSON(),
                 ],
             }
         );
@@ -197,7 +199,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (interaction.commandName === 'strikewipe')    await strikewipeExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'strikemax')     await strikemaxExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'games')         await gamesExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
-        if (interaction.commandName === 'chatlog')       await chatlogExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'chatlog')        await chatlogExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'verifiedrole')  await verifiedRoleExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         return;
     }
 
