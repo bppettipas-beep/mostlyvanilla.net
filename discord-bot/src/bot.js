@@ -143,7 +143,7 @@ client.on(Events.MessageCreate, async (message) => {
             db.codes.delete(content);
             console.log(`[Bot] Linked ${row.mc_name} (${row.mc_uuid}) to Discord ${message.author.tag}`);
 
-            // Grant verified role if one is configured
+            // Grant verified role + sync any existing Discord roles to game roles
             try {
                 const guild = client.guilds.cache.get(process.env.GUILD_ID);
                 const member = await guild?.members.fetch(message.author.id).catch(() => null);
@@ -152,6 +152,15 @@ client.on(Events.MessageCreate, async (message) => {
                     if (verifiedRoleId) {
                         const role = guild.roles.cache.get(verifiedRoleId);
                         if (role) await member.roles.add(role);
+                    }
+
+                    // Sync any role links the member already has in Discord
+                    const allLinks = db.roleLinks.getAll();
+                    for (const { game_role, discord_role_id } of allLinks) {
+                        if (member.roles.cache.has(discord_role_id)) {
+                            db.pendingGameRoles.enqueue(row.mc_uuid, game_role, true);
+                            console.log(`[Bot] Link-time sync: queued assign ${game_role} for ${row.mc_name}`);
+                        }
                     }
                 }
             } catch (err) {
