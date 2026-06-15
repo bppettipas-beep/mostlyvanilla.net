@@ -162,7 +162,12 @@ public class HistoryGui implements Listener {
     }
 
     private ItemStack buildEntryItem(HistoryReader.Entry entry) {
-        Material mat = switch (entry.type()) {
+        // For SELL entries, show the actual sold material as the icon if we have it
+        Material mat = null;
+        if (entry.material() != null && entry.type().equals("SELL")) {
+            try { mat = Material.valueOf(entry.material()); } catch (IllegalArgumentException ignored) {}
+        }
+        if (mat == null) mat = switch (entry.type()) {
             case "SELL"            -> Material.GOLD_NUGGET;
             case "AH_SALE"         -> Material.DIAMOND;
             case "AH_PURCHASE"     -> Material.EMERALD;

@@ -3,6 +3,8 @@ version: ${project.version}
 main: com.mostlyvanilla.afkzone.MostlyVanillaAfkZone
 api-version: '1.20'
 description: AFK Zone plugin — earn currency by standing in a configured area
+softdepend:
+  - MostlyVanillaRoles
 
 commands:
   afkzone:

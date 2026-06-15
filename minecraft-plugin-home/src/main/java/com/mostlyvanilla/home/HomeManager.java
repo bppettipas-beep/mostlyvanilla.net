@@ -158,9 +158,8 @@ public class HomeManager {
         return max;
     }
 
-    /** Returns the name of the cheapest role that gives at least slotIndex (1-based) homes, or null if within default. */
+    /** Returns the name of the cheapest role that gives at least slotIndex (1-based) homes. */
     public String getRoleForSlot(int slotIndex) {
-        if (slotIndex <= plugin.getConfig().getInt("default-homes", 3)) return null;
         var sec = plugin.getConfig().getConfigurationSection("role-limits");
         if (sec == null) return null;
         String best = null;

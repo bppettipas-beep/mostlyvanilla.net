@@ -20,9 +20,9 @@ public class RoleManager {
 
     private final MostlyVanillaRoles plugin;
 
-    private final Map<String, String>  roles       = new LinkedHashMap<>();
-    private final Map<String, Integer> roleWeights = new HashMap<>();
-    private final Map<UUID, String>    playerRoles = new HashMap<>();
+    private final Map<String, String>    roles          = new LinkedHashMap<>();
+    private final Map<String, Integer>   roleWeights    = new HashMap<>();
+    private final Map<UUID, Set<String>> playerRoles    = new HashMap<>();
     private String  joinRole          = null;
     private String  staffRole         = null;
     private String  flyRole           = null;
@@ -93,14 +93,25 @@ public class RoleManager {
             }
         }
 
-        // Load player assignments
+        // Load player assignments — supports both legacy single-string and new list format
         YamlConfiguration pc = YamlConfiguration.loadConfiguration(playersFile);
         if (pc.isConfigurationSection("players")) {
             for (String uuidStr : pc.getConfigurationSection("players").getKeys(false)) {
                 try {
                     UUID uuid = UUID.fromString(uuidStr);
-                    String role = pc.getString("players." + uuidStr);
-                    if (role != null && roles.containsKey(role)) playerRoles.put(uuid, role);
+                    Set<String> assigned = new LinkedHashSet<>();
+                    List<?> roleList = pc.getList("players." + uuidStr);
+                    if (roleList != null) {
+                        for (Object o : roleList) {
+                            String r = String.valueOf(o);
+                            if (roles.containsKey(r)) assigned.add(r);
+                        }
+                    } else {
+                        // backward-compat: single string value from old format
+                        String role = pc.getString("players." + uuidStr);
+                        if (role != null && roles.containsKey(role)) assigned.add(role);
+                    }
+                    if (!assigned.isEmpty()) playerRoles.put(uuid, assigned);
                 } catch (IllegalArgumentException ignored) {}
             }
         }
@@ -173,7 +184,8 @@ public class RoleManager {
 
     private void savePlayers() {
         YamlConfiguration c = new YamlConfiguration();
-        for (Map.Entry<UUID, String> e : playerRoles.entrySet()) c.set("players." + e.getKey(), e.getValue());
+        for (Map.Entry<UUID, Set<String>> e : playerRoles.entrySet())
+            c.set("players." + e.getKey(), new ArrayList<>(e.getValue()));
         save(c, playersFile);
     }
 
@@ -232,7 +244,8 @@ public class RoleManager {
     }
 
     public void syncPlayerTeam(Player player) {
-        String roleName = playerRoles.get(player.getUniqueId());
+        // Display is driven by the primary (highest-priority) role only
+        String roleName = getPrimaryRole(player.getUniqueId());
         String playerName = player.getName();
 
         for (Team t : scoreboard.getTeams()) {
@@ -253,7 +266,7 @@ public class RoleManager {
     }
 
     public void syncPlayerTeamIfNeeded(Player player) {
-        String roleName = playerRoles.get(player.getUniqueId());
+        String roleName = getPrimaryRole(player.getUniqueId());
         if (roleName == null) return;
         Team expected = scoreboard.getTeam(teamName(roleName));
         if (expected == null) return;
@@ -273,7 +286,12 @@ public class RoleManager {
         if (!roles.containsKey(name)) return false;
         roles.remove(name);
         roleWeights.remove(name);
-        playerRoles.values().removeIf(r -> r.equals(name));
+        // Remove from all players' role sets; purge now-empty sets
+        for (Iterator<Map.Entry<UUID, Set<String>>> it = playerRoles.entrySet().iterator(); it.hasNext(); ) {
+            Map.Entry<UUID, Set<String>> entry = it.next();
+            entry.getValue().remove(name);
+            if (entry.getValue().isEmpty()) it.remove();
+        }
         if (name.equals(joinRole))         joinRole         = null;
         if (name.equals(allowTpRole))      allowTpRole      = null;
         if (name.equals(dutyRole))         dutyRole         = null;
@@ -304,29 +322,45 @@ public class RoleManager {
         roleWeights.put(roleName, weight);
         setupTeam(roleName, roles.get(roleName));
         for (Player p : Bukkit.getOnlinePlayers()) {
-            if (roleName.equals(playerRoles.get(p.getUniqueId()))) syncPlayerTeam(p);
+            if (getPlayerRoles(p.getUniqueId()).contains(roleName)) syncPlayerTeam(p);
         }
         saveRoles();
         return true;
     }
 
+    /** Adds a role to the player's role set (stackable — does not replace existing roles). */
     public boolean assignRole(UUID uuid, String roleName) {
         if (!roles.containsKey(roleName)) return false;
-        String oldRole = playerRoles.get(uuid);
-        playerRoles.put(uuid, roleName);
+        playerRoles.computeIfAbsent(uuid, k -> new LinkedHashSet<>()).add(roleName);
         Player player = Bukkit.getPlayer(uuid);
         if (player != null) syncPlayerTeam(player);
         savePlayers();
         return true;
     }
 
+    /** Removes ALL roles from the player. */
     public boolean removePlayerRole(UUID uuid) {
-        String roleName = playerRoles.remove(uuid);
-        if (roleName == null) return false;
+        Set<String> removed = playerRoles.remove(uuid);
+        if (removed == null || removed.isEmpty()) return false;
         Player player = Bukkit.getPlayer(uuid);
         if (player != null) {
             syncPlayerTeam(player);
             removePermissions(player);
+        }
+        savePlayers();
+        return true;
+    }
+
+    /** Removes one specific role from the player's role set. Returns false if they didn't have it. */
+    public boolean removePlayerRole(UUID uuid, String roleName) {
+        Set<String> set = playerRoles.get(uuid);
+        if (set == null || !set.remove(roleName)) return false;
+        if (set.isEmpty()) playerRoles.remove(uuid);
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null) {
+            syncPlayerTeam(player);
+            if (!playerRoles.containsKey(uuid)) removePermissions(player);
+            else applyPermissions(player);
         }
         savePlayers();
         return true;
@@ -411,6 +445,33 @@ public class RoleManager {
         return true;
     }
 
+    /**
+     * Checks whether a command is blocked for a player with stackable roles.
+     * Allowed commands are the union of ALL the player's roles' allowed lists.
+     * Block rules come from the primary (highest-priority) role only.
+     */
+    public boolean isCommandBlockedForPlayer(UUID uuid, String input) {
+        String primary = getPrimaryRole(uuid);
+        if (primary == null || input == null) return false;
+        String cmd = input.toLowerCase();
+        if (cmd.startsWith("/")) cmd = cmd.substring(1);
+
+        // Not blocked if ANY assigned role explicitly allows this command
+        for (String role : getPlayerRoles(uuid)) {
+            for (String a : allowedCmds.getOrDefault(role, Set.of())) {
+                if (cmdMatches(a, cmd)) return false;
+            }
+        }
+
+        // Block rules from the primary role (and any higher-priority roles)
+        int playerWeight = roleWeights.getOrDefault(primary, 50);
+        for (Map.Entry<String, Integer> e : roleWeights.entrySet()) {
+            if (e.getValue() <= playerWeight && isNetBlockedForRole(e.getKey(), cmd)) return true;
+        }
+        return false;
+    }
+
+    /** Legacy single-role block check retained for internal/compatibility use. */
     public boolean isCommandBlocked(String roleName, String input) {
         if (roleName == null || input == null) return false;
         String cmd = input.toLowerCase();
@@ -508,19 +569,24 @@ public class RoleManager {
         return Collections.unmodifiableMap(rolePermissions);
     }
 
+    /** Grants the union of all assigned roles' permissions to the player. */
     public void applyPermissions(Player player) {
         PermissionAttachment old = attachments.remove(player.getUniqueId());
         if (old != null) try { player.removeAttachment(old); } catch (IllegalArgumentException ignored) {}
 
-        String roleName = playerRoles.get(player.getUniqueId());
-        Set<String> perms = roleName != null ? rolePermissions.get(roleName) : null;
-        if (perms == null || perms.isEmpty()) {
+        Set<String> allPerms = new HashSet<>();
+        for (String roleName : getPlayerRoles(player.getUniqueId())) {
+            Set<String> perms = rolePermissions.get(roleName);
+            if (perms != null) allPerms.addAll(perms);
+        }
+
+        if (allPerms.isEmpty()) {
             player.recalculatePermissions();
             return;
         }
 
         PermissionAttachment att = player.addAttachment(plugin);
-        for (String perm : perms) att.setPermission(perm, true);
+        for (String perm : allPerms) att.setPermission(perm, true);
         attachments.put(player.getUniqueId(), att);
         player.recalculatePermissions();
     }
@@ -533,25 +599,62 @@ public class RoleManager {
 
     // ── Getters ──────────────────────────────────────────────────────────────
 
+    /** Returns the highest-priority (lowest-weight) role for display and threshold checks. */
+    private String getPrimaryRole(UUID uuid) {
+        Set<String> set = playerRoles.get(uuid);
+        if (set == null || set.isEmpty()) return null;
+        String best = null;
+        int bestWeight = Integer.MAX_VALUE;
+        for (String role : set) {
+            int w = roleWeights.getOrDefault(role, 50);
+            if (w < bestWeight) { bestWeight = w; best = role; }
+        }
+        return best;
+    }
+
     public String getPrefix(UUID uuid) {
-        String role = playerRoles.get(uuid);
+        String role = getPrimaryRole(uuid);
         return role != null ? roles.get(role) : null;
     }
 
     public String getPrefixLegacy(UUID uuid) {
-        String role = playerRoles.get(uuid);
+        String role = getPrimaryRole(uuid);
         if (role == null) return null;
         String prefix = roles.get(role);
         if (prefix == null || prefix.isBlank()) return null;
         return LegacyComponentSerializer.legacySection().serialize(parsePrefix(prefix));
     }
 
-    public String getPlayerRole(UUID uuid)        { return playerRoles.get(uuid); }
-    public String getJoinRole()                   { return joinRole; }
+    /** Returns the primary role (highest-priority) for display purposes and threshold checks. */
+    public String getPlayerRole(UUID uuid)       { return getPrimaryRole(uuid); }
+
+    /** Returns all roles assigned to the player (unmodifiable). */
+    public Set<String> getPlayerRoles(UUID uuid) {
+        Set<String> set = playerRoles.get(uuid);
+        return set != null ? Collections.unmodifiableSet(set) : Collections.emptySet();
+    }
+
+    public String getJoinRole()                  { return joinRole; }
     public boolean roleExists(String name)        { return roles.containsKey(name); }
     public Set<String> getRoleNames()             { return Collections.unmodifiableSet(roles.keySet()); }
     public Map<String, String> getRoles()         { return Collections.unmodifiableMap(roles); }
     public Map<String, Integer> getRoleWeights()  { return Collections.unmodifiableMap(roleWeights); }
+
+    // ── Threshold helper ──────────────────────────────────────────────────────
+
+    /**
+     * Returns true if the player's primary role has weight <= the threshold role's weight.
+     * The primary role is always the most privileged, so this correctly covers all assigned roles.
+     */
+    private boolean meetsRoleThreshold(UUID uuid, String thresholdRole) {
+        if (thresholdRole == null) return false;
+        Integer threshold = roleWeights.get(thresholdRole);
+        if (threshold == null) return false;
+        String primary = getPrimaryRole(uuid);
+        if (primary == null) return false;
+        Integer primaryWeight = roleWeights.get(primary);
+        return primaryWeight != null && primaryWeight <= threshold;
+    }
 
     public boolean setJoinRole(String name) {
         if (!roles.containsKey(name)) return false;
@@ -564,127 +667,66 @@ public class RoleManager {
         muteRole = name; saveRoles(); return true;
     }
     public void clearMuteRole() { muteRole = null; saveRoles(); }
-    public String getMuteRole() { return muteRole; }
-    public boolean canUseMute(UUID uuid) {
-        if (muteRole == null) return false;
-        Integer threshold = roleWeights.get(muteRole);
-        if (threshold == null) return false;
-        String playerRole = playerRoles.get(uuid);
-        if (playerRole == null) return false;
-        Integer playerWeight = roleWeights.get(playerRole);
-        return playerWeight != null && playerWeight <= threshold;
-    }
+    public String getMuteRole()  { return muteRole; }
+    public boolean canUseMute(UUID uuid) { return muteRole != null && meetsRoleThreshold(uuid, muteRole); }
 
     public boolean setBanRole(String name) {
         if (!roles.containsKey(name)) return false;
         banRole = name; saveRoles(); return true;
     }
     public void clearBanRole() { banRole = null; saveRoles(); }
-    public String getBanRole() { return banRole; }
-    public boolean canUseBan(UUID uuid) {
-        if (banRole == null) return false;
-        Integer threshold = roleWeights.get(banRole);
-        if (threshold == null) return false;
-        String playerRole = playerRoles.get(uuid);
-        if (playerRole == null) return false;
-        Integer playerWeight = roleWeights.get(playerRole);
-        return playerWeight != null && playerWeight <= threshold;
-    }
+    public String getBanRole()  { return banRole; }
+    public boolean canUseBan(UUID uuid) { return banRole != null && meetsRoleThreshold(uuid, banRole); }
 
     public boolean setEcSeeRole(String name) {
         if (!roles.containsKey(name)) return false;
         ecSeeRole = name; saveRoles(); return true;
     }
     public void clearEcSeeRole() { ecSeeRole = null; saveRoles(); }
-    public String getEcSeeRole() { return ecSeeRole; }
-    public boolean canUseEcSee(UUID uuid) {
-        if (ecSeeRole == null) return false;
-        Integer threshold = roleWeights.get(ecSeeRole);
-        if (threshold == null) return false;
-        String playerRole = playerRoles.get(uuid);
-        if (playerRole == null) return false;
-        Integer playerWeight = roleWeights.get(playerRole);
-        return playerWeight != null && playerWeight <= threshold;
-    }
+    public String getEcSeeRole()  { return ecSeeRole; }
+    public boolean canUseEcSee(UUID uuid) { return ecSeeRole != null && meetsRoleThreshold(uuid, ecSeeRole); }
 
     public boolean setInvSeeRole(String name) {
         if (!roles.containsKey(name)) return false;
         invSeeRole = name; saveRoles(); return true;
     }
     public void clearInvSeeRole() { invSeeRole = null; saveRoles(); }
-    public String getInvSeeRole() { return invSeeRole; }
-    public boolean canUseInvSee(UUID uuid) {
-        if (invSeeRole == null) return false;
-        Integer threshold = roleWeights.get(invSeeRole);
-        if (threshold == null) return false;
-        String playerRole = playerRoles.get(uuid);
-        if (playerRole == null) return false;
-        Integer playerWeight = roleWeights.get(playerRole);
-        return playerWeight != null && playerWeight <= threshold;
-    }
+    public String getInvSeeRole()  { return invSeeRole; }
+    public boolean canUseInvSee(UUID uuid) { return invSeeRole != null && meetsRoleThreshold(uuid, invSeeRole); }
 
     public boolean setAnnouncementRole(String name) {
         if (!roles.containsKey(name)) return false;
         announcementRole = name; saveRoles(); return true;
     }
     public void clearAnnouncementRole() { announcementRole = null; saveRoles(); }
-    public String getAnnouncementRole() { return announcementRole; }
-    public boolean canUseAnnouncement(UUID uuid) {
-        if (announcementRole == null) return false;
-        Integer threshold = roleWeights.get(announcementRole);
-        if (threshold == null) return false;
-        String playerRole = playerRoles.get(uuid);
-        if (playerRole == null) return false;
-        Integer playerWeight = roleWeights.get(playerRole);
-        return playerWeight != null && playerWeight <= threshold;
-    }
+    public String getAnnouncementRole()  { return announcementRole; }
+    public boolean canUseAnnouncement(UUID uuid) { return announcementRole != null && meetsRoleThreshold(uuid, announcementRole); }
 
     public boolean setFlyRole(String name) {
         if (!roles.containsKey(name)) return false;
         flyRole = name; saveRoles(); return true;
     }
     public void clearFlyRole() { flyRole = null; saveRoles(); }
-    public String getFlyRole() { return flyRole; }
-    public boolean canUseFly(UUID uuid) {
-        if (flyRole == null) return false;
-        Integer threshold = roleWeights.get(flyRole);
-        if (threshold == null) return false;
-        String playerRole = playerRoles.get(uuid);
-        if (playerRole == null) return false;
-        Integer playerWeight = roleWeights.get(playerRole);
-        return playerWeight != null && playerWeight <= threshold;
-    }
+    public String getFlyRole()  { return flyRole; }
+    public boolean canUseFly(UUID uuid) { return flyRole != null && meetsRoleThreshold(uuid, flyRole); }
 
     public boolean setAllowTpRole(String name) {
         if (!roles.containsKey(name)) return false;
         allowTpRole = name; saveRoles(); return true;
     }
     public void clearAllowTpRole() { allowTpRole = null; saveRoles(); }
-    public String getAllowTpRole() { return allowTpRole; }
-    public boolean canUseTp(UUID uuid) {
-        if (allowTpRole == null) return false;
-        Integer threshold = roleWeights.get(allowTpRole);
-        if (threshold == null) return false;
-        String playerRole = playerRoles.get(uuid);
-        if (playerRole == null) return false;
-        Integer playerWeight = roleWeights.get(playerRole);
-        return playerWeight != null && playerWeight <= threshold;
-    }
+    public String getAllowTpRole()  { return allowTpRole; }
+    public boolean canUseTp(UUID uuid) { return allowTpRole != null && meetsRoleThreshold(uuid, allowTpRole); }
 
     public boolean setStaffRole(String name) {
         if (!roles.containsKey(name)) return false;
         staffRole = name; saveRoles(); return true;
     }
     public void clearStaffRole() { staffRole = null; saveRoles(); }
-    public String getStaffRole() { return staffRole; }
+    public String getStaffRole()  { return staffRole; }
     public boolean canUseStaff(UUID uuid) {
         if (staffRole == null) return true;
-        Integer threshold = roleWeights.get(staffRole);
-        if (threshold == null) return false;
-        String playerRole = playerRoles.get(uuid);
-        if (playerRole == null) return false;
-        Integer playerWeight = roleWeights.get(playerRole);
-        return playerWeight != null && playerWeight <= threshold;
+        return meetsRoleThreshold(uuid, staffRole);
     }
 
     public boolean setStashRole(String name) {
@@ -692,64 +734,32 @@ public class RoleManager {
         stashRole = name; saveRoles(); return true;
     }
     public void clearStashRole() { stashRole = null; saveRoles(); }
-    public String getStashRole() { return stashRole; }
-    public boolean canUseStash(UUID uuid) {
-        if (stashRole == null) return false;
-        Integer threshold = roleWeights.get(stashRole);
-        if (threshold == null) return false;
-        String playerRole = playerRoles.get(uuid);
-        if (playerRole == null) return false;
-        Integer playerWeight = roleWeights.get(playerRole);
-        return playerWeight != null && playerWeight <= threshold;
-    }
+    public String getStashRole()  { return stashRole; }
+    public boolean canUseStash(UUID uuid) { return stashRole != null && meetsRoleThreshold(uuid, stashRole); }
 
     public boolean setSpawnoreRole(String name) {
         if (!roles.containsKey(name)) return false;
         spawnoreRole = name; saveRoles(); return true;
     }
     public void clearSpawnoreRole() { spawnoreRole = null; saveRoles(); }
-    public String getSpawnoreRole() { return spawnoreRole; }
-    public boolean canUseSpawnore(UUID uuid) {
-        if (spawnoreRole == null) return false;
-        Integer threshold = roleWeights.get(spawnoreRole);
-        if (threshold == null) return false;
-        String playerRole = playerRoles.get(uuid);
-        if (playerRole == null) return false;
-        Integer playerWeight = roleWeights.get(playerRole);
-        return playerWeight != null && playerWeight <= threshold;
-    }
+    public String getSpawnoreRole()  { return spawnoreRole; }
+    public boolean canUseSpawnore(UUID uuid) { return spawnoreRole != null && meetsRoleThreshold(uuid, spawnoreRole); }
 
     public boolean setSusRole(String name) {
         if (!roles.containsKey(name)) return false;
         susRole = name; saveRoles(); return true;
     }
     public void clearSusRole() { susRole = null; saveRoles(); }
-    public String getSusRole() { return susRole; }
-    public boolean canNotifySus(UUID uuid) {
-        if (susRole == null) return false;
-        Integer threshold = roleWeights.get(susRole);
-        if (threshold == null) return false;
-        String playerRole = playerRoles.get(uuid);
-        if (playerRole == null) return false;
-        Integer playerWeight = roleWeights.get(playerRole);
-        return playerWeight != null && playerWeight <= threshold;
-    }
+    public String getSusRole()  { return susRole; }
+    public boolean canNotifySus(UUID uuid) { return susRole != null && meetsRoleThreshold(uuid, susRole); }
 
     public boolean setHistoryRole(String name) {
         if (!roles.containsKey(name)) return false;
         historyRole = name; saveRoles(); return true;
     }
     public void clearHistoryRole() { historyRole = null; saveRoles(); }
-    public String getHistoryRole() { return historyRole; }
-    public boolean canUseHistory(UUID uuid) {
-        if (historyRole == null) return false;
-        Integer threshold = roleWeights.get(historyRole);
-        if (threshold == null) return false;
-        String playerRole = playerRoles.get(uuid);
-        if (playerRole == null) return false;
-        Integer playerWeight = roleWeights.get(playerRole);
-        return playerWeight != null && playerWeight <= threshold;
-    }
+    public String getHistoryRole()  { return historyRole; }
+    public boolean canUseHistory(UUID uuid) { return historyRole != null && meetsRoleThreshold(uuid, historyRole); }
 
     // ── Duty system ──────────────────────────────────────────────────────────
 
@@ -758,16 +768,10 @@ public class RoleManager {
         dutyRole = name; saveRoles(); return true;
     }
     public void clearDutyRole() { dutyRole = null; saveRoles(); }
-    public String getDutyRole() { return dutyRole; }
+    public String getDutyRole()  { return dutyRole; }
 
     public boolean isDutyRequired(UUID uuid) {
-        if (dutyRole == null) return false;
-        Integer threshold = roleWeights.get(dutyRole);
-        if (threshold == null) return false;
-        String playerRole = playerRoles.get(uuid);
-        if (playerRole == null) return false;
-        Integer playerWeight = roleWeights.get(playerRole);
-        return playerWeight != null && playerWeight <= threshold;
+        return dutyRole != null && meetsRoleThreshold(uuid, dutyRole);
     }
 
     public boolean isOnDuty(UUID uuid) { return onDutyPlayers.contains(uuid); }

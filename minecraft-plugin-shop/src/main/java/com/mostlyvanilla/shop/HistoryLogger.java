@@ -27,6 +27,10 @@ public class HistoryLogger {
     }
 
     public void log(UUID uuid, String playerName, String type, String description, double amount) {
+        log(uuid, playerName, type, description, amount, null);
+    }
+
+    public void log(UUID uuid, String playerName, String type, String description, double amount, String material) {
         if (file == null) return;
         YamlConfiguration cfg = file.exists()
             ? YamlConfiguration.loadConfiguration(file)
@@ -41,6 +45,7 @@ public class HistoryLogger {
         entry.put("description", description);
         entry.put("amount",      amount);
         entry.put("timestamp",   System.currentTimeMillis());
+        if (material != null) entry.put("material", material);
 
         entries.add(0, entry);
         if (entries.size() > MAX_ENTRIES) entries = entries.subList(0, MAX_ENTRIES);

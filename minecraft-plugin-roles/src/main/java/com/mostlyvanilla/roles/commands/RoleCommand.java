@@ -79,6 +79,7 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
             case "assign" -> {
                 if (args.length < 3) {
                     sender.sendMessage(Component.text("Usage: /role assign <player> <role>", NamedTextColor.RED));
+                    sender.sendMessage(Component.text("Roles are stackable — this adds the role without removing existing ones.", NamedTextColor.GRAY));
                     return true;
                 }
                 Player target = Bukkit.getPlayer(args[1]);
@@ -88,7 +89,7 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
                 }
                 String roleName = args[2].toLowerCase();
                 if (rm.assignRole(target.getUniqueId(), roleName)) {
-                    sender.sendMessage(Component.text("Assigned role " + roleName + " to " + target.getName() + ".", NamedTextColor.GREEN));
+                    sender.sendMessage(Component.text("Added role " + roleName + " to " + target.getName() + ".", NamedTextColor.GREEN));
                     target.sendMessage(Component.text("You have been given the " + roleName + " role.", NamedTextColor.GREEN));
                 } else {
                     sender.sendMessage(Component.text("Role '" + roleName + "' does not exist.", NamedTextColor.RED));
@@ -97,7 +98,8 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
 
             case "remove" -> {
                 if (args.length < 2) {
-                    sender.sendMessage(Component.text("Usage: /role remove <player>", NamedTextColor.RED));
+                    sender.sendMessage(Component.text("Usage: /role remove <player> [role]", NamedTextColor.RED));
+                    sender.sendMessage(Component.text("Omit [role] to remove ALL roles from the player.", NamedTextColor.GRAY));
                     return true;
                 }
                 Player target = Bukkit.getPlayer(args[1]);
@@ -105,11 +107,23 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage(Component.text("Player '" + args[1] + "' is not online.", NamedTextColor.RED));
                     return true;
                 }
-                if (rm.removePlayerRole(target.getUniqueId())) {
-                    sender.sendMessage(Component.text("Removed role from " + target.getName() + ".", NamedTextColor.GREEN));
-                    target.sendMessage(Component.text("Your role has been removed.", NamedTextColor.YELLOW));
+                if (args.length >= 3) {
+                    // Remove a specific role
+                    String roleName = args[2].toLowerCase();
+                    if (rm.removePlayerRole(target.getUniqueId(), roleName)) {
+                        sender.sendMessage(Component.text("Removed role " + roleName + " from " + target.getName() + ".", NamedTextColor.GREEN));
+                        target.sendMessage(Component.text("Your " + roleName + " role has been removed.", NamedTextColor.YELLOW));
+                    } else {
+                        sender.sendMessage(Component.text(target.getName() + " does not have the " + roleName + " role.", NamedTextColor.RED));
+                    }
                 } else {
-                    sender.sendMessage(Component.text(target.getName() + " doesn't have a role.", NamedTextColor.RED));
+                    // Remove all roles
+                    if (rm.removePlayerRole(target.getUniqueId())) {
+                        sender.sendMessage(Component.text("Removed all roles from " + target.getName() + ".", NamedTextColor.GREEN));
+                        target.sendMessage(Component.text("All your roles have been removed.", NamedTextColor.YELLOW));
+                    } else {
+                        sender.sendMessage(Component.text(target.getName() + " doesn't have any roles.", NamedTextColor.RED));
+                    }
                 }
             }
 
@@ -138,16 +152,23 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage(Component.text("Player '" + args[1] + "' is not online.", NamedTextColor.RED));
                     return true;
                 }
-                String roleName = rm.getPlayerRole(target.getUniqueId());
-                if (roleName == null) {
-                    sender.sendMessage(Component.text(target.getName() + " has no role.", NamedTextColor.YELLOW));
+                Set<String> allRoles = rm.getPlayerRoles(target.getUniqueId());
+                if (allRoles.isEmpty()) {
+                    sender.sendMessage(Component.text(target.getName() + " has no roles.", NamedTextColor.YELLOW));
                 } else {
+                    String primary = rm.getPlayerRole(target.getUniqueId());
                     String prefix = rm.getPrefix(target.getUniqueId());
                     sender.sendMessage(
-                        Component.text(target.getName() + ": ", NamedTextColor.WHITE)
-                            .append(Component.text(roleName + " ", NamedTextColor.GRAY))
-                            .append(LegacyComponentSerializer.legacyAmpersand().deserialize(prefix))
+                        Component.text(target.getName() + " — primary: ", NamedTextColor.WHITE)
+                            .append(Component.text(primary + " ", NamedTextColor.GRAY))
+                            .append(prefix != null
+                                ? LegacyComponentSerializer.legacyAmpersand().deserialize(prefix)
+                                : Component.empty())
                     );
+                    if (allRoles.size() > 1) {
+                        sender.sendMessage(Component.text("  All roles: ", NamedTextColor.GRAY)
+                            .append(Component.text(String.join(", ", allRoles), NamedTextColor.WHITE)));
+                    }
                 }
             }
 
@@ -765,6 +786,13 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
             return filter(new ArrayList<>(rm.getRoleNames()), args[2]);
         }
 
+        // /role remove <player> <role> — offer roles the target currently has
+        if (args.length == 3 && args[0].equalsIgnoreCase("remove")) {
+            Player target = Bukkit.getPlayer(args[1]);
+            if (target != null) return filter(new ArrayList<>(rm.getPlayerRoles(target.getUniqueId())), args[2]);
+            return List.of();
+        }
+
         // permissionadd/remove: arg[2] is the role
         if (args.length == 3 && (args[0].equalsIgnoreCase("permissionadd") || args[0].equalsIgnoreCase("permissionremove"))) {
             return filter(new ArrayList<>(rm.getRoleNames()), args[2]);
@@ -799,8 +827,8 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("━━━ /role ━━━", NamedTextColor.GREEN));
         sender.sendMessage(Component.text("  /role create <name> <prefix>  ", NamedTextColor.WHITE).append(Component.text("Create a role", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role delete <name>           ", NamedTextColor.WHITE).append(Component.text("Delete a role", NamedTextColor.GRAY)));
-        sender.sendMessage(Component.text("  /role assign <player> <role>  ", NamedTextColor.WHITE).append(Component.text("Give a player a role", NamedTextColor.GRAY)));
-        sender.sendMessage(Component.text("  /role remove <player>         ", NamedTextColor.WHITE).append(Component.text("Remove a player's role", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role assign <player> <role>  ", NamedTextColor.WHITE).append(Component.text("Add a role to a player (stackable)", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role remove <player> [role]  ", NamedTextColor.WHITE).append(Component.text("Remove a specific role, or all roles if omitted", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role list                    ", NamedTextColor.WHITE).append(Component.text("List all roles", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role listweight              ", NamedTextColor.WHITE).append(Component.text("List all roles sorted by weight", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role info <player>           ", NamedTextColor.WHITE).append(Component.text("See a player's role", NamedTextColor.GRAY)));

@@ -20,8 +20,9 @@ public class AfkZoneManager {
     private static final Title.Times TITLE_TIMES =
         Title.Times.times(Duration.ofMillis(200), Duration.ofSeconds(3), Duration.ofMillis(200));
 
-    private final JavaPlugin plugin;
+    private final JavaPlugin    plugin;
     private final EconomyBridge economy;
+    private final RolesBridge   roles;
     private final Set<UUID> playersInZone = new HashSet<>();
     private final Map<UUID, org.bukkit.scheduler.BukkitTask> pendingTp = new HashMap<>();
 
@@ -29,9 +30,10 @@ public class AfkZoneManager {
     private String world;
     private double minX, minY, minZ, maxX, maxY, maxZ;
 
-    public AfkZoneManager(JavaPlugin plugin, EconomyBridge economy) {
+    public AfkZoneManager(JavaPlugin plugin, EconomyBridge economy, RolesBridge roles) {
         this.plugin  = plugin;
         this.economy = economy;
+        this.roles   = roles;
         loadFromConfig();
     }
 
@@ -124,7 +126,6 @@ public class AfkZoneManager {
     /** Called on a repeating task to pay all zone players. */
     public void rewardPlayersInZone() {
         if (playersInZone.isEmpty()) return;
-        double amount   = plugin.getConfig().getDouble("amount", 10.0);
         String currency = economy.getCurrency();
         for (UUID uid : new HashSet<>(playersInZone)) {
             Player p = plugin.getServer().getPlayer(uid);
@@ -132,10 +133,24 @@ public class AfkZoneManager {
                 playersInZone.remove(uid);
                 continue;
             }
+            double amount = amountForPlayer(uid);
             economy.deposit(uid, amount);
-            p.sendMessage(Component.text("+" + amount + " " + currency + " (AFK Zone)")
+            p.sendMessage(Component.text("+" + fmt(amount) + " " + currency + " (AFK Zone)")
                 .color(NamedTextColor.GREEN));
         }
+    }
+
+    private double amountForPlayer(UUID uid) {
+        String role = roles.getPlayerRole(uid);
+        if (role != null) {
+            double roleAmt = plugin.getConfig().getDouble("role-amounts." + role, -1);
+            if (roleAmt >= 0) return roleAmt;
+        }
+        return plugin.getConfig().getDouble("amount", 10.0);
+    }
+
+    private static String fmt(double v) {
+        return v == Math.floor(v) ? String.valueOf((long) v) : String.valueOf(v);
     }
 
     private void sendAfkTitle(Player player) {

@@ -4,8 +4,10 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -14,17 +16,20 @@ public class AfkZoneCommand implements CommandExecutor, TabCompleter {
     private final MostlyVanillaAfkZone plugin;
     private final AfkZoneManager manager;
     private final EconomyBridge economy;
+    private final RolesBridge roles;
 
     private static final List<String> SUBS = Arrays.asList(
         "set1", "set2", "enable", "disable",
         "setcurrency", "setamount", "setinterval",
+        "setroleamount", "roleamounts",
         "info", "reload"
     );
 
-    public AfkZoneCommand(MostlyVanillaAfkZone plugin, AfkZoneManager manager, EconomyBridge economy) {
+    public AfkZoneCommand(MostlyVanillaAfkZone plugin, AfkZoneManager manager, EconomyBridge economy, RolesBridge roles) {
         this.plugin  = plugin;
         this.manager = manager;
         this.economy = economy;
+        this.roles   = roles;
     }
 
     @Override
@@ -95,6 +100,32 @@ public class AfkZoneCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage("§7Amount:    §f" + plugin.getConfig().getDouble("amount", 10.0) + " " + economy.getCurrency());
                 sender.sendMessage("§7Interval:  §f" + plugin.getConfig().getLong("interval-seconds", 60) + "s");
             }
+            case "setroleamount" -> {
+                if (args.length < 3) { sender.sendMessage("§cUsage: /afkzone setroleamount <role> <amount>"); return true; }
+                String role = args[1].toLowerCase();
+                try {
+                    double amount = Double.parseDouble(args[2]);
+                    if (amount < 0) { sender.sendMessage("§cAmount must be non-negative."); return true; }
+                    plugin.getConfig().set("role-amounts." + role, amount);
+                    plugin.saveConfig();
+                    sender.sendMessage("§aRole §f" + role + "§a will earn §f" + amount + " " + economy.getCurrency() + "§a per interval.");
+                } catch (NumberFormatException e) {
+                    sender.sendMessage("§cInvalid number: §f" + args[2]);
+                }
+            }
+            case "roleamounts" -> {
+                ConfigurationSection sec = plugin.getConfig().getConfigurationSection("role-amounts");
+                if (sec == null || sec.getKeys(false).isEmpty()) {
+                    sender.sendMessage("§7No per-role amounts configured. All roles earn §f"
+                        + plugin.getConfig().getDouble("amount", 10.0) + " " + economy.getCurrency() + "§7.");
+                } else {
+                    sender.sendMessage("§5§l=== AFK Zone Role Amounts ===");
+                    for (String r : sec.getKeys(false)) {
+                        sender.sendMessage("§7" + r + ": §f" + sec.getDouble(r) + " " + economy.getCurrency());
+                    }
+                    sender.sendMessage("§7Default: §f" + plugin.getConfig().getDouble("amount", 10.0) + " " + economy.getCurrency());
+                }
+            }
             case "reload" -> {
                 plugin.reloadConfig();
                 manager.loadFromConfig();
@@ -112,9 +143,11 @@ public class AfkZoneCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§7/afkzone set2           §f— Set corner 2 to your position");
         sender.sendMessage("§7/afkzone enable         §f— Enable the zone");
         sender.sendMessage("§7/afkzone disable        §f— Disable the zone");
-        sender.sendMessage("§7/afkzone setcurrency <name>   §f— Set currency type");
-        sender.sendMessage("§7/afkzone setamount <amount>   §f— Set reward per interval");
-        sender.sendMessage("§7/afkzone setinterval <secs>   §f— Set reward interval");
+        sender.sendMessage("§7/afkzone setcurrency <name>        §f— Set currency type");
+        sender.sendMessage("§7/afkzone setamount <amount>        §f— Set default reward per interval");
+        sender.sendMessage("§7/afkzone setinterval <secs>        §f— Set reward interval");
+        sender.sendMessage("§7/afkzone setroleamount <role> <n>  §f— Set per-role reward amount");
+        sender.sendMessage("§7/afkzone roleamounts               §f— List all per-role amounts");
         sender.sendMessage("§7/afkzone info           §f— Show current zone settings");
         sender.sendMessage("§7/afkzone reload         §f— Reload config.yml");
     }
@@ -131,6 +164,10 @@ public class AfkZoneCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
         if (!sender.isOp()) return List.of();
         if (args.length == 1) return SUBS;
+        if (args.length == 2 && args[0].equalsIgnoreCase("setroleamount")) {
+            List<String> names = new ArrayList<>(roles.getRoleNames());
+            return names;
+        }
         return List.of();
     }
 }

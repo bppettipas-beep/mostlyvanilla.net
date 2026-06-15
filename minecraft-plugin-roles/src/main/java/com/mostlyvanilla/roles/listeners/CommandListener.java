@@ -25,12 +25,12 @@ public class CommandListener implements Listener {
         if (player.hasPermission("mostlyvanilla.roles.admin")) return;
 
         RoleManager rm = plugin.getRoleManager();
-        String roleName = rm.getPlayerRole(player.getUniqueId());
+        java.util.UUID uuid = player.getUniqueId();
 
         String msg = event.getMessage(); // e.g. "/tpa overworld"
         String cmd = msg.startsWith("/") ? msg.substring(1) : msg;
 
-        if (rm.isDutyRequired(player.getUniqueId()) && !rm.isOnDuty(player.getUniqueId())
+        if (rm.isDutyRequired(uuid) && !rm.isOnDuty(uuid)
                 && rm.isDutyGatedCommand(cmd)) {
             event.setCancelled(true);
             player.sendMessage(Component.text("You must be on duty to use staff commands. Type /duty to go on duty.", NamedTextColor.RED));
@@ -38,7 +38,7 @@ public class CommandListener implements Listener {
         }
 
         if (!cmd.equals("duty") && !cmd.equals("dutyrequire")
-                && rm.isCommandBlocked(roleName, cmd) && !rm.hasRolePermission(player.getUniqueId(), cmd)) {
+                && rm.isCommandBlockedForPlayer(uuid, cmd) && !rm.hasRolePermission(uuid, cmd)) {
             event.setCancelled(true);
             player.sendMessage(Component.text("Unknown command.", NamedTextColor.RED));
         }
@@ -50,12 +50,12 @@ public class CommandListener implements Listener {
         if (player.hasPermission("mostlyvanilla.roles.admin")) return;
 
         RoleManager rm = plugin.getRoleManager();
-        String roleName = rm.getPlayerRole(player.getUniqueId());
-        if (roleName == null) return;
+        java.util.UUID uuid = player.getUniqueId();
+        if (rm.getPlayerRole(uuid) == null) return;
 
         event.getCommands().removeIf(cmd ->
-            (rm.isDutyRequired(player.getUniqueId()) && !rm.isOnDuty(player.getUniqueId()) && rm.isDutyGatedCommand(cmd))
+            (rm.isDutyRequired(uuid) && !rm.isOnDuty(uuid) && rm.isDutyGatedCommand(cmd))
             || (!cmd.equals("duty") && !cmd.equals("dutyrequire")
-                && rm.isCommandBlocked(roleName, cmd) && !rm.hasRolePermission(player.getUniqueId(), cmd)));
+                && rm.isCommandBlockedForPlayer(uuid, cmd) && !rm.hasRolePermission(uuid, cmd)));
     }
 }

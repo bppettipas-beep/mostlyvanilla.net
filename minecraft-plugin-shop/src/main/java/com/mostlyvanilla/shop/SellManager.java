@@ -101,7 +101,8 @@ public class SellManager {
         player.getInventory().setItemInMainHand(null);
         bridge.deposit(player.getUniqueId(), total);
         historyLogger.log(player.getUniqueId(), player.getName(), "SELL",
-            "Sold " + amount + "x " + prettify(hand.getType()) + " for " + bridge.getSymbol() + fmt(total), total);
+            "Sold " + amount + "x " + prettify(hand.getType()) + " for " + bridge.getSymbol() + fmt(total),
+            total, hand.getType().name());
         player.sendMessage(Component.text("Sold ")
             .color(NamedTextColor.GREEN)
             .append(Component.text(amount + "x " + prettify(hand.getType()), NamedTextColor.WHITE))
@@ -111,6 +112,8 @@ public class SellManager {
 
     public void sellAll(Player player) {
         ItemStack[] contents = player.getInventory().getContents();
+        Map<Material, Integer> soldCounts   = new LinkedHashMap<>();
+        Map<Material, Double>  soldEarnings = new LinkedHashMap<>();
         double totalEarned = 0.0;
         int    totalItems  = 0;
         for (int i = 0; i < contents.length; i++) {
@@ -118,8 +121,11 @@ public class SellManager {
             if (stack == null || stack.getType().isAir()) continue;
             double price = getSellPrice(stack.getType());
             if (price <= 0) continue;
-            totalEarned += price * stack.getAmount();
+            double earned = price * stack.getAmount();
+            totalEarned += earned;
             totalItems  += stack.getAmount();
+            soldCounts.merge(stack.getType(), stack.getAmount(), Integer::sum);
+            soldEarnings.merge(stack.getType(), earned, Double::sum);
             contents[i] = null;
         }
         if (totalItems == 0) {
@@ -128,8 +134,12 @@ public class SellManager {
         }
         player.getInventory().setContents(contents);
         bridge.deposit(player.getUniqueId(), totalEarned);
-        historyLogger.log(player.getUniqueId(), player.getName(), "SELL",
-            "Sold " + totalItems + " item(s) for " + bridge.getSymbol() + fmt(totalEarned), totalEarned);
+        for (Map.Entry<Material, Integer> e : soldCounts.entrySet()) {
+            double amt = soldEarnings.get(e.getKey());
+            historyLogger.log(player.getUniqueId(), player.getName(), "SELL",
+                "Sold " + e.getValue() + "x " + prettify(e.getKey()) + " for " + bridge.getSymbol() + fmt(amt),
+                amt, e.getKey().name());
+        }
         player.sendMessage(Component.text("Sold ")
             .color(NamedTextColor.GREEN)
             .append(Component.text(totalItems + " item(s)", NamedTextColor.WHITE))
@@ -153,6 +163,8 @@ public class SellManager {
 
     public void handleSellClose(Player player, Inventory inv) {
         sellSessions.remove(inv);
+        Map<Material, Integer> soldCounts   = new LinkedHashMap<>();
+        Map<Material, Double>  soldEarnings = new LinkedHashMap<>();
         double total     = 0.0;
         int    soldCount = 0;
         List<ItemStack> toReturn = new ArrayList<>();
@@ -165,17 +177,21 @@ public class SellManager {
                 if (contentsValue > 0) {
                     total     += contentsValue;
                     soldCount += countShulkerSellableItems(item);
-                    toReturn.add(emptyShulker(item)); // return the shell
+                    collectShulkerContents(item, soldCounts, soldEarnings);
+                    toReturn.add(emptyShulker(item));
                 } else {
-                    toReturn.add(item.clone()); // nothing sellable inside, give back as-is
+                    toReturn.add(item.clone());
                 }
                 continue;
             }
 
             double price = getSellPrice(item.getType());
             if (price > 0) {
-                total     += price * item.getAmount();
+                double earned = price * item.getAmount();
+                total     += earned;
                 soldCount += item.getAmount();
+                soldCounts.merge(item.getType(), item.getAmount(), Integer::sum);
+                soldEarnings.merge(item.getType(), earned, Double::sum);
             } else {
                 toReturn.add(item.clone());
             }
@@ -190,8 +206,12 @@ public class SellManager {
         if (soldCount == 0) return;
 
         bridge.deposit(player.getUniqueId(), total);
-        historyLogger.log(player.getUniqueId(), player.getName(), "SELL",
-            "Sold " + soldCount + " item(s) via sell chest for " + bridge.getSymbol() + fmt(total), total);
+        for (Map.Entry<Material, Integer> e : soldCounts.entrySet()) {
+            double amt = soldEarnings.get(e.getKey());
+            historyLogger.log(player.getUniqueId(), player.getName(), "SELL",
+                "Sold " + e.getValue() + "x " + prettify(e.getKey()) + " for " + bridge.getSymbol() + fmt(amt),
+                amt, e.getKey().name());
+        }
         player.sendMessage(Component.text("Sold ")
             .color(NamedTextColor.GREEN)
             .append(Component.text(soldCount + " item(s)", NamedTextColor.WHITE))
@@ -317,6 +337,21 @@ public class SellManager {
 
     private static boolean isShulkerBox(Material mat) {
         return mat.name().endsWith("SHULKER_BOX");
+    }
+
+    /** Collects per-material sellable item counts/earnings from inside a shulker (recursive). */
+    private void collectShulkerContents(ItemStack shulker, Map<Material, Integer> counts, Map<Material, Double> earnings) {
+        if (!(shulker.getItemMeta() instanceof BlockStateMeta bsm)) return;
+        if (!(bsm.getBlockState() instanceof Container container)) return;
+        for (ItemStack item : container.getInventory().getContents()) {
+            if (item == null || item.getType().isAir()) continue;
+            double price = getSellPrice(item.getType());
+            if (price > 0) {
+                counts.merge(item.getType(), item.getAmount(), Integer::sum);
+                earnings.merge(item.getType(), price * item.getAmount(), Double::sum);
+            }
+            if (isShulkerBox(item.getType())) collectShulkerContents(item, counts, earnings);
+        }
     }
 
     /** Returns the total sell value of all items inside a shulker box (recursive). */

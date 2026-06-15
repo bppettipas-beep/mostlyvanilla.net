@@ -14,10 +14,11 @@ public class MostlyVanillaAfkZone extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
-        economyBridge = new EconomyBridge(this);
-        zoneManager   = new AfkZoneManager(this, economyBridge);
+        economyBridge    = new EconomyBridge(this);
+        RolesBridge roles = new RolesBridge();
+        zoneManager      = new AfkZoneManager(this, economyBridge, roles);
 
-        AfkZoneCommand afkZoneCmd = new AfkZoneCommand(this, zoneManager, economyBridge);
+        AfkZoneCommand afkZoneCmd = new AfkZoneCommand(this, zoneManager, economyBridge, roles);
         getCommand("afkzone").setExecutor(afkZoneCmd);
         getCommand("afkzone").setTabCompleter(afkZoneCmd);
         getCommand("afk").setExecutor(new AfkCommand(zoneManager));

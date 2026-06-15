@@ -9,7 +9,7 @@ import java.util.*;
 
 public class HistoryReader {
 
-    public record Entry(UUID uuid, String name, String type, String description, double amount, long timestamp) {}
+    public record Entry(UUID uuid, String name, String type, String description, double amount, long timestamp, String material) {}
 
     public static List<Entry> forPlayer(UUID target, String pluginName) {
         Plugin plugin = Bukkit.getPluginManager().getPlugin(pluginName);
@@ -23,12 +23,13 @@ public class HistoryReader {
             try {
                 UUID uuid = UUID.fromString((String) raw.get("uuid"));
                 if (!uuid.equals(target)) continue;
-                String name   = (String) raw.get("name");
-                String type   = (String) raw.get("type");
-                String desc   = (String) raw.get("description");
-                double amount = ((Number) raw.get("amount")).doubleValue();
-                long   ts     = ((Number) raw.get("timestamp")).longValue();
-                result.add(new Entry(uuid, name, type, desc, amount, ts));
+                String name     = (String) raw.get("name");
+                String type     = (String) raw.get("type");
+                String desc     = (String) raw.get("description");
+                double amount   = ((Number) raw.get("amount")).doubleValue();
+                long   ts       = ((Number) raw.get("timestamp")).longValue();
+                String material = raw.get("material") != null ? (String) raw.get("material") : null;
+                result.add(new Entry(uuid, name, type, desc, amount, ts, material));
             } catch (Exception ignored) {}
         }
         return result;
