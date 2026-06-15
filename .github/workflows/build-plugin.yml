@@ -7,6 +7,8 @@ on:
       - 'minecraft-plugin-roles/**'
       - 'minecraft-plugin-economy/**'
       - 'minecraft-plugin-scoreboard/**'
+      - 'minecraft-plugin-crates/**'
+      - 'minecraft-plugin-shop/**'
   workflow_dispatch:
 
 jobs:
@@ -71,4 +73,46 @@ jobs:
         with:
           name: MostlyVanillaScoreboard
           path: minecraft-plugin-scoreboard/target/mostly-vanilla-scoreboard-*.jar
+          retention-days: 30
+
+  build-crates:
+    name: Build Crates Plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build with Maven
+        run: mvn -f minecraft-plugin-crates/pom.xml package -DskipTests
+
+      - name: Upload jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: MostlyVanillaCrates
+          path: minecraft-plugin-crates/target/mostly-vanilla-crates-*.jar
+          retention-days: 30
+
+  build-shop:
+    name: Build Shop Plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build with Maven
+        run: mvn -f minecraft-plugin-shop/pom.xml package -DskipTests
+
+      - name: Upload jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: MostlyVanillaShop
+          path: minecraft-plugin-shop/target/mostly-vanilla-shop-*.jar
           retention-days: 30

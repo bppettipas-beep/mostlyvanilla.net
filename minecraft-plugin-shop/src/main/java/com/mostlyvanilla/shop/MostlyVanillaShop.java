@@ -4,7 +4,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public class MostlyVanillaShop extends JavaPlugin {
 
-    private KeyStore keyStore;
+    private KeyStore       keyStore;
+    private BitShopManager bitShopManager;
 
     @Override
     public void onEnable() {
@@ -12,12 +13,12 @@ public class MostlyVanillaShop extends JavaPlugin {
 
         keyStore = new KeyStore(this);
 
-        EconomyBridge  bridge         = new EconomyBridge(this);
-        ShopManager    shopManager    = new ShopManager(this, bridge);
-        HistoryLogger  historyLogger  = new HistoryLogger(getLogger());
+        EconomyBridge bridge        = new EconomyBridge(this);
+        ShopManager   shopManager   = new ShopManager(this, bridge);
+        HistoryLogger historyLogger = new HistoryLogger(getLogger());
         historyLogger.init(getDataFolder());
-        SellManager    sellManager    = new SellManager(this, bridge, historyLogger);
-        BitShopManager bitShopManager = new BitShopManager(this, keyStore);
+        SellManager   sellManager   = new SellManager(this, bridge, historyLogger);
+        bitShopManager = new BitShopManager(this, keyStore);
 
         ShopCommand shopCmd = new ShopCommand(shopManager, sellManager);
         getCommand("shop").setExecutor(shopCmd);
@@ -48,5 +49,6 @@ public class MostlyVanillaShop extends JavaPlugin {
         getLogger().info("MostlyVanilla Shop disabled.");
     }
 
-    public KeyStore getKeyStore() { return keyStore; }
+    public KeyStore       getKeyStore()       { return keyStore; }
+    public BitShopManager getBitShopManager() { return bitShopManager; }
 }

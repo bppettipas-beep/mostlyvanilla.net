@@ -8,6 +8,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 
@@ -38,17 +39,33 @@ public class CrateListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onInventoryClick(InventoryClickEvent event) {
-        if (!(event.getInventory().getHolder() instanceof CrateGuiHolder holder)) return;
-        event.setCancelled(true);
         if (!(event.getWhoClicked() instanceof Player player)) return;
-        if (event.getRawSlot() >= event.getInventory().getSize()) return; // clicked bottom inv
+        org.bukkit.inventory.Inventory inv = event.getInventory();
+
+        if (manager.isColorPickerGui(inv)) {
+            event.setCancelled(true);
+            if (event.getRawSlot() < inv.getSize()) {
+                manager.handleColorPickClick(player, inv, event.getRawSlot());
+            }
+            return;
+        }
+
+        if (!(inv.getHolder() instanceof CrateGuiHolder holder)) return;
+        event.setCancelled(true);
+        if (event.getRawSlot() >= inv.getSize()) return;
         manager.handleGuiClick(player, holder, event.getRawSlot());
     }
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onInventoryDrag(InventoryDragEvent event) {
-        if (event.getInventory().getHolder() instanceof CrateGuiHolder) {
+        org.bukkit.inventory.Inventory inv = event.getInventory();
+        if (inv.getHolder() instanceof CrateGuiHolder || manager.isColorPickerGui(inv)) {
             event.setCancelled(true);
         }
+    }
+
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        manager.onColorPickerClose(event.getInventory());
     }
 }

@@ -9,8 +9,9 @@ public class MostlyVanillaCrates extends JavaPlugin {
         getDataFolder().mkdirs();
         saveDefaultConfig();
 
-        KeyBridge    keyBridge = new KeyBridge();
-        CrateManager manager   = new CrateManager(this, keyBridge);
+        KeyBridge    keyBridge     = new KeyBridge();
+        BitShopBridge bitShopBridge = new BitShopBridge();
+        CrateManager manager      = new CrateManager(this, keyBridge, bitShopBridge);
         manager.load();
 
         CrateCommand cmd = new CrateCommand(this, manager);

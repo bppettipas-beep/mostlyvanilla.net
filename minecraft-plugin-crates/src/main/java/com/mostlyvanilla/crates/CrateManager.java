@@ -32,8 +32,9 @@ public class CrateManager {
 
     private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.legacyAmpersand();
 
-    private final JavaPlugin plugin;
-    private final KeyBridge  keyBridge;
+    private final JavaPlugin    plugin;
+    private final KeyBridge     keyBridge;
+    private final BitShopBridge bitShopBridge;
 
     private final Map<String, CrateType> crateTypes    = new LinkedHashMap<>();
     private final Map<String, String>    crateLocations = new LinkedHashMap<>();
@@ -44,9 +45,10 @@ public class CrateManager {
     private File              rewardsFile;
     private YamlConfiguration rewardsCfg;
 
-    public CrateManager(JavaPlugin plugin, KeyBridge keyBridge) {
-        this.plugin    = plugin;
-        this.keyBridge = keyBridge;
+    public CrateManager(JavaPlugin plugin, KeyBridge keyBridge, BitShopBridge bitShopBridge) {
+        this.plugin        = plugin;
+        this.keyBridge     = keyBridge;
+        this.bitShopBridge = bitShopBridge;
     }
 
     // ── Load ─────────────────────────────────────────────────────────────────
@@ -207,6 +209,169 @@ public class CrateManager {
         crateTypes.put(typeId, new CrateType(type.id(), type.displayName(), type.keyType(), rewards));
         saveRewards(typeId);
         return true;
+    }
+
+    // ── Type creation / deletion ──────────────────────────────────────────────
+
+    public boolean createType(String id, String displayName) {
+        if (crateTypes.containsKey(id)) return false;
+        plugin.getConfig().set("crate-types." + id + ".display-name", displayName);
+        plugin.getConfig().set("crate-types." + id + ".key-type", id);
+        plugin.saveConfig();
+        crateTypes.put(id, new CrateType(id, displayName, id, new ArrayList<>()));
+        bitShopBridge.addCrateKey(id, keyDisplayName(displayName), "TRIPWIRE_HOOK", 100.0,
+            List.of("&7A " + id + " crate key"));
+        return true;
+    }
+
+    public boolean deleteType(String id) {
+        if (!crateTypes.containsKey(id)) return false;
+        plugin.getConfig().set("crate-types." + id, null);
+        plugin.saveConfig();
+        rewardsCfg.set(id, null);
+        try { rewardsCfg.save(rewardsFile); }
+        catch (IOException e) { plugin.getLogger().severe("[Crates] Failed to save rewards.yml: " + e.getMessage()); }
+        crateTypes.remove(id);
+        bitShopBridge.removeCrateKey(id);
+        return true;
+    }
+
+    private static String keyDisplayName(String crateDisplayName) {
+        if (crateDisplayName.endsWith(" Crate")) {
+            return crateDisplayName.substring(0, crateDisplayName.length() - 6) + " Key";
+        }
+        return crateDisplayName + " Key";
+    }
+
+    // ── Color picker GUI ──────────────────────────────────────────────────────
+
+    private record ColorEntry(char code, String name, Material pane) {}
+    private record PendingCreate(String id, String rawName) {}
+
+    private static final List<ColorEntry> CHAT_COLORS = List.of(
+        new ColorEntry('0', "Black",        Material.BLACK_STAINED_GLASS_PANE),
+        new ColorEntry('1', "Dark Blue",    Material.BLUE_STAINED_GLASS_PANE),
+        new ColorEntry('2', "Dark Green",   Material.GREEN_STAINED_GLASS_PANE),
+        new ColorEntry('3', "Dark Aqua",    Material.CYAN_STAINED_GLASS_PANE),
+        new ColorEntry('4', "Dark Red",     Material.RED_STAINED_GLASS_PANE),
+        new ColorEntry('5', "Dark Purple",  Material.PURPLE_STAINED_GLASS_PANE),
+        new ColorEntry('6', "Gold",         Material.ORANGE_STAINED_GLASS_PANE),
+        new ColorEntry('7', "Gray",         Material.LIGHT_GRAY_STAINED_GLASS_PANE),
+        new ColorEntry('8', "Dark Gray",    Material.GRAY_STAINED_GLASS_PANE),
+        new ColorEntry('9', "Blue",         Material.LIGHT_BLUE_STAINED_GLASS_PANE),
+        new ColorEntry('a', "Green",        Material.LIME_STAINED_GLASS_PANE),
+        new ColorEntry('b', "Aqua",         Material.CYAN_STAINED_GLASS_PANE),
+        new ColorEntry('c', "Red",          Material.RED_STAINED_GLASS_PANE),
+        new ColorEntry('d', "Light Purple", Material.MAGENTA_STAINED_GLASS_PANE),
+        new ColorEntry('e', "Yellow",       Material.YELLOW_STAINED_GLASS_PANE),
+        new ColorEntry('f', "White",        Material.WHITE_STAINED_GLASS_PANE)
+    );
+
+    private final Map<UUID, PendingCreate> pendingColorPick  = new HashMap<>();
+    private final Set<Inventory>           colorPickSessions = new HashSet<>();
+
+    public void openColorPicker(Player player, String id, String rawName) {
+        pendingColorPick.put(player.getUniqueId(), new PendingCreate(id, rawName));
+
+        Inventory inv = Bukkit.createInventory(null, 27,
+            Component.text("Pick a color — " + rawName)
+                .color(NamedTextColor.GOLD)
+                .decoration(TextDecoration.ITALIC, false));
+
+        // Header row: gold glass + title at slot 4
+        ItemStack hdr = makeFiller(Material.YELLOW_STAINED_GLASS_PANE);
+        for (int i = 0; i < 9; i++) inv.setItem(i, hdr);
+        ItemStack titleItem = new ItemStack(Material.NETHER_STAR);
+        ItemMeta  tm        = titleItem.getItemMeta();
+        tm.displayName(Component.text("Pick a Color")
+            .color(NamedTextColor.GOLD).decoration(TextDecoration.BOLD, true)
+            .decoration(TextDecoration.ITALIC, false));
+        tm.lore(List.of(
+            Component.text("Choosing color for: ").color(NamedTextColor.GRAY)
+                .decoration(TextDecoration.ITALIC, false)
+                .append(Component.text(rawName).color(NamedTextColor.WHITE)
+                    .decoration(TextDecoration.ITALIC, false))
+        ));
+        titleItem.setItemMeta(tm);
+        inv.setItem(4, titleItem);
+
+        // Colors in slots 9-24 (rows 1-2)
+        for (int i = 0; i < CHAT_COLORS.size(); i++) {
+            inv.setItem(9 + i, buildColorItem(CHAT_COLORS.get(i), rawName));
+        }
+
+        // Filler at slot 25
+        inv.setItem(25, makeFiller(Material.BLACK_STAINED_GLASS_PANE));
+
+        // Cancel at slot 26
+        ItemStack cancel = new ItemStack(Material.BARRIER);
+        ItemMeta  cm     = cancel.getItemMeta();
+        cm.displayName(Component.text("Cancel").color(NamedTextColor.RED)
+            .decoration(TextDecoration.ITALIC, false));
+        cm.lore(List.of());
+        cancel.setItemMeta(cm);
+        inv.setItem(26, cancel);
+
+        colorPickSessions.add(inv);
+        player.openInventory(inv);
+    }
+
+    private ItemStack buildColorItem(ColorEntry color, String rawName) {
+        String prefix    = "&" + color.code();
+        String crateName = prefix + rawName;
+        String keyName   = keyDisplayName(crateName);
+
+        ItemStack item = new ItemStack(color.pane());
+        ItemMeta  meta = item.getItemMeta();
+        meta.displayName(LEGACY.deserialize(prefix + color.name())
+            .decoration(TextDecoration.ITALIC, false));
+        meta.lore(List.of(
+            Component.empty(),
+            Component.text("Crate: ").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+                .append(LEGACY.deserialize(crateName).decoration(TextDecoration.ITALIC, false)),
+            Component.text("Key:   ").color(NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)
+                .append(LEGACY.deserialize(keyName).decoration(TextDecoration.ITALIC, false)),
+            Component.empty(),
+            Component.text("Click to select").color(NamedTextColor.GREEN)
+                .decoration(TextDecoration.ITALIC, false)
+        ));
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    public boolean isColorPickerGui(Inventory inv) {
+        return colorPickSessions.contains(inv);
+    }
+
+    public void onColorPickerClose(Inventory inv) {
+        colorPickSessions.remove(inv);
+    }
+
+    public void handleColorPickClick(Player player, Inventory inv, int slot) {
+        player.closeInventory();
+        PendingCreate pending = pendingColorPick.remove(player.getUniqueId());
+        if (pending == null) return;
+
+        if (slot == 26) { // cancel button
+            player.sendMessage(Component.text("Crate creation cancelled.", NamedTextColor.GRAY));
+            return;
+        }
+
+        int colorIndex = slot - 9;
+        if (colorIndex < 0 || colorIndex >= CHAT_COLORS.size()) return; // header or filler click
+
+        ColorEntry color   = CHAT_COLORS.get(colorIndex);
+        String displayName = "&" + color.code() + pending.rawName();
+
+        if (createType(pending.id(), displayName)) {
+            player.sendMessage(Component.text("Created crate type \"" + pending.id() + "\" (", NamedTextColor.GREEN)
+                .append(LEGACY.deserialize(displayName))
+                .append(Component.text(") and registered its key in /bitshop.", NamedTextColor.GREEN)));
+            player.sendMessage(Component.text(
+                "Add rewards with /crate reward add " + pending.id()
+                + ", then place it with /crate set " + pending.id() + ".",
+                NamedTextColor.GRAY));
+        }
     }
 
     // ── Admin API ─────────────────────────────────────────────────────────────

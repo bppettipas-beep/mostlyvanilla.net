@@ -50,6 +50,8 @@ public class CrateCommand implements CommandExecutor, TabCompleter {
             case "reload" -> handleReload(sender);
             case "reward" -> handleReward(sender, args);
             case "wipe"   -> handleWipe(sender, args);
+            case "create" -> handleCreate(sender, args);
+            case "delete" -> handleDelete(sender, args);
             default       -> sendHelp(sender);
         }
         return true;
@@ -131,6 +133,53 @@ public class CrateCommand implements CommandExecutor, TabCompleter {
         }
         int removed = manager.wipeAll();
         sender.sendMessage(Component.text("Wiped " + removed + " crate location(s).", NamedTextColor.GREEN));
+    }
+
+    // ── /crate create <id> <display-name...> ─────────────────────────────────
+
+    private void handleCreate(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(Component.text("Only players can create crates (color picker required).", NamedTextColor.RED));
+            return;
+        }
+        if (args.length < 3) {
+            sender.sendMessage(Component.text("Usage: /crate create <id> <name>  — a color picker will open", NamedTextColor.RED));
+            return;
+        }
+        String id = args[1].toLowerCase();
+        if (!id.matches("[a-z0-9_]+")) {
+            sender.sendMessage(Component.text("ID must be lowercase letters, numbers, or underscores only.", NamedTextColor.RED));
+            return;
+        }
+        if (manager.getTypeIds().contains(id)) {
+            sender.sendMessage(Component.text("A crate type with id \"" + id + "\" already exists.", NamedTextColor.RED));
+            return;
+        }
+        String rawName = String.join(" ", java.util.Arrays.copyOfRange(args, 2, args.length));
+        manager.openColorPicker(player, id, rawName);
+    }
+
+    // ── /crate delete <id> [confirm] ──────────────────────────────────────────
+
+    private void handleDelete(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(Component.text("Usage: /crate delete <id> [confirm]", NamedTextColor.RED));
+            return;
+        }
+        String id = args[1].toLowerCase();
+        if (!manager.getTypeIds().contains(id)) {
+            sender.sendMessage(Component.text("Unknown crate type: " + id, NamedTextColor.RED));
+            return;
+        }
+        if (args.length < 3 || !args[2].equalsIgnoreCase("confirm")) {
+            sender.sendMessage(Component.text("⚠ This will permanently delete the \"" + id + "\" crate type and remove its key from /bitshop.", NamedTextColor.GOLD));
+            sender.sendMessage(Component.text("Run ", NamedTextColor.GRAY)
+                .append(Component.text("/crate delete " + id + " confirm", NamedTextColor.YELLOW))
+                .append(Component.text(" to proceed.", NamedTextColor.GRAY)));
+            return;
+        }
+        manager.deleteType(id);
+        sender.sendMessage(Component.text("Deleted crate type \"" + id + "\" and removed its key from /bitshop.", NamedTextColor.GREEN));
     }
 
     // ── /crate reload ─────────────────────────────────────────────────────────
@@ -266,17 +315,19 @@ public class CrateCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
-        if (args.length == 1) return List.of("set", "remove", "list", "reload", "reward", "wipe");
+        if (args.length == 1) return List.of("set", "remove", "list", "reload", "reward", "wipe", "create", "delete");
         if (args.length == 2) {
             return switch (args[0].toLowerCase()) {
-                case "set"    -> new ArrayList<>(manager.getTypeIds());
-                case "reward" -> List.of("list", "add", "remove");
-                default       -> List.of();
+                case "set", "delete" -> new ArrayList<>(manager.getTypeIds());
+                case "reward"        -> List.of("list", "add", "remove");
+                default              -> List.of();
             };
         }
-        if (args.length == 3 && args[0].equalsIgnoreCase("reward")) {
-            if (List.of("list", "add", "remove").contains(args[1].toLowerCase()))
+        if (args.length == 3) {
+            if (args[0].equalsIgnoreCase("reward") && List.of("list", "add", "remove").contains(args[1].toLowerCase()))
                 return new ArrayList<>(manager.getTypeIds());
+            if (args[0].equalsIgnoreCase("delete"))
+                return List.of("confirm");
         }
         return List.of();
     }
@@ -285,6 +336,8 @@ public class CrateCommand implements CommandExecutor, TabCompleter {
 
     private void sendHelp(CommandSender sender) {
         sender.sendMessage(Component.text("── /crate ──", NamedTextColor.GOLD));
+        sender.sendMessage(help("create <id> <name>", "Create a new crate type + /bitshop key"));
+        sender.sendMessage(help("delete <id> [confirm]", "Delete a crate type + its /bitshop key"));
         sender.sendMessage(help("set <type>",        "Look at a shulker to register it"));
         sender.sendMessage(help("remove",            "Look at a crate to unregister it"));
         sender.sendMessage(help("list",              "List all placed crates"));

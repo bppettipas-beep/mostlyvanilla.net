@@ -90,6 +90,21 @@ public class BitShopManager {
         load();
     }
 
+    public void addCrateKey(String id, String displayName, String material, double price, List<String> lore) {
+        plugin.getConfig().set("bitshop.crate-keys." + id + ".display-name", displayName);
+        plugin.getConfig().set("bitshop.crate-keys." + id + ".material", material);
+        plugin.getConfig().set("bitshop.crate-keys." + id + ".price", price);
+        plugin.getConfig().set("bitshop.crate-keys." + id + ".lore", lore);
+        plugin.saveConfig();
+        load();
+    }
+
+    public void removeCrateKey(String id) {
+        plugin.getConfig().set("bitshop.crate-keys." + id, null);
+        plugin.saveConfig();
+        load();
+    }
+
     public List<String> getKeyIds() {
         return crateKeys.stream().map(CrateEntry::id).toList();
     }
