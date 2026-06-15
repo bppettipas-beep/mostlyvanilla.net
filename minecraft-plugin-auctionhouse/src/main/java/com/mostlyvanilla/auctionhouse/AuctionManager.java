@@ -46,7 +46,7 @@ public class AuctionManager {
 
     // ── Inner types ────────────────────────────────────────────────────────────
 
-    public enum GuiMode  { ALL, MY_LISTINGS, EXPIRED }
+    public enum GuiMode  { ALL, MY_LISTINGS, EXPIRED, ADMIN }
     public enum SortMode {
         NEWEST, PRICE_ASC, PRICE_DESC;
         public SortMode next() { return values()[(ordinal() + 1) % values().length]; }
@@ -59,6 +59,7 @@ public class AuctionManager {
 
     private final MostlyVanillaAuctionHouse plugin;
     private final EconomyBridge bridge;
+    private final HistoryLogger historyLogger;
     private final List<AuctionListing> listings = new ArrayList<>();
     private final Map<Inventory, AhSession>      sessions        = new HashMap<>();
     private final Map<Inventory, ConfirmSession> confirmSessions = new HashMap<>();
@@ -68,9 +69,10 @@ public class AuctionManager {
 
     // ── Constructor ────────────────────────────────────────────────────────────
 
-    public AuctionManager(MostlyVanillaAuctionHouse plugin, EconomyBridge bridge) {
-        this.plugin = plugin;
-        this.bridge = bridge;
+    public AuctionManager(MostlyVanillaAuctionHouse plugin, EconomyBridge bridge, HistoryLogger historyLogger) {
+        this.plugin         = plugin;
+        this.bridge         = bridge;
+        this.historyLogger  = historyLogger;
     }
 
     // ── Config helpers ─────────────────────────────────────────────────────────
@@ -155,6 +157,8 @@ public class AuctionManager {
 
         player.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
         save();
+        historyLogger.log(player.getUniqueId(), player.getName(), "AH_LISTED",
+            "Listed " + itemName(hand) + " for " + bridge.getSymbol() + fmt(price), price);
 
         player.sendMessage(Component.text("[AH] ", NamedTextColor.GOLD)
             .append(Component.text("Listed ", NamedTextColor.GREEN))
@@ -176,6 +180,7 @@ public class AuctionManager {
             case ALL         -> "Auction House";
             case MY_LISTINGS -> "My Listings";
             case EXPIRED     -> "Expired Listings";
+            case ADMIN       -> "AH Admin";
         };
         if (maxPage > 0) title += "  (" + (page + 1) + "/" + (maxPage + 1) + ")";
 
@@ -198,15 +203,17 @@ public class AuctionManager {
     }
 
     private void buildNav(Inventory inv, GuiMode mode, SortMode sort, int page, int maxPage, Player player) {
-        // My Listings button
-        String myLabel = mode == GuiMode.MY_LISTINGS ? "&e&lMy Listings" : "&fMy Listings";
-        inv.setItem(SLOT_MY_LISTINGS, makeButton(Material.BOOK, myLabel,
-            List.of("&7View your active listings")));
+        if (mode != GuiMode.ADMIN) {
+            // My Listings button
+            String myLabel = mode == GuiMode.MY_LISTINGS ? "&e&lMy Listings" : "&fMy Listings";
+            inv.setItem(SLOT_MY_LISTINGS, makeButton(Material.BOOK, myLabel,
+                List.of("&7View your active listings")));
 
-        // Expired button
-        String exLabel = mode == GuiMode.EXPIRED ? "&e&lExpired" : "&fExpired";
-        inv.setItem(SLOT_EXPIRED, makeButton(Material.CHEST, exLabel,
-            List.of("&7Collect unsold items")));
+            // Expired button
+            String exLabel = mode == GuiMode.EXPIRED ? "&e&lExpired" : "&fExpired";
+            inv.setItem(SLOT_EXPIRED, makeButton(Material.CHEST, exLabel,
+                List.of("&7Collect unsold items")));
+        }
 
         // Prev / Next
         if (page > 0)
@@ -234,7 +241,7 @@ public class AuctionManager {
 
     private List<AuctionListing> buildView(Player player, GuiMode mode, SortMode sort) {
         return switch (mode) {
-            case ALL -> listings.stream()
+            case ALL, ADMIN -> listings.stream()
                 .filter(AuctionListing::isActive)
                 .sorted(sortComparator(sort))
                 .collect(Collectors.toList());
@@ -311,8 +318,8 @@ public class AuctionManager {
 
         switch (slot) {
             case SLOT_CLOSE -> player.closeInventory();
-            case SLOT_MY_LISTINGS -> { player.closeInventory(); openGui(player, GuiMode.MY_LISTINGS, session.sort(), 0); }
-            case SLOT_EXPIRED     -> { player.closeInventory(); openGui(player, GuiMode.EXPIRED, session.sort(), 0); }
+            case SLOT_MY_LISTINGS -> { if (session.mode() != GuiMode.ADMIN) { player.closeInventory(); openGui(player, GuiMode.MY_LISTINGS, session.sort(), 0); } }
+            case SLOT_EXPIRED     -> { if (session.mode() != GuiMode.ADMIN) { player.closeInventory(); openGui(player, GuiMode.EXPIRED, session.sort(), 0); } }
             case SLOT_SORT        -> { player.closeInventory(); openGui(player, session.mode(), session.sort().next(), 0); }
             case SLOT_PREV        -> { player.closeInventory(); openGui(player, session.mode(), session.sort(), session.page() - 1); }
             case SLOT_NEXT        -> { player.closeInventory(); openGui(player, session.mode(), session.sort(), session.page() + 1); }
@@ -335,6 +342,7 @@ public class AuctionManager {
                     }
                     case MY_LISTINGS -> cancelListing(player, listing);
                     case EXPIRED     -> collectExpired(player, listing);
+                    case ADMIN       -> adminForceCancel(player, listing);
                 }
             }
         }
@@ -397,6 +405,12 @@ public class AuctionManager {
 
         listing.setSold(true);
         save();
+        historyLogger.log(player.getUniqueId(), player.getName(), "AH_PURCHASE",
+            "Bought " + itemName(listing.getItem()) + " from " + listing.getSellerName()
+                + " for " + bridge.getSymbol() + fmt(price), price);
+        historyLogger.log(listing.getSellerUuid(), listing.getSellerName(), "AH_SALE",
+            itemName(listing.getItem()) + " sold to " + player.getName()
+                + " for " + bridge.getSymbol() + fmt(payout), payout);
         openGui(player, GuiMode.ALL, SortMode.NEWEST, 0);
     }
 
@@ -407,6 +421,8 @@ public class AuctionManager {
         listing.setCollected(true);
         giveOrDrop(player, listing.getItem());
         save();
+        historyLogger.log(player.getUniqueId(), player.getName(), "AH_CANCELLED",
+            "Cancelled listing of " + itemName(listing.getItem()), 0);
         player.sendMessage(Component.text("[AH] ", NamedTextColor.GOLD)
             .append(Component.text("Listing cancelled. ", NamedTextColor.YELLOW))
             .append(Component.text(itemName(listing.getItem()), NamedTextColor.WHITE))
@@ -426,6 +442,41 @@ public class AuctionManager {
             .append(Component.text(".", NamedTextColor.YELLOW)));
         player.closeInventory();
         openGui(player, GuiMode.EXPIRED, SortMode.NEWEST, 0);
+    }
+
+    // ── Admin wipe ─────────────────────────────────────────────────────────────
+
+    /** Removes all listings (active, expired, any state) belonging to the given player. */
+    public void wipePlayer(UUID uuid) {
+        listings.removeIf(l -> l.getSellerUuid().equals(uuid));
+        save();
+    }
+
+    /** Removes every listing server-wide (used by global wipe). */
+    public void wipeAll() {
+        listings.clear();
+        save();
+    }
+
+    private void adminForceCancel(Player admin, AuctionListing listing) {
+        if (!listing.isActive()) {
+            admin.sendMessage(Component.text("[AH] That listing is no longer active.", NamedTextColor.RED));
+            return;
+        }
+        listing.setCollected(true);
+        Player seller = Bukkit.getPlayer(listing.getSellerUuid());
+        if (seller != null) {
+            giveOrDrop(seller, listing.getItem());
+            seller.sendMessage(Component.text("[AH] ", NamedTextColor.GOLD)
+                .append(Component.text("Your listing was removed by an admin. Item returned.", NamedTextColor.YELLOW)));
+        }
+        save();
+        admin.sendMessage(Component.text("[AH] ", NamedTextColor.GOLD)
+            .append(Component.text("Force-removed listing by ", NamedTextColor.GREEN))
+            .append(Component.text(listing.getSellerName(), NamedTextColor.WHITE))
+            .append(Component.text(".", NamedTextColor.GREEN)));
+        admin.closeInventory();
+        openGui(admin, GuiMode.ADMIN, SortMode.NEWEST, 0);
     }
 
     // ── Session management ─────────────────────────────────────────────────────
@@ -461,6 +512,7 @@ public class AuctionManager {
             }
             case MY_LISTINGS -> lore.add(comp("&cClick to cancel listing"));
             case EXPIRED     -> lore.add(comp("&eClick to collect item"));
+            case ADMIN       -> lore.add(comp("&4[Admin] &cClick to force-remove"));
         }
 
         meta.lore(lore);

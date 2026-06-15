@@ -15,9 +15,15 @@ public class BuyOrder {
     private final double   priceEach;
     private final long     createdAt;
     private boolean        cancelled;
+    private final String   currency;
 
     public BuyOrder(String id, UUID buyerUuid, String buyerName,
                     Material material, int totalAmount, double priceEach, long createdAt) {
+        this(id, buyerUuid, buyerName, material, totalAmount, priceEach, createdAt, "money");
+    }
+
+    public BuyOrder(String id, UUID buyerUuid, String buyerName,
+                    Material material, int totalAmount, double priceEach, long createdAt, String currency) {
         this.id           = id;
         this.buyerUuid    = buyerUuid;
         this.buyerName    = buyerName;
@@ -27,6 +33,7 @@ public class BuyOrder {
         this.priceEach    = priceEach;
         this.createdAt    = createdAt;
         this.cancelled    = false;
+        this.currency     = currency;
     }
 
     public int    getRemainingAmount() { return totalAmount - filledAmount; }
@@ -44,6 +51,8 @@ public class BuyOrder {
     public double   getPriceEach()    { return priceEach; }
     public long     getCreatedAt()    { return createdAt; }
     public boolean  isCancelled()     { return cancelled; }
+
+    public String   getCurrency()    { return currency; }
 
     public void setFilledAmount(int filledAmount) { this.filledAmount = filledAmount; }
     public void setCancelled(boolean cancelled)   { this.cancelled = cancelled; }

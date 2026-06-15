@@ -43,6 +43,7 @@ public class SellManager {
 
     private final JavaPlugin plugin;
     private final EconomyBridge bridge;
+    private final HistoryLogger historyLogger;
 
     private final Map<Material, Double> sellPrices    = new LinkedHashMap<>();
     private final List<Material>        sortedItems   = new ArrayList<>();
@@ -51,9 +52,10 @@ public class SellManager {
 
     private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.legacyAmpersand();
 
-    public SellManager(JavaPlugin plugin, EconomyBridge bridge) {
-        this.plugin = plugin;
-        this.bridge = bridge;
+    public SellManager(JavaPlugin plugin, EconomyBridge bridge, HistoryLogger historyLogger) {
+        this.plugin         = plugin;
+        this.bridge         = bridge;
+        this.historyLogger  = historyLogger;
         loadSellPrices();
     }
 
@@ -98,6 +100,8 @@ public class SellManager {
         double total = unitPrice * amount;
         player.getInventory().setItemInMainHand(null);
         bridge.deposit(player.getUniqueId(), total);
+        historyLogger.log(player.getUniqueId(), player.getName(), "SELL",
+            "Sold " + amount + "x " + prettify(hand.getType()) + " for " + bridge.getSymbol() + fmt(total), total);
         player.sendMessage(Component.text("Sold ")
             .color(NamedTextColor.GREEN)
             .append(Component.text(amount + "x " + prettify(hand.getType()), NamedTextColor.WHITE))
@@ -124,6 +128,8 @@ public class SellManager {
         }
         player.getInventory().setContents(contents);
         bridge.deposit(player.getUniqueId(), totalEarned);
+        historyLogger.log(player.getUniqueId(), player.getName(), "SELL",
+            "Sold " + totalItems + " item(s) for " + bridge.getSymbol() + fmt(totalEarned), totalEarned);
         player.sendMessage(Component.text("Sold ")
             .color(NamedTextColor.GREEN)
             .append(Component.text(totalItems + " item(s)", NamedTextColor.WHITE))
@@ -184,6 +190,8 @@ public class SellManager {
         if (soldCount == 0) return;
 
         bridge.deposit(player.getUniqueId(), total);
+        historyLogger.log(player.getUniqueId(), player.getName(), "SELL",
+            "Sold " + soldCount + " item(s) via sell chest for " + bridge.getSymbol() + fmt(total), total);
         player.sendMessage(Component.text("Sold ")
             .color(NamedTextColor.GREEN)
             .append(Component.text(soldCount + " item(s)", NamedTextColor.WHITE))

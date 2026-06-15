@@ -14,7 +14,10 @@ public class MostlyVanillaTeams extends JavaPlugin {
         manager = new TeamManager(this);
         manager.load();
 
-        TeamCommand teamCmd = new TeamCommand(manager);
+        CombatTracker combatTracker = new CombatTracker();
+        getServer().getPluginManager().registerEvents(combatTracker, this);
+
+        TeamCommand teamCmd = new TeamCommand(this, manager, combatTracker);
         getCommand("team").setExecutor(teamCmd);
         getCommand("team").setTabCompleter(teamCmd);
 
@@ -26,6 +29,8 @@ public class MostlyVanillaTeams extends JavaPlugin {
 
         getLogger().info("MostlyVanilla Teams enabled.");
     }
+
+    public TeamManager getManager() { return manager; }
 
     @Override
     public void onDisable() {

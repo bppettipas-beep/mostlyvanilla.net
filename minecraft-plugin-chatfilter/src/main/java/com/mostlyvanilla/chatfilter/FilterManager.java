@@ -95,8 +95,10 @@ public class FilterManager {
         //          fucking, fuking, f*cking, fvcking
         list.add(new WordCategory(CAT_FUCK,
             List.of(
-                // Standard + "a" from 4→a substitution (f4ck→fack), fuuck, fuk
-                Pattern.compile("\\bf+[ua]+c?k+[a-z]*\\b"),
+                // u-vowel forms: fuck, fuk, fuuck, fuking
+                Pattern.compile("\\bf+u+c?k+[a-z]*\\b"),
+                // a-vowel form (4→a leet only): f4ck→fack — requires 'c' to avoid "fake", "flak", etc.
+                Pattern.compile("\\bf+a+ck+[a-z]*\\b"),
                 // fvck variant (v used as u-bypass)
                 Pattern.compile("\\bf+v+c?k+[a-z]*\\b"),
                 // fcuk (letters scrambled)
@@ -263,17 +265,57 @@ public class FilterManager {
     }
 
     /**
-     * Pass 2: full normalization.
-     * Leet substitution + q/x → g (handles niqqer, nixxer etc.) +
-     * strip all non-letter characters (catches spacing/punctuation bypasses).
-     * Result is a continuous lowercase string with no separators.
+     * Pass 2: token-aware full normalization.
+     * Combines two sub-passes so that adjacent normal words (e.g. "finish it") do not
+     * bleed into each other, while single-char spacing bypasses ("s h i t") are still caught.
+     *
+     * Sub-pass A — per-word: each whitespace-separated token is leet+stripped independently,
+     *   then joined with spaces. Catches intra-word obfuscation like "f.u.c.k".
+     * Sub-pass B — bypass: consecutive single-letter tokens are concatenated. Catches
+     *   spaced-out attempts like "s h i t" or "n i g g e r".
+     *
+     * The two sub-results are joined with a space so WordCategory.matches can use a
+     * single String.contains() call and hit either sub-pass.
      */
     private String normalizeFull(String input) {
-        String s = normalizeLeet(input);
-        s = s.replace("q", "g")  // niqqer → nigger
-             .replace("x", "g"); // nixxer → nigger, fxck → fgck (caught by pass 1 anyway)
-        s = s.replaceAll("[^a-z]", ""); // remove all non-alpha
-        return s;
+        return normalizeFullPerWord(input) + " " + extractSpacingBypass(input);
+    }
+
+    private String normalizeFullPerWord(String input) {
+        StringBuilder sb = new StringBuilder();
+        for (String token : input.trim().split("\\s+")) {
+            String norm = normalizeLeet(token)
+                    .replace("q", "g")
+                    .replace("x", "g")
+                    .replaceAll("[^a-z]", "");
+            if (!norm.isEmpty()) {
+                if (sb.length() > 0) sb.append(' ');
+                sb.append(norm);
+            }
+        }
+        return sb.toString();
+    }
+
+    /** Concatenates consecutive single-letter tokens; multi-letter words break the run. */
+    private String extractSpacingBypass(String input) {
+        String[] tokens = input.trim().split("\\s+");
+        StringBuilder sb = new StringBuilder();
+        boolean prevWasSingle = false;
+        for (String token : tokens) {
+            boolean isSingle = token.replaceAll("[^a-zA-Z0-9]", "").length() == 1;
+            if (isSingle) {
+                String norm = normalizeLeet(token)
+                        .replace("q", "g")
+                        .replace("x", "g")
+                        .replaceAll("[^a-z]", "");
+                sb.append(norm);
+                prevWasSingle = true;
+            } else {
+                if (prevWasSingle) sb.append(' ');
+                prevWasSingle = false;
+            }
+        }
+        return sb.toString().trim();
     }
 
     // ─────────────────────────────────────────────────────────────────────────

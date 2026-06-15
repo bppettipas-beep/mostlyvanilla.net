@@ -269,13 +269,17 @@ public class StaffManager {
             case SPECTATE -> {
                 if (target == null) { err(staff, name + " is not online."); return; }
                 staff.setGameMode(GameMode.SPECTATOR);
-                staff.teleport(target.getLocation());
-                ok(staff, "Now spectating " + name + ". Use /gms to return to survival.");
+                staff.teleportAsync(target.getLocation()).thenAccept(success -> {
+                    if (success) ok(staff, "Now spectating " + name + ". Use /gms to return to survival.");
+                    else err(staff, "Teleport to " + name + " was blocked by another plugin.");
+                });
             }
             case TELEPORT -> {
                 if (target == null) { err(staff, name + " is not online."); return; }
-                staff.teleport(target.getLocation());
-                ok(staff, "Teleported to " + name + ".");
+                staff.teleportAsync(target.getLocation()).thenAccept(success -> {
+                    if (success) ok(staff, "Teleported to " + name + ".");
+                    else err(staff, "Teleport to " + name + " was blocked by another plugin.");
+                });
             }
             case WARN -> {
                 if (target == null) { err(staff, name + " is not online."); return; }

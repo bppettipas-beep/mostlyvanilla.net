@@ -50,9 +50,12 @@ public class MaceLimitCommand implements CommandExecutor, TabCompleter {
             case "info" -> {
                 int limit   = manager.getLimit();
                 int crafted = manager.getCrafted();
+                int found   = manager.getFound();
                 sender.sendMessage(Component.text("── Mace Limit ──", NamedTextColor.GOLD));
                 sender.sendMessage(Component.text("  Crafted:   ", NamedTextColor.GRAY)
                     .append(Component.text(crafted, NamedTextColor.YELLOW)));
+                sender.sendMessage(Component.text("  Found:     ", NamedTextColor.GRAY)
+                    .append(Component.text(found, NamedTextColor.YELLOW)));
                 sender.sendMessage(Component.text("  Limit:     ", NamedTextColor.GRAY)
                     .append(Component.text(limit <= 0 ? "unlimited" : String.valueOf(limit), NamedTextColor.YELLOW)));
                 sender.sendMessage(Component.text("  Remaining: ", NamedTextColor.GRAY)

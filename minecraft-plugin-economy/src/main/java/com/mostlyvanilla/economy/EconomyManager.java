@@ -156,6 +156,37 @@ public class EconomyManager {
         return true;
     }
 
+    public File getPluginDataFolder() {
+        return plugin.getDataFolder();
+    }
+
+    /**
+     * Bulk-restores all UUID→balance entries from a backup file into the given currency,
+     * overwriting existing balances. Saves to disk once after loading all entries.
+     * Returns the number of entries restored, or -1 if the currency doesn't exist.
+     */
+    public int restoreFromBackupFile(String currencyKey, File backupFile) {
+        if (!currencies.containsKey(currencyKey.toLowerCase())) return -1;
+        FileConfiguration config = YamlConfiguration.loadConfiguration(backupFile);
+        Map<UUID, Double> data = balances.computeIfAbsent(currencyKey.toLowerCase(), k -> new HashMap<>());
+        int count = 0;
+        for (String k : config.getKeys(false)) {
+            try {
+                data.put(UUID.fromString(k), config.getDouble(k));
+                count++;
+            } catch (IllegalArgumentException ignored) {}
+        }
+        saveCurrencyData(currencyKey.toLowerCase());
+        return count;
+    }
+
+    public int restoreFromBackupData(String currencyKey, Map<UUID, Double> source) {
+        if (!currencies.containsKey(currencyKey.toLowerCase())) return -1;
+        balances.computeIfAbsent(currencyKey.toLowerCase(), k -> new HashMap<>()).putAll(source);
+        saveCurrencyData(currencyKey.toLowerCase());
+        return source.size();
+    }
+
     public Map<UUID, Double> getTopBalances(String currency, int limit) {
         return balances.getOrDefault(currency.toLowerCase(), Collections.emptyMap())
                 .entrySet().stream()

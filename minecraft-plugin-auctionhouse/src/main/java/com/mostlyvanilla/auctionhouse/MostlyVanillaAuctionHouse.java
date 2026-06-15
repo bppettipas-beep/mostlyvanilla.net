@@ -4,17 +4,25 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public class MostlyVanillaAuctionHouse extends JavaPlugin {
 
+    private AuctionManager auctionManager;
+    private OrderManager   orderManager;
+
+    public AuctionManager getAuctionManager() { return auctionManager; }
+    public OrderManager   getOrderManager()   { return orderManager; }
+
     @Override
     public void onEnable() {
         getDataFolder().mkdirs();
         saveDefaultConfig();
 
-        EconomyBridge bridge = new EconomyBridge(this);
-        AuctionManager auctionManager = new AuctionManager(this, bridge);
-        OrderManager   orderManager   = new OrderManager(this, bridge);
+        EconomyBridge bridge        = new EconomyBridge(this);
+        HistoryLogger historyLogger = new HistoryLogger(getLogger());
+        historyLogger.init(getDataFolder());
+        auctionManager = new AuctionManager(this, bridge, historyLogger);
+        orderManager   = new OrderManager(this, bridge, historyLogger);
 
         auctionManager.load();
-        orderManager.load();
+        orderManager  .load();
 
         var ahCmd = getCommand("ah");
         if (ahCmd != null) {

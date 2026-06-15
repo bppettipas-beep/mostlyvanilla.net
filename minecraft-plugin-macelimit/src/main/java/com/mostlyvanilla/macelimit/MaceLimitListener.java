@@ -2,12 +2,18 @@ package com.mostlyvanilla.macelimit;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.CraftItemEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 
 public class MaceLimitListener implements Listener {
 
@@ -51,11 +57,42 @@ public class MaceLimitListener implements Listener {
         }
 
         manager.recordCraft(amount);
+
+        String total = manager.getLimit() <= 0 ? "∞" : String.valueOf(manager.getLimit());
+        Bukkit.broadcast(
+            Component.text("⚔ ", NamedTextColor.GOLD)
+                .append(Component.text(player.getName(), NamedTextColor.YELLOW, TextDecoration.BOLD))
+                .append(Component.text(" crafted a ", NamedTextColor.GOLD))
+                .append(Component.text("Mace", NamedTextColor.YELLOW, TextDecoration.BOLD))
+                .append(Component.text("! (Server total: ", NamedTextColor.GOLD))
+                .append(Component.text(manager.getCrafted() + "/" + total, NamedTextColor.YELLOW))
+                .append(Component.text(")", NamedTextColor.GOLD)));
+
         player.sendMessage(
             Component.text("Mace crafted. Server total: ", NamedTextColor.GRAY)
                 .append(Component.text(manager.getCrafted(), NamedTextColor.YELLOW))
                 .append(Component.text(" / ", NamedTextColor.GRAY))
-                .append(Component.text(manager.getLimit() <= 0 ? "∞" : String.valueOf(manager.getLimit()), NamedTextColor.YELLOW)));
+                .append(Component.text(total, NamedTextColor.YELLOW)));
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (maceMaterial == null) return;
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+
+        Inventory clicked = event.getClickedInventory();
+        if (clicked == null) return;
+        // Only care about clicks inside a container, not the player's own inventory
+        if (clicked.equals(player.getInventory())) return;
+        // Crafting result slots are handled by CraftItemEvent
+        if (event.getSlotType() == InventoryType.SlotType.RESULT) return;
+
+        ItemStack item = event.getCurrentItem();
+        if (item == null || item.getType() != maceMaterial) return;
+
+        event.setCancelled(true);
+        player.sendMessage(Component.text("This mace cannot be taken — it will remain here for discovery.", NamedTextColor.RED));
+        manager.broadcastFind(player.getName());
     }
 
     /** Estimates how many maces a shift-click will produce from current matrix contents. */

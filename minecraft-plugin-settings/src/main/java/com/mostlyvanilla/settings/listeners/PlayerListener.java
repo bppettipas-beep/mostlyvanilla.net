@@ -4,13 +4,10 @@ import com.mostlyvanilla.settings.Setting;
 import com.mostlyvanilla.settings.SettingsManager;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
@@ -45,16 +42,6 @@ public class PlayerListener implements Listener {
                 Integer.MAX_VALUE, 0, false, false, false));
     }
 
-    // ── Mob targeting ─────────────────────────────────────────────────────────
-    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
-    public void onMobTarget(EntityTargetLivingEntityEvent event) {
-        if (!(event.getTarget() instanceof Player target)) return;
-        if (!(event.getEntity() instanceof Monster)) return;
-        if (!settingsManager.isEnabled(target.getUniqueId(), Setting.MOB_TARGETING)) {
-            event.setCancelled(true);
-        }
-    }
-
     // ── Public chat filter ────────────────────────────────────────────────────
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onChat(AsyncChatEvent event) {
@@ -68,6 +55,11 @@ public class PlayerListener implements Listener {
     // ── Join / quit messages ──────────────────────────────────────────────────
     @EventHandler(priority = EventPriority.NORMAL)
     public void onJoin(PlayerJoinEvent event) {
+        // First-time players get join/leave messages turned off by default.
+        if (settingsManager.isNewPlayer(event.getPlayer().getUniqueId())) {
+            settingsManager.set(event.getPlayer().getUniqueId(), Setting.JOIN_MESSAGES, false);
+        }
+
         Component msg = event.joinMessage();
         if (msg == null) return;
         event.joinMessage(null);

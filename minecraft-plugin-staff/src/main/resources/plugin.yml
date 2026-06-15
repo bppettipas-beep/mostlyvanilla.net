@@ -45,6 +45,9 @@ commands:
   globalwipe:
     description: Wipe all player data for every player who has ever joined (op only)
     usage: /globalwipe
+  transfer:
+    description: Transfer all data from one player to another (op only)
+    usage: /transfer <from> <to>
 
 permissions:
   mv.staff:

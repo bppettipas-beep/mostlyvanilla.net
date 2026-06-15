@@ -9,12 +9,6 @@ softdepend:
   - TAB
 
 commands:
-  link:
-    description: Link your Minecraft account to Discord
-    usage: /link
-  unlink:
-    description: Unlink a player's Minecraft account from Discord (ops only)
-    usage: /unlink <player>
   role:
     description: Manage player roles
     usage: /role <create|delete|assign|remove|list|info>
@@ -36,6 +30,9 @@ commands:
   delore:
     description: Remove all ore blocks you spawned with /spawnore and restore original blocks
     usage: /delore
+  history:
+    description: View a player's sell, auction house, and order history
+    usage: /history <player>
 
 permissions:
   mostlyvanilla.roles.admin:

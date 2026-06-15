@@ -37,6 +37,7 @@ public class SpawnerGui implements Listener {
     private final SpawnerManager manager;
     private final SpawnerConfig  cfg;
     private final EconomyBridge  economy;
+    private final HistoryLogger  historyLogger;
 
     private enum GuiType { MAIN, STORAGE, FILTER }
     private record Session(SpawnerData data, GuiType type, List<Material> filterOrder) {
@@ -44,10 +45,11 @@ public class SpawnerGui implements Listener {
     }
     private final Map<Inventory, Session> sessions = new HashMap<>();
 
-    public SpawnerGui(SpawnerManager manager, SpawnerConfig cfg, EconomyBridge economy) {
-        this.manager = manager;
-        this.cfg     = cfg;
-        this.economy = economy;
+    public SpawnerGui(SpawnerManager manager, SpawnerConfig cfg, EconomyBridge economy, HistoryLogger historyLogger) {
+        this.manager       = manager;
+        this.cfg           = cfg;
+        this.economy       = economy;
+        this.historyLogger = historyLogger;
     }
 
     // ── Open ──────────────────────────────────────────────────────────────────
@@ -210,6 +212,8 @@ public class SpawnerGui implements Listener {
         }
         data.drainStorage();
         economy.deposit(player.getUniqueId(), total);
+        historyLogger.log(player.getUniqueId(), player.getName(), "SELL",
+            "Sold spawner drops for $" + fmt(total), total);
         manager.markDirty();
         refreshInfo(inv, data);
         player.sendMessage(msg("&a[Spawners] &7Sold everything for &e$" + fmt(total) + "&7."));
@@ -218,21 +222,18 @@ public class SpawnerGui implements Listener {
     private void handleDropAll(Player player, Inventory inv, SpawnerData data) {
         Map<Material, Integer> items = data.drainStorage();
         if (items.isEmpty()) { player.sendMessage(msg("&e[Spawners] &7Nothing stored to drop.")); return; }
-        Location loc = data.getLocation();
-        if (loc != null) {
-            Location dropLoc = loc.clone().add(0.5, 0.5, 0.5);
-            items.forEach((mat, amount) -> {
-                int remaining = amount;
-                while (remaining > 0) {
-                    int batch = Math.min(mat.getMaxStackSize(), remaining);
-                    dropLoc.getWorld().dropItemNaturally(dropLoc, new ItemStack(mat, batch));
-                    remaining -= batch;
-                }
-            });
-        }
+        Location dropLoc = player.getEyeLocation().add(player.getEyeLocation().getDirection().normalize());
+        items.forEach((mat, amount) -> {
+            int remaining = amount;
+            while (remaining > 0) {
+                int batch = Math.min(mat.getMaxStackSize(), remaining);
+                dropLoc.getWorld().dropItem(dropLoc, new ItemStack(mat, batch));
+                remaining -= batch;
+            }
+        });
         manager.markDirty();
         refreshInfo(inv, data);
-        player.sendMessage(msg("&a[Spawners] &7Items dropped at the spawner."));
+        player.sendMessage(msg("&a[Spawners] &7Items dropped in front of you."));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

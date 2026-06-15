@@ -3,6 +3,7 @@ package com.mostlyvanilla.spawners;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
@@ -45,9 +46,21 @@ public final class SpawnerItems {
         if (item == null || item.getType() != Material.SPAWNER) return null;
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return null;
+
+        // Primary: PDC tag (authoritative)
         String typeStr = meta.getPersistentDataContainer()
             .get(DonutSpawners.KEY_TYPE, PersistentDataType.STRING);
-        return SpawnerType.fromString(typeStr);
+        if (typeStr != null) return SpawnerType.fromString(typeStr);
+
+        // Fallback: infer type from display name for items that pre-date the PDC tag
+        // e.g. "☠ Skeleton Spawner" → SKELETON
+        if (meta.hasDisplayName()) {
+            String plain = PlainTextComponentSerializer.plainText().serialize(meta.displayName());
+            for (SpawnerType t : SpawnerType.values()) {
+                if (plain.contains(t.getDisplayName() + " Spawner")) return t;
+            }
+        }
+        return null;
     }
 
     public static boolean isSpawnerItem(ItemStack item) {

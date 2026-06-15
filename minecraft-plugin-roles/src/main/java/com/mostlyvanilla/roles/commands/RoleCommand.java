@@ -1,6 +1,5 @@
 package com.mostlyvanilla.roles.commands;
 
-import com.mostlyvanilla.roles.ApiClient;
 import com.mostlyvanilla.roles.MostlyVanillaRoles;
 import com.mostlyvanilla.roles.RoleManager;
 import net.kyori.adventure.text.Component;
@@ -14,12 +13,13 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class RoleCommand implements CommandExecutor, TabCompleter {
@@ -663,60 +663,76 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
                 }
             }
 
-            case "discordlink" -> {
-                if (args.length < 3) {
-                    sender.sendMessage(Component.text("Usage: /role discordlink <game_role> <discord_role_id>", NamedTextColor.RED));
+            case "addhistory" -> {
+                if (args.length < 2) {
+                    String current = rm.getHistoryRole();
+                    sender.sendMessage(Component.text("History role: ", NamedTextColor.GREEN)
+                        .append(current != null
+                            ? Component.text(current, NamedTextColor.WHITE)
+                            : Component.text("none (ops only)", NamedTextColor.GRAY)));
+                    sender.sendMessage(Component.text("Usage: /role addhistory <role|disable>", NamedTextColor.GRAY));
                     return true;
                 }
-                String roleName      = args[1].toLowerCase();
-                String discordRoleId = args[2];
-                if (!rm.roleExists(roleName)) {
+                if (args[1].equalsIgnoreCase("disable")) {
+                    rm.clearHistoryRole();
+                    sender.sendMessage(Component.text("History role cleared — only ops can use /history.", NamedTextColor.YELLOW));
+                } else {
+                    String roleName = args[1].toLowerCase();
+                    if (rm.setHistoryRole(roleName)) {
+                        sender.sendMessage(Component.text("Players with role ", NamedTextColor.GREEN)
+                            .append(Component.text(roleName, NamedTextColor.WHITE))
+                            .append(Component.text(" or higher priority can now use /history.", NamedTextColor.GREEN)));
+                    } else {
+                        sender.sendMessage(Component.text("Role '" + roleName + "' does not exist.", NamedTextColor.RED));
+                    }
+                }
+            }
+
+            case "permissionadd" -> {
+                if (args.length < 3) {
+                    sender.sendMessage(Component.text("Usage: /role permissionadd <permission> <role>", NamedTextColor.RED));
+                    sender.sendMessage(Component.text("Grants the permission to that role and all higher-priority roles.", NamedTextColor.GRAY));
+                    return true;
+                }
+                String perm     = args[1];
+                String roleName = args[2].toLowerCase();
+                List<String> affected = rm.addRolePermission(perm, roleName);
+                if (affected == null) {
                     sender.sendMessage(Component.text("Role '" + roleName + "' does not exist.", NamedTextColor.RED));
                     return true;
                 }
-                ApiClient api = plugin.getApiClient();
-                if (api == null) {
-                    sender.sendMessage(Component.text("Discord API is not configured (check config.yml).", NamedTextColor.RED));
-                    return true;
-                }
-                sender.sendMessage(Component.text("Linking...", NamedTextColor.GRAY));
-                new BukkitRunnable() {
-                    @Override public void run() {
-                        boolean ok = api.setRoleLink(roleName, discordRoleId);
-                        new BukkitRunnable() {
-                            @Override public void run() {
-                                if (ok) sender.sendMessage(Component.text("Linked game role '" + roleName + "' → Discord role " + discordRoleId + ".", NamedTextColor.GREEN));
-                                else    sender.sendMessage(Component.text("Failed — is the bot running?", NamedTextColor.RED));
-                            }
-                        }.runTask(plugin);
-                    }
-                }.runTaskAsynchronously(plugin);
+                sender.sendMessage(Component.text("Added ", NamedTextColor.GREEN)
+                    .append(Component.text(perm, NamedTextColor.WHITE))
+                    .append(Component.text(" to: ", NamedTextColor.GREEN))
+                    .append(Component.text(String.join(", ", affected), NamedTextColor.YELLOW)));
+                sendPermissionList(sender, rm);
             }
 
-            case "discordunlink" -> {
-                if (args.length < 2) {
-                    sender.sendMessage(Component.text("Usage: /role discordunlink <game_role>", NamedTextColor.RED));
+            case "permissionremove" -> {
+                if (args.length < 3) {
+                    sender.sendMessage(Component.text("Usage: /role permissionremove <permission> <role>", NamedTextColor.RED));
+                    sender.sendMessage(Component.text("Removes the permission from that role and all higher-priority roles.", NamedTextColor.GRAY));
                     return true;
                 }
-                String roleName = args[1].toLowerCase();
-                ApiClient api = plugin.getApiClient();
-                if (api == null) {
-                    sender.sendMessage(Component.text("Discord API is not configured (check config.yml).", NamedTextColor.RED));
+                String perm     = args[1];
+                String roleName = args[2].toLowerCase();
+                List<String> affected = rm.removeRolePermission(perm, roleName);
+                if (affected == null) {
+                    sender.sendMessage(Component.text("Role '" + roleName + "' does not exist.", NamedTextColor.RED));
                     return true;
                 }
-                sender.sendMessage(Component.text("Unlinking...", NamedTextColor.GRAY));
-                new BukkitRunnable() {
-                    @Override public void run() {
-                        boolean ok = api.deleteRoleLink(roleName);
-                        new BukkitRunnable() {
-                            @Override public void run() {
-                                if (ok) sender.sendMessage(Component.text("Unlinked game role '" + roleName + "' from Discord.", NamedTextColor.GREEN));
-                                else    sender.sendMessage(Component.text("Failed — is the bot running?", NamedTextColor.RED));
-                            }
-                        }.runTask(plugin);
-                    }
-                }.runTaskAsynchronously(plugin);
+                if (affected.isEmpty()) {
+                    sender.sendMessage(Component.text("That permission was not assigned to any roles at or above " + roleName + ".", NamedTextColor.YELLOW));
+                } else {
+                    sender.sendMessage(Component.text("Removed ", NamedTextColor.GREEN)
+                        .append(Component.text(perm, NamedTextColor.WHITE))
+                        .append(Component.text(" from: ", NamedTextColor.GREEN))
+                        .append(Component.text(String.join(", ", affected), NamedTextColor.YELLOW)));
+                }
+                sendPermissionList(sender, rm);
             }
+
+            case "listpermissions" -> sendPermissionList(sender, rm);
 
             default -> sendUsage(sender);
         }
@@ -729,14 +745,14 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("mostlyvanilla.roles.admin")) return List.of();
 
         if (args.length == 1) {
-            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "commandblockglobal", "commandblockallglobal", "commandallowglobal", "unblockallglobal", "addmute", "addban", "addannouncement", "addfly", "addallowtp", "addstaff", "addecsee", "addinvsee", "addstash", "addspawnore", "notifysus", "gmmod", "gmadmin", "namecolormatch", "discordlink", "discordunlink"), args[0]);
+            return filter(List.of("create", "delete", "assign", "remove", "list", "listweight", "info", "join", "setweight", "testall", "commandblock", "commandblockall", "commandallow", "unblockallcommands", "commandblockglobal", "commandblockallglobal", "commandallowglobal", "unblockallglobal", "addmute", "addban", "addannouncement", "addfly", "addallowtp", "addstaff", "addecsee", "addinvsee", "addstash", "addspawnore", "notifysus", "addhistory", "gmmod", "gmadmin", "namecolormatch", "permissionadd", "permissionremove", "listpermissions"), args[0]);
         }
 
         RoleManager rm = plugin.getRoleManager();
 
         if (args.length == 2) {
             return switch (args[0].toLowerCase()) {
-                case "delete", "join", "setweight", "commandblockall", "commandblock", "commandallow", "unblockallcommands", "addstaff", "addfly", "addallowtp", "addannouncement", "addmute", "addban", "addecsee", "addinvsee", "addstash", "addspawnore", "notifysus", "gmmod", "gmadmin", "discordlink", "discordunlink" ->
+                case "delete", "join", "setweight", "commandblockall", "commandblock", "commandallow", "unblockallcommands", "addstaff", "addfly", "addallowtp", "addannouncement", "addmute", "addban", "addecsee", "addinvsee", "addstash", "addspawnore", "notifysus", "addhistory", "gmmod", "gmadmin" ->
                     filter(new ArrayList<>(rm.getRoleNames()), args[1]);
                 case "assign", "remove", "info" -> filter(
                     Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList()), args[1]
@@ -749,7 +765,28 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
             return filter(new ArrayList<>(rm.getRoleNames()), args[2]);
         }
 
+        // permissionadd/remove: arg[2] is the role
+        if (args.length == 3 && (args[0].equalsIgnoreCase("permissionadd") || args[0].equalsIgnoreCase("permissionremove"))) {
+            return filter(new ArrayList<>(rm.getRoleNames()), args[2]);
+        }
+
         return List.of();
+    }
+
+    private void sendPermissionList(CommandSender sender, RoleManager rm) {
+        Map<String, ?> perms = rm.getRolePermissions();
+        if (perms.isEmpty()) {
+            sender.sendMessage(Component.text("No role permissions configured.", NamedTextColor.YELLOW));
+            return;
+        }
+        Map<String, Integer> weights = rm.getRoleWeights();
+        sender.sendMessage(Component.text("━━━ Role Permissions ━━━", NamedTextColor.GREEN));
+        rm.getRolePermissions().entrySet().stream()
+            .sorted(Comparator.comparingInt(e -> weights.getOrDefault(e.getKey(), 50)))
+            .forEach(e -> sender.sendMessage(
+                Component.text("  " + e.getKey() + ": ", NamedTextColor.WHITE)
+                    .append(Component.text(String.join(", ", e.getValue()), NamedTextColor.GRAY))
+            ));
     }
 
     private List<String> filter(List<String> options, String input) {
@@ -790,7 +827,11 @@ public class RoleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("  /role addstash <role|disable>  ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to use /spawnstash", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role addspawnore <role|dis>   ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to use /spawnore", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role notifysus <role|disable> ", NamedTextColor.WHITE).append(Component.text("Set minimum role to receive anticheat sus alerts and use /sus", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role addhistory <role|disable>", NamedTextColor.WHITE).append(Component.text("Set minimum role required to use /history <player>", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role allowtp <role|disable>   ", NamedTextColor.WHITE).append(Component.text("Set minimum role required to use force TPs", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("  /role namecolormatch           ", NamedTextColor.WHITE).append(Component.text("Toggle: color player names in chat to match role color", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role permissionadd <perm> <r> ", NamedTextColor.WHITE).append(Component.text("Grant a permission to a role and all higher-priority roles", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role permissionremove <p> <r> ", NamedTextColor.WHITE).append(Component.text("Remove a permission from a role and all higher-priority roles", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("  /role listpermissions          ", NamedTextColor.WHITE).append(Component.text("List all role permission assignments", NamedTextColor.GRAY)));
     }
 }

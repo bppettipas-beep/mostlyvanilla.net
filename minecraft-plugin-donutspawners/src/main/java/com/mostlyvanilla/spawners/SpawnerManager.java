@@ -166,6 +166,12 @@ public class SpawnerManager {
 
     public void markDirty() { dirty = true; }
 
+    /** Re-applies PDC and entity type to a placed spawner block (call one tick after placement). */
+    public void reapplyPdc(Location loc) {
+        SpawnerData data = getSpawner(loc);
+        if (data != null) applyPdc(loc, data);
+    }
+
     // ── Production tick ───────────────────────────────────────────────────────
 
     /** Called every tick from the global scheduler. */
@@ -204,19 +210,20 @@ public class SpawnerManager {
     }
 
     private void produce(SpawnerData data, Location loc) {
-        double mult = isIsolated(loc) ? cfg.getIsolationBonus() : 1.0;
-        double sqrtStack = Math.sqrt(data.getStack());
+        double mult      = isIsolated(loc) ? cfg.getIsolationBonus() : 1.0;
+        double sqrtStack = Math.pow(data.getStack(), 1.1);
+        double rateMult  = cfg.getRateMultiplier(data.getType());
 
         // Items
         cfg.getDrops(data.getType()).forEach((mat, base) -> {
             if (!data.isDropEnabled(mat)) return;
-            int amount = (int) Math.max(1, Math.floor(base * sqrtStack * mult));
+            int amount = (int) Math.max(1, Math.floor(base * sqrtStack * mult * rateMult));
             data.addStorage(mat, amount);
         });
 
         // XP
         int xpBase = cfg.getXpPerCycle(data.getType());
-        data.addXp((int) Math.max(1, Math.floor(xpBase * sqrtStack * mult)));
+        data.addXp((int) Math.max(1, Math.floor(xpBase * sqrtStack * mult * rateMult)));
     }
 
     private boolean isIsolated(Location loc) {
@@ -247,6 +254,9 @@ public class SpawnerManager {
     }
 
     public boolean isPluginSpawner(Location loc) {
+        // Check the in-memory map first — this is authoritative and avoids PDC
+        // timing issues where applyPdc hasn't committed yet after a fresh placement.
+        if (spawners.containsKey(SpawnerData.locationKey(loc))) return true;
         Block block = loc.getBlock();
         if (block.getType() != Material.SPAWNER) return false;
         if (!(block.getState() instanceof org.bukkit.block.TileState ts)) return false;

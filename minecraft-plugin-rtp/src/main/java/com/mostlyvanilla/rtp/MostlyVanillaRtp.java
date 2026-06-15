@@ -29,7 +29,7 @@ public class MostlyVanillaRtp extends JavaPlugin {
         getCommand("rtprange").setTabCompleter(rangeCmd);
 
         getServer().getPluginManager().registerEvents(new GuiListener(rtpManager), this);
-        getServer().getPluginManager().registerEvents(new PlayerListener(teleportManager), this);
+        getServer().getPluginManager().registerEvents(new PlayerListener(teleportManager, rtpManager), this);
 
         getLogger().info("MostlyVanilla RTP enabled.");
     }

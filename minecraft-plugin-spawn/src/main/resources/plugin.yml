@@ -32,6 +32,12 @@ commands:
   leave:
     description: Return to your last overworld location from spawn
     usage: /leave
+  vanillaspawn:
+    description: Teleport to the vanilla spawn point
+    usage: /vanillaspawn
+  vanillaspawnset:
+    description: Set the vanilla spawn point at your current location (admin only)
+    usage: /vanillaspawnset
 
 permissions:
   mostlyvanilla.spawn.admin:

@@ -6,8 +6,11 @@ import com.mostlyvanilla.spawn.commands.HologramCommand;
 import com.mostlyvanilla.spawn.commands.NpcCommand;
 import com.mostlyvanilla.spawn.commands.LeaveCommand;
 import com.mostlyvanilla.spawn.commands.SpawnCommand;
+import com.mostlyvanilla.spawn.commands.VanillaSpawnCommand;
+import com.mostlyvanilla.spawn.commands.VanillaSpawnSetCommand;
 import com.mostlyvanilla.spawn.listeners.NpcListener;
 import com.mostlyvanilla.spawn.listeners.SpawnListener;
+import com.mostlyvanilla.spawn.listeners.VanillaSpawnListener;
 import org.bukkit.GameRule;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
@@ -15,9 +18,10 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public class MostlyVanillaSpawn extends JavaPlugin {
 
-    private SpawnManager    spawnManager;
-    private HologramManager hologramManager;
-    private NpcManager      npcManager;
+    private SpawnManager        spawnManager;
+    private HologramManager     hologramManager;
+    private NpcManager          npcManager;
+    private VanillaSpawnManager vanillaSpawnManager;
 
     @Override
     public void onEnable() {
@@ -25,8 +29,9 @@ public class MostlyVanillaSpawn extends JavaPlugin {
 
         World spawnWorld = createSpawnWorld();
 
-        spawnManager    = new SpawnManager(this, spawnWorld);
-        hologramManager = new HologramManager(this);
+        spawnManager        = new SpawnManager(this, spawnWorld);
+        hologramManager     = new HologramManager(this);
+        vanillaSpawnManager = new VanillaSpawnManager(this);
 
         spawnManager.load();
         hologramManager.load(spawnWorld); // must load before NpcManager so it can create NPC holograms
@@ -42,6 +47,8 @@ public class MostlyVanillaSpawn extends JavaPlugin {
             getLogger().warning("Citizens not found — /npc will not work.");
         }
 
+        CombatTracker combatTracker = new CombatTracker();
+
         SpawnCommand spawnCmd = new SpawnCommand(this);
         getCommand("spawn").setExecutor(spawnCmd);
         getCommand("setspawn").setExecutor(spawnCmd);
@@ -51,8 +58,12 @@ public class MostlyVanillaSpawn extends JavaPlugin {
         getCommand("spawndrop2").setExecutor(new SpawnDropCommand(this, 2));
         getCommand("hologram").setExecutor(new HologramCommand(this));
         getCommand("leave").setExecutor(new LeaveCommand(this));
+        getCommand("vanillaspawn").setExecutor(new VanillaSpawnCommand(this, combatTracker));
+        getCommand("vanillaspawnset").setExecutor(new VanillaSpawnSetCommand(this));
 
+        getServer().getPluginManager().registerEvents(combatTracker, this);
         getServer().getPluginManager().registerEvents(new SpawnListener(this), this);
+        getServer().getPluginManager().registerEvents(new VanillaSpawnListener(this), this);
 
         getLogger().info("Spawn world ready: " + spawnWorld.getName()
             + (spawnManager.isSpawnSet() ? " (spawn point set)" : " (no spawn point — use /setspawn)"));
@@ -78,7 +89,8 @@ public class MostlyVanillaSpawn extends JavaPlugin {
         return world;
     }
 
-    public SpawnManager    getSpawnManager()    { return spawnManager; }
-    public HologramManager getHologramManager() { return hologramManager; }
-    public NpcManager      getNpcManager()      { return npcManager; }
+    public SpawnManager        getSpawnManager()        { return spawnManager; }
+    public HologramManager     getHologramManager()     { return hologramManager; }
+    public NpcManager          getNpcManager()          { return npcManager; }
+    public VanillaSpawnManager getVanillaSpawnManager() { return vanillaSpawnManager; }
 }

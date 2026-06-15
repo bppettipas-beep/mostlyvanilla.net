@@ -20,16 +20,12 @@ public enum Setting {
         "Show Public Chat", Material.PAPER, 16, true,
         "Shows messages from other players in public chat."
     ),
-    MOB_TARGETING(
-        "Mob Targeting", Material.ZOMBIE_HEAD, 19, true,
-        "Controls whether hostile mobs can target and attack you."
-    ),
     JOIN_MESSAGES(
-        "Join/Leave Messages", Material.OAK_DOOR, 21, true,
+        "Join/Leave Messages", Material.OAK_DOOR, 19, true,
         "Shows when players join or leave the server."
     ),
     DEATH_MESSAGES(
-        "Death Messages", Material.SKELETON_SKULL, 23, true,
+        "Death Messages", Material.SKELETON_SKULL, 21, true,
         "Shows messages when players die."
     );
 

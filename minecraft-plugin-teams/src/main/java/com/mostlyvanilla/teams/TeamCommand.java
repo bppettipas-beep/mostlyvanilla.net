@@ -3,20 +3,33 @@ package com.mostlyvanilla.teams;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public class TeamCommand implements CommandExecutor, TabCompleter {
 
+    private final MostlyVanillaTeams plugin;
     private final TeamManager manager;
+    private final CombatTracker combatTracker;
+    private final Map<UUID, BukkitTask> pendingHome = new HashMap<>();
 
-    public TeamCommand(TeamManager manager) { this.manager = manager; }
+    public TeamCommand(MostlyVanillaTeams plugin, TeamManager manager, CombatTracker combatTracker) {
+        this.plugin = plugin;
+        this.manager = manager;
+        this.combatTracker = combatTracker;
+    }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -102,8 +115,34 @@ public class TeamCommand implements CommandExecutor, TabCompleter {
                 TeamData team = manager.getTeamByPlayer(player.getUniqueId());
                 if (team == null) { player.sendMessage(Component.text("You're not in a team.", NamedTextColor.RED)); return true; }
                 if (team.getHome() == null) { player.sendMessage(Component.text("No team home set.", NamedTextColor.RED)); return true; }
-                player.teleport(team.getHome());
-                player.sendMessage(Component.text("Teleported to team home.", NamedTextColor.GREEN));
+                if (combatTracker.isInCombat(player.getUniqueId())) {
+                    player.sendMessage(Component.text("You cannot teleport to team home while in combat!", NamedTextColor.RED));
+                    return true;
+                }
+                // Cancel any existing countdown for this player
+                BukkitTask existing = pendingHome.remove(player.getUniqueId());
+                if (existing != null) existing.cancel();
+
+                Location dest = team.getHome();
+                player.sendMessage(Component.text("Teleporting to team home in 5 seconds...", NamedTextColor.YELLOW));
+                int[] secs = {5};
+                BukkitTask task = new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        if (!player.isOnline()) { pendingHome.remove(player.getUniqueId()); cancel(); return; }
+                        secs[0]--;
+                        if (secs[0] > 0) {
+                            player.sendMessage(Component.text(secs[0] + "...", NamedTextColor.YELLOW));
+                        } else {
+                            pendingHome.remove(player.getUniqueId());
+                            cancel();
+                            player.teleportAsync(dest).thenAccept(success -> {
+                                if (success) player.sendMessage(Component.text("Teleported to team home.", NamedTextColor.GREEN));
+                            });
+                        }
+                    }
+                }.runTaskTimer(plugin, 20L, 20L);
+                pendingHome.put(player.getUniqueId(), task);
             }
             case "sethome" -> {
                 TeamData team = requireLeader(player); if (team == null) return true;

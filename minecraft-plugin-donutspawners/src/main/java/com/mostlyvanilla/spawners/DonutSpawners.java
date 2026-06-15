@@ -26,9 +26,12 @@ public class DonutSpawners extends JavaPlugin {
         KEY_STACK = new NamespacedKey(this, "stack");
 
         spawnerConfig  = new SpawnerConfig(this);
+        spawnerConfig.loadRates();
         economyBridge  = new EconomyBridge(this);
         spawnerManager = new SpawnerManager(this, spawnerConfig);
-        spawnerGui     = new SpawnerGui(spawnerManager, spawnerConfig, economyBridge);
+        HistoryLogger historyLogger = new HistoryLogger(getLogger());
+        historyLogger.init(getDataFolder());
+        spawnerGui     = new SpawnerGui(spawnerManager, spawnerConfig, economyBridge, historyLogger);
 
         spawnerManager.load();
 

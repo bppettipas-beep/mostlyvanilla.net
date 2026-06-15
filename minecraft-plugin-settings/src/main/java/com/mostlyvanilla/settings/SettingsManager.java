@@ -80,4 +80,9 @@ public class SettingsManager {
         data.computeIfAbsent(uuid, k -> new EnumMap<>(Setting.class)).put(setting, value);
         save();
     }
+
+    /** Returns true if this player has never had any settings saved (i.e. first join). */
+    public boolean isNewPlayer(UUID uuid) {
+        return !data.containsKey(uuid);
+    }
 }

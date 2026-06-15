@@ -72,6 +72,16 @@ public class HomeManager {
         catch (IOException e) { plugin.getLogger().warning("Could not save homes.yml: " + e.getMessage()); }
     }
 
+    public void wipePlayer(UUID uuid) {
+        homes.remove(uuid);
+        save();
+    }
+
+    public void wipeAll() {
+        homes.clear();
+        save();
+    }
+
     public List<Home> getHomes(UUID uuid) {
         return new ArrayList<>(homes.getOrDefault(uuid, Collections.emptyMap()).values());
     }

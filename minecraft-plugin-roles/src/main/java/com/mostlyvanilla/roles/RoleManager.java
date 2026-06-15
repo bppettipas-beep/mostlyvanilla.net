@@ -8,6 +8,7 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.permissions.PermissionAttachment;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 
@@ -18,7 +19,6 @@ import java.util.*;
 public class RoleManager {
 
     private final MostlyVanillaRoles plugin;
-    private ApiClient apiClient;
 
     private final Map<String, String>  roles       = new LinkedHashMap<>();
     private final Map<String, Integer> roleWeights = new HashMap<>();
@@ -35,17 +35,21 @@ public class RoleManager {
     private String  stashRole         = null;
     private String  spawnoreRole      = null;
     private String  susRole           = null;
+    private String  historyRole       = null;
     private boolean nameColorMatch    = false;
     private String  dutyRole          = null;
 
-    private final Set<UUID>                onDutyPlayers = new HashSet<>();
-    private final Map<String, Set<String>> blockedCmds  = new HashMap<>();
-    private final Map<String, Set<String>> allowedCmds  = new HashMap<>();
-    private final Set<String>             blockAllRoles = new HashSet<>();
+    private final Set<UUID>                onDutyPlayers   = new HashSet<>();
+    private final Map<String, Set<String>> blockedCmds    = new HashMap<>();
+    private final Map<String, Set<String>> allowedCmds    = new HashMap<>();
+    private final Set<String>             blockAllRoles   = new HashSet<>();
+    private final Map<String, Set<String>> rolePermissions = new HashMap<>();
+    private final Map<UUID, PermissionAttachment> attachments = new HashMap<>();
 
     private File rolesFile;
     private File playersFile;
     private File cmdBlocksFile;
+    private File permissionsFile;
     private Scoreboard scoreboard;
 
     private static final String TEAM_PREFIX = "mv_";
@@ -55,13 +59,15 @@ public class RoleManager {
     }
 
     public void load() {
-        rolesFile     = new File(plugin.getDataFolder(), "roles.yml");
-        playersFile   = new File(plugin.getDataFolder(), "players.yml");
-        cmdBlocksFile = new File(plugin.getDataFolder(), "command-blocks.yml");
+        rolesFile       = new File(plugin.getDataFolder(), "roles.yml");
+        playersFile     = new File(plugin.getDataFolder(), "players.yml");
+        cmdBlocksFile   = new File(plugin.getDataFolder(), "command-blocks.yml");
+        permissionsFile = new File(plugin.getDataFolder(), "permissions.yml");
 
         createIfAbsent(rolesFile);
         createIfAbsent(playersFile);
         createIfAbsent(cmdBlocksFile);
+        createIfAbsent(permissionsFile);
 
         // Load roles
         YamlConfiguration rc = YamlConfiguration.loadConfiguration(rolesFile);
@@ -77,6 +83,7 @@ public class RoleManager {
         stashRole        = rc.getString("stash-role",        null);
         spawnoreRole     = rc.getString("spawnore-role",     null);
         susRole          = rc.getString("sus-role",          null);
+        historyRole      = rc.getString("history-role",      null);
         nameColorMatch   = rc.getBoolean("name-color-match", false);
         dutyRole         = rc.getString("duty-role",         null);
         if (rc.isConfigurationSection("roles")) {
@@ -110,12 +117,24 @@ public class RoleManager {
             }
         }
 
+        // Load role permissions
+        YamlConfiguration permC = YamlConfiguration.loadConfiguration(permissionsFile);
+        if (permC.isConfigurationSection("roles")) {
+            for (String roleName : permC.getConfigurationSection("roles").getKeys(false)) {
+                List<String> perms = permC.getStringList("roles." + roleName);
+                if (!perms.isEmpty()) rolePermissions.put(roleName, new HashSet<>(perms));
+            }
+        }
+
         // Set up scoreboard teams
         scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
         for (Map.Entry<String, String> e : roles.entrySet()) setupTeam(e.getKey(), e.getValue());
 
         // Sync online players (e.g. after /reload)
-        for (Player p : Bukkit.getOnlinePlayers()) syncPlayerTeam(p);
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            syncPlayerTeam(p);
+            applyPermissions(p);
+        }
 
         plugin.getLogger().info("Loaded " + roles.size() + " role(s), " +
             playerRoles.size() + " assignment(s).");
@@ -142,6 +161,7 @@ public class RoleManager {
         if (stashRole        != null) c.set("stash-role",        stashRole);
         if (spawnoreRole     != null) c.set("spawnore-role",     spawnoreRole);
         if (susRole          != null) c.set("sus-role",          susRole);
+        if (historyRole      != null) c.set("history-role",      historyRole);
         c.set("name-color-match", nameColorMatch);
         if (dutyRole         != null) c.set("duty-role",         dutyRole);
         for (Map.Entry<String, String> e : roles.entrySet()) {
@@ -168,6 +188,14 @@ public class RoleManager {
             c.set("roles." + role + ".allowed", new ArrayList<>(allowedCmds.getOrDefault(role, Set.of())));
         }
         save(c, cmdBlocksFile);
+    }
+
+    private void savePermissions() {
+        YamlConfiguration c = new YamlConfiguration();
+        for (Map.Entry<String, Set<String>> entry : rolePermissions.entrySet()) {
+            c.set("roles." + entry.getKey(), new ArrayList<>(entry.getValue()));
+        }
+        save(c, permissionsFile);
     }
 
     private void save(YamlConfiguration c, File f) {
@@ -218,6 +246,8 @@ public class RoleManager {
             if (team != null) team.addEntry(playerName);
         }
 
+        applyPermissions(player);
+
         TabManager tabMgr = plugin.getTabManager();
         if (tabMgr != null) tabMgr.updateTabName(player);
     }
@@ -257,6 +287,7 @@ public class RoleManager {
         if (name.equals(stashRole))        stashRole        = null;
         if (name.equals(spawnoreRole))     spawnoreRole     = null;
         if (name.equals(susRole))          susRole          = null;
+        if (name.equals(historyRole))      historyRole      = null;
         blockedCmds.remove(name);
         allowedCmds.remove(name);
         blockAllRoles.remove(name);
@@ -279,8 +310,6 @@ public class RoleManager {
         return true;
     }
 
-    public void setApiClient(ApiClient client) { this.apiClient = client; }
-
     public boolean assignRole(UUID uuid, String roleName) {
         if (!roles.containsKey(roleName)) return false;
         String oldRole = playerRoles.get(uuid);
@@ -288,60 +317,19 @@ public class RoleManager {
         Player player = Bukkit.getPlayer(uuid);
         if (player != null) syncPlayerTeam(player);
         savePlayers();
-        if (apiClient != null) {
-            final String mcUuid = uuid.toString();
-            final String old    = oldRole;
-            final String newR   = roleName;
-            plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
-                if (old != null && !old.equals(newR)) apiClient.notifyRoleChange(mcUuid, old, false);
-                apiClient.notifyRoleChange(mcUuid, newR, true);
-            });
-        }
         return true;
-    }
-
-    /** Assign a role coming from Discord sync — removes old Discord role if changed, never pings back. */
-    public void assignRoleFromDiscord(UUID uuid, String roleName) {
-        if (!roles.containsKey(roleName)) {
-            plugin.getLogger().warning("[Discord Sync] Cannot assign role '" + roleName + "' — it does not exist in-game. Use /role create to create it.");
-            return;
-        }
-        String oldRole = playerRoles.get(uuid);
-        if (roleName.equals(oldRole)) return;
-        playerRoles.put(uuid, roleName);
-        Player player = Bukkit.getPlayer(uuid);
-        if (player != null) syncPlayerTeam(player);
-        savePlayers();
-        if (apiClient != null && oldRole != null) {
-            final String mcUuid = uuid.toString();
-            final String old    = oldRole;
-            plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () ->
-                apiClient.notifyRoleChange(mcUuid, old, false));
-        }
     }
 
     public boolean removePlayerRole(UUID uuid) {
         String roleName = playerRoles.remove(uuid);
         if (roleName == null) return false;
         Player player = Bukkit.getPlayer(uuid);
-        if (player != null) syncPlayerTeam(player);
-        savePlayers();
-        if (apiClient != null) {
-            final String mcUuid = uuid.toString();
-            final String role   = roleName;
-            plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () ->
-                apiClient.notifyRoleChange(mcUuid, role, false));
+        if (player != null) {
+            syncPlayerTeam(player);
+            removePermissions(player);
         }
-        return true;
-    }
-
-    /** Remove a role only if it matches the player's current role (used by Discord→MC sync). */
-    public void removePlayerRoleIfMatches(UUID uuid, String roleName) {
-        if (!roleName.equals(playerRoles.get(uuid))) return;
-        playerRoles.remove(uuid);
-        Player player = Bukkit.getPlayer(uuid);
-        if (player != null) syncPlayerTeam(player);
         savePlayers();
+        return true;
     }
 
     // ── Command blocking ─────────────────────────────────────────────────────
@@ -470,6 +458,77 @@ public class RoleManager {
         if ((cmdMatches("spawnstash", cmd) || cmdMatches("delstash", cmd)) && canUseStash(uuid)) return true;
         if ((cmdMatches("spawnore", cmd) || cmdMatches("delore", cmd)) && canUseSpawnore(uuid)) return true;
         return false;
+    }
+
+    // ── Role permissions ─────────────────────────────────────────────────────
+
+    /**
+     * Grants a permission node to the given role and all higher-priority roles
+     * (roles with weight <= the given role's weight). Returns the affected role names,
+     * or null if the role doesn't exist.
+     */
+    public List<String> addRolePermission(String permission, String roleName) {
+        if (!roles.containsKey(roleName)) return null;
+        int threshold = roleWeights.getOrDefault(roleName, 50);
+        List<String> affected = new ArrayList<>();
+        for (Map.Entry<String, Integer> e : roleWeights.entrySet()) {
+            if (e.getValue() <= threshold && roles.containsKey(e.getKey())) {
+                rolePermissions.computeIfAbsent(e.getKey(), k -> new HashSet<>()).add(permission);
+                affected.add(e.getKey());
+            }
+        }
+        savePermissions();
+        for (Player p : Bukkit.getOnlinePlayers()) applyPermissions(p);
+        return affected;
+    }
+
+    /**
+     * Removes a permission node from the given role and all higher-priority roles.
+     * Returns the affected role names, or null if the role doesn't exist.
+     */
+    public List<String> removeRolePermission(String permission, String roleName) {
+        if (!roles.containsKey(roleName)) return null;
+        int threshold = roleWeights.getOrDefault(roleName, 50);
+        List<String> affected = new ArrayList<>();
+        for (Map.Entry<String, Integer> e : roleWeights.entrySet()) {
+            if (e.getValue() <= threshold && roles.containsKey(e.getKey())) {
+                Set<String> perms = rolePermissions.get(e.getKey());
+                if (perms != null && perms.remove(permission)) {
+                    if (perms.isEmpty()) rolePermissions.remove(e.getKey());
+                    affected.add(e.getKey());
+                }
+            }
+        }
+        savePermissions();
+        for (Player p : Bukkit.getOnlinePlayers()) applyPermissions(p);
+        return affected;
+    }
+
+    public Map<String, Set<String>> getRolePermissions() {
+        return Collections.unmodifiableMap(rolePermissions);
+    }
+
+    public void applyPermissions(Player player) {
+        PermissionAttachment old = attachments.remove(player.getUniqueId());
+        if (old != null) try { player.removeAttachment(old); } catch (IllegalArgumentException ignored) {}
+
+        String roleName = playerRoles.get(player.getUniqueId());
+        Set<String> perms = roleName != null ? rolePermissions.get(roleName) : null;
+        if (perms == null || perms.isEmpty()) {
+            player.recalculatePermissions();
+            return;
+        }
+
+        PermissionAttachment att = player.addAttachment(plugin);
+        for (String perm : perms) att.setPermission(perm, true);
+        attachments.put(player.getUniqueId(), att);
+        player.recalculatePermissions();
+    }
+
+    public void removePermissions(Player player) {
+        PermissionAttachment old = attachments.remove(player.getUniqueId());
+        if (old != null) try { player.removeAttachment(old); } catch (IllegalArgumentException ignored) {}
+        player.recalculatePermissions();
     }
 
     // ── Getters ──────────────────────────────────────────────────────────────
@@ -669,6 +728,22 @@ public class RoleManager {
     public boolean canNotifySus(UUID uuid) {
         if (susRole == null) return false;
         Integer threshold = roleWeights.get(susRole);
+        if (threshold == null) return false;
+        String playerRole = playerRoles.get(uuid);
+        if (playerRole == null) return false;
+        Integer playerWeight = roleWeights.get(playerRole);
+        return playerWeight != null && playerWeight <= threshold;
+    }
+
+    public boolean setHistoryRole(String name) {
+        if (!roles.containsKey(name)) return false;
+        historyRole = name; saveRoles(); return true;
+    }
+    public void clearHistoryRole() { historyRole = null; saveRoles(); }
+    public String getHistoryRole() { return historyRole; }
+    public boolean canUseHistory(UUID uuid) {
+        if (historyRole == null) return false;
+        Integer threshold = roleWeights.get(historyRole);
         if (threshold == null) return false;
         String playerRole = playerRoles.get(uuid);
         if (playerRole == null) return false;

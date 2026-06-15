@@ -198,8 +198,13 @@ public class SpawnerListener implements Listener {
         SpawnerType type = SpawnerItems.getType(item);
 
         if (type != null) {
-            // Plugin spawner item — register normally
-            manager.placeSpawner(e.getBlockPlaced().getLocation(), type, 1);
+            // Register in-memory immediately so isPluginSpawner() returns true right away,
+            // but delay the PDC/entity-type write by one tick — the tile entity may not be
+            // fully initialized at BlockPlaceEvent fire time.
+            final var loc = e.getBlockPlaced().getLocation();
+            final SpawnerType finalType = type;
+            manager.placeSpawner(loc, finalType, 1);
+            plugin.getServer().getScheduler().runTask(plugin, () -> manager.reapplyPdc(loc));
         } else {
             // Vanilla spawner block placed (creative, etc.) — auto-convert on next tick
             // so the block state is fully set before we read it

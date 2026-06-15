@@ -20,3 +20,9 @@ commands:
     description: Set the home limit for a role
     usage: /homerole <role> <amount>
     permission: mostlyvanilla.home.admin
+  vanillaspawn:
+    description: Teleport to the vanilla spawn point
+    usage: /vanillaspawn
+  vanillaspawnset:
+    description: Set the vanilla spawn point at your current location (ops only)
+    usage: /vanillaspawnset

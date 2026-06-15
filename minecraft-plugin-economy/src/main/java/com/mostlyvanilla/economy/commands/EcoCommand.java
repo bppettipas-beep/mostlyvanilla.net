@@ -12,6 +12,8 @@ import java.util.Collection;
 public class EcoCommand implements CommandExecutor, TabCompleter {
 
     private final EconomyManager economy;
+    // sender name → expiry timestamp (ms) for pending restoreoldbackup confirmations
+    private final Map<String, Long> pendingRestore = new HashMap<>();
 
     public EcoCommand(EconomyManager economy) {
         this.economy = economy;
@@ -40,7 +42,8 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
             case "reset":    return handleReset(sender, args);
             case "list":     return handleList(sender);
             case "top":      return handleTop(sender, args);
-            case "setmain":  return handleSetMain(sender, args);
+            case "setmain":          return handleSetMain(sender, args);
+            case "restoreoldbackup": return handleRestoreOldBackup(sender);
             default:
                 sendHelp(sender);
                 return true;
@@ -258,6 +261,47 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    // /eco restoreoldbackup — restores hardcoded backup balances for money and bits
+    private boolean handleRestoreOldBackup(CommandSender sender) {
+        String senderKey = sender.getName();
+        Long expiry = pendingRestore.get(senderKey);
+
+        if (expiry == null || System.currentTimeMillis() > expiry) {
+            sender.sendMessage("§6§l[!] Restore Old Backup §6§l[!]");
+            sender.sendMessage("§7This will overwrite current balances with the hardcoded backup:");
+            sender.sendMessage("  §amoney §7— §e" + BackupData.MONEY.size() + " §7entries");
+            sender.sendMessage("  §abits  §7— §e" + BackupData.BITS.size() + " §7entries");
+            sender.sendMessage("§cRun §e/eco restoreoldbackup §cagain within 30 seconds to confirm.");
+            pendingRestore.put(senderKey, System.currentTimeMillis() + 30_000L);
+            return true;
+        }
+
+        pendingRestore.remove(senderKey);
+        sender.sendMessage("§6Restoring from backup...");
+        int total = 0;
+        int currencies = 0;
+
+        int money = economy.restoreFromBackupData("money", BackupData.MONEY);
+        if (money >= 0) {
+            sender.sendMessage("§aRestored §e" + money + " §aentries for §eMoney§a.");
+            total += money; currencies++;
+        } else {
+            sender.sendMessage("§7Skipped Money — currency does not exist.");
+        }
+
+        int bits = economy.restoreFromBackupData("bits", BackupData.BITS);
+        if (bits >= 0) {
+            sender.sendMessage("§aRestored §e" + bits + " §aentries for §eBits§a.");
+            total += bits; currencies++;
+        } else {
+            sender.sendMessage("§7Skipped Bits — currency does not exist.");
+        }
+
+        sender.sendMessage("§aDone. Restored §e" + total + " §abalances across §e"
+                + currencies + " §acurrenc" + (currencies == 1 ? "y" : "ies") + ".");
+        return true;
+    }
+
     private void sendHelp(CommandSender sender) {
         sender.sendMessage("§6§lEconomy Admin Commands:");
         sender.sendMessage("§e/eco create <currency>                 §7Create a new currency");
@@ -270,6 +314,7 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§e/eco list                              §7List all currencies");
         sender.sendMessage("§e/eco top <currency>                    §7Top 10 richest players");
         sender.sendMessage("§e/eco setmain <currency>                §7Set the default currency");
+        sender.sendMessage("§e/eco restoreoldbackup                  §7Restore all balances from old-backup/data/");
     }
 
     @Override
@@ -278,7 +323,8 @@ public class EcoCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 1) {
             return filterPrefix(Arrays.asList(
-                    "create", "delete", "give", "take", "set", "balance", "reset", "list", "top", "setmain"
+                    "create", "delete", "give", "take", "set", "balance", "reset", "list", "top", "setmain",
+                    "restoreoldbackup"
             ), args[0]);
         }
 

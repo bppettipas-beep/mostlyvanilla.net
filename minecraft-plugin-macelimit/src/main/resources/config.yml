@@ -1,3 +1,9 @@
 # Maximum number of maces that can be crafted server-wide.
 # 0 = no limit.
 limit: 10
+
+# Broadcast a message to all players when a mace is discovered in a container.
+# Placeholders: {player}  {found}  {limit}
+find-announcement:
+  enabled: true
+  message: "&6[MostlyVanilla] &e{player} &6has discovered a mace in the world! &7({found}/{limit} maces found)"

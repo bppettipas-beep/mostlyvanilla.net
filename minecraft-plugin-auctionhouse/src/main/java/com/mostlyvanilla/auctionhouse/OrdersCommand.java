@@ -30,6 +30,15 @@ public class OrdersCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (args[0].equalsIgnoreCase("admin")) {
+            if (!player.isOp()) {
+                player.sendMessage(Component.text("You don't have permission to use this command.", NamedTextColor.RED));
+                return true;
+            }
+            orderManager.openGui(player, OrderManager.GuiMode.ADMIN, 0);
+            return true;
+        }
+
         if (args[0].equalsIgnoreCase("create")) {
             if (args.length < 3) {
                 player.sendMessage(Component.text("Usage: /orders create <amount> <price-each>", NamedTextColor.RED));
@@ -71,7 +80,7 @@ public class OrdersCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        player.sendMessage(Component.text("Usage: /orders [create <amount> <price>]", NamedTextColor.RED));
+        player.sendMessage(Component.text("Usage: /orders [create <amount> <price>] [admin]", NamedTextColor.RED));
         return true;
     }
 
@@ -79,7 +88,7 @@ public class OrdersCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 1) {
             String partial = args[0].toLowerCase();
-            return List.of("create", "cancel").stream()
+            return List.of("create", "cancel", "admin").stream()
                 .filter(s -> s.startsWith(partial))
                 .toList();
         }

@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 public class SpawnerCommand implements CommandExecutor, TabCompleter {
 
     private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.legacyAmpersand();
-    private static final List<String> SUBS = List.of("give", "list", "remove", "removeall", "convertall", "reload");
+    private static final List<String> SUBS = List.of("give", "list", "remove", "removeall", "convertall", "reload", "rate");
     private static final List<String> TYPE_NAMES = Arrays.stream(SpawnerType.values())
         .map(t -> t.name().toLowerCase())
         .toList();
@@ -31,6 +31,9 @@ public class SpawnerCommand implements CommandExecutor, TabCompleter {
     // Tracks who is mid-confirmation for /ds removeall and /ds convertall
     private final Set<UUID> pendingRemoveAll  = new HashSet<>();
     private final Set<UUID> pendingConvertAll = new HashSet<>();
+
+    // Tracks pending rate changes: UUID -> [typeArg (String), multiplier (Double)]
+    private final Map<UUID, Object[]> pendingRate = new HashMap<>();
 
     public SpawnerCommand(DonutSpawners plugin, SpawnerManager manager, SpawnerConfig cfg) {
         this.plugin  = plugin;
@@ -53,6 +56,7 @@ public class SpawnerCommand implements CommandExecutor, TabCompleter {
             case "removeall"  -> cmdRemoveAll(sender);
             case "convertall" -> cmdConvertAll(sender);
             case "reload"     -> cmdReload(sender);
+            case "rate"       -> cmdRate(sender, args);
             default          -> { sendHelp(sender); yield true; }
         };
     }
@@ -231,6 +235,71 @@ public class SpawnerCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    // ── /ds rate <type|all> <multiplier> ─────────────────────────────────────
+
+    private boolean cmdRate(CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            sender.sendMessage(msg("&cUsage: /ds rate <type|all> <multiplier>"));
+            sender.sendMessage(msg("&7Types: all, " + String.join(", ", TYPE_NAMES)));
+            return true;
+        }
+
+        String typeArg = args[1].toLowerCase();
+        boolean all = typeArg.equals("all");
+        SpawnerType type = all ? null : SpawnerType.fromString(typeArg);
+
+        if (!all && type == null) {
+            sender.sendMessage(msg("&cUnknown spawner type '" + typeArg + "'. Use 'all' or one of: "
+                + String.join(", ", TYPE_NAMES)));
+            return true;
+        }
+
+        double multiplier;
+        try {
+            multiplier = Double.parseDouble(args[2]);
+            if (multiplier <= 0) throw new NumberFormatException();
+        } catch (NumberFormatException e) {
+            sender.sendMessage(msg("&cMultiplier must be a positive number (e.g. 0.5, 1.5, 2.0)."));
+            return true;
+        }
+
+        UUID id = sender instanceof Player p ? p.getUniqueId() : null;
+
+        // Step 1 — preview (no pending entry yet)
+        if (id == null || !pendingRate.containsKey(id)) {
+            sender.sendMessage(msg("&e[Spawners] &lRate change preview:"));
+            if (all) {
+                for (SpawnerType t : SpawnerType.values()) {
+                    double cur = cfg.getRateMultiplier(t);
+                    sender.sendMessage(msg("  &7" + t.getDisplayName() + ": &f" + cur + "x &8→ &f" + multiplier + "x"));
+                }
+            } else {
+                double cur = cfg.getRateMultiplier(type);
+                sender.sendMessage(msg("  &7" + type.getDisplayName() + ": &f" + cur + "x &8→ &f" + multiplier + "x"));
+            }
+            sender.sendMessage(msg("&eRun the command again to confirm, or do anything else to cancel."));
+            if (id != null) pendingRate.put(id, new Object[]{typeArg, multiplier});
+            return true;
+        }
+
+        // Step 2 — check the pending entry matches what they typed
+        Object[] pending = pendingRate.remove(id);
+        if (!pending[0].equals(typeArg) || (double) pending[1] != multiplier) {
+            sender.sendMessage(msg("&c[Spawners] Confirmation mismatch — run the command fresh to start over."));
+            return true;
+        }
+
+        // Apply
+        if (all) {
+            cfg.setAllRates(multiplier);
+            sender.sendMessage(msg("&a[Spawners] All spawner type rates set to &e" + multiplier + "x&a."));
+        } else {
+            cfg.setRateMultiplier(type, multiplier);
+            sender.sendMessage(msg("&a[Spawners] " + type.getDisplayName() + " spawner rate set to &e" + multiplier + "x&a."));
+        }
+        return true;
+    }
+
     // ── Tab complete ──────────────────────────────────────────────────────────
 
     @Override
@@ -245,12 +314,18 @@ public class SpawnerCommand implements CommandExecutor, TabCompleter {
                     .map(Player::getName).collect(Collectors.toList()), args[1]);
                 case "remove" -> filter(manager.getAllSpawners().stream()
                     .map(SpawnerData::getKey).collect(Collectors.toList()), args[1]);
+                case "rate" -> {
+                    List<String> opts = new ArrayList<>(TYPE_NAMES);
+                    opts.add(0, "all");
+                    yield filter(opts, args[1]);
+                }
                 default -> List.of();
             };
         }
 
-        if (args.length == 3 && args[0].equalsIgnoreCase("give")) {
-            return filter(TYPE_NAMES, args[2]);
+        if (args.length == 3) {
+            if (args[0].equalsIgnoreCase("give")) return filter(TYPE_NAMES, args[2]);
+            if (args[0].equalsIgnoreCase("rate")) return filter(List.of("0.5", "1.0", "1.5", "2.0", "3.0"), args[2]);
         }
 
         return List.of();
@@ -264,7 +339,8 @@ public class SpawnerCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(msg("  &e/ds list                          &7— List all placed spawners"));
         sender.sendMessage(msg("  &e/ds remove [key]                  &7— Remove spawner you're looking at or by key"));
         sender.sendMessage(msg("  &e/ds removeall                     &7— Wipe every spawner (confirm twice)"));
-        sender.sendMessage(msg("  &e/ds convertall                   &7— Convert all vanilla spawners in loaded chunks (confirm twice)"));
+        sender.sendMessage(msg("  &e/ds convertall                    &7— Convert all vanilla spawners in loaded chunks"));
+        sender.sendMessage(msg("  &e/ds rate <type|all> <multiplier>  &7— Set production rate multiplier (2-step confirm)"));
         sender.sendMessage(msg("  &e/ds reload                        &7— Reload config.yml"));
         sender.sendMessage(msg("  &7Types: " + String.join(", ", TYPE_NAMES)));
     }

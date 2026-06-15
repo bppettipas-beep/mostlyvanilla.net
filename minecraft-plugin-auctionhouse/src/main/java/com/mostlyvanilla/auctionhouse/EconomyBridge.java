@@ -20,6 +20,11 @@ public class EconomyBridge {
         return plugin.getConfig().getString("currency-symbol", "$");
     }
 
+    public String getSymbol(String currency) {
+        if ("bits".equalsIgnoreCase(currency)) return "⬡";
+        return getSymbol();
+    }
+
     public double getBalance(UUID uuid) {
         org.bukkit.plugin.Plugin econ = plugin.getServer().getPluginManager().getPlugin("MostlyVanillaEconomy");
         if (econ == null) return 0.0;
@@ -35,26 +40,34 @@ public class EconomyBridge {
     }
 
     public void deposit(UUID uuid, double amount) {
+        deposit(uuid, amount, getCurrency());
+    }
+
+    public void deposit(UUID uuid, double amount, String currency) {
         org.bukkit.plugin.Plugin econ = plugin.getServer().getPluginManager().getPlugin("MostlyVanillaEconomy");
         if (econ == null) return;
         try {
             Object em = econ.getClass().getMethod("getEconomyManager").invoke(econ);
             em.getClass()
                 .getMethod("giveBalance", UUID.class, String.class, double.class)
-                .invoke(em, uuid, getCurrency(), amount);
+                .invoke(em, uuid, currency, amount);
         } catch (Exception e) {
             plugin.getLogger().warning("[AH] deposit failed: " + e.getMessage());
         }
     }
 
     public boolean withdraw(UUID uuid, double amount) {
+        return withdraw(uuid, amount, getCurrency());
+    }
+
+    public boolean withdraw(UUID uuid, double amount, String currency) {
         org.bukkit.plugin.Plugin econ = plugin.getServer().getPluginManager().getPlugin("MostlyVanillaEconomy");
         if (econ == null) return false;
         try {
             Object em = econ.getClass().getMethod("getEconomyManager").invoke(econ);
             return (boolean) em.getClass()
                 .getMethod("takeBalance", UUID.class, String.class, double.class)
-                .invoke(em, uuid, getCurrency(), amount);
+                .invoke(em, uuid, currency, amount);
         } catch (Exception e) {
             plugin.getLogger().warning("[AH] withdraw failed: " + e.getMessage());
             return false;

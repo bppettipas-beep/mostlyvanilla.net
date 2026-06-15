@@ -55,10 +55,31 @@ public class AhListener implements Listener {
             return;
         }
 
+        if (orderManager.isCurrencyPickerGui(top)) {
+            event.setCancelled(true);
+            if (event.getClickedInventory() == top)
+                orderManager.handleCurrencyClick(player, top, event.getSlot());
+            return;
+        }
+
         if (orderManager.isOrdersGui(top)) {
             event.setCancelled(true);
             if (event.getClickedInventory() == top)
                 orderManager.handleClick(player, top, event.getSlot());
+            return;
+        }
+
+        if (orderManager.isClaimGui(top)) {
+            // Allow free interaction in item slots (0-44); only lock the bottom row
+            if (event.isShiftClick() && event.getClickedInventory() == player.getInventory()) {
+                // Prevent shift-clicking items from player inventory into the claim GUI
+                event.setCancelled(true);
+                return;
+            }
+            if (event.getClickedInventory() == top && event.getSlot() >= 45) {
+                event.setCancelled(true);
+                orderManager.handleClaimClick(player, top, event.getSlot());
+            }
         }
     }
 
@@ -67,6 +88,7 @@ public class AhListener implements Listener {
         Inventory inv = event.getInventory();
         auctionManager.onClose(inv);
         orderManager.onClose(inv);
+        orderManager.onClaimClose(inv);
     }
 
     // ── Sign right-click — open AH or Orders GUI ───────────────────────────────

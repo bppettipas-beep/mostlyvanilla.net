@@ -47,6 +47,9 @@ public class WipeManager {
             "§c• Ender chest",
             "§c• Playtime & XP",
             "§c• Kills & deaths",
+            "§c• Auction house listings",
+            "§c• Buy orders & pending deliveries",
+            "§c• All homes",
             "",
             "§7Click §aYes, proceed §7to continue."));
         inv.setItem(SLOT_CONFIRM, plain(Material.LIME_STAINED_GLASS_PANE, "§a§l✔  Yes, proceed"));
@@ -73,6 +76,9 @@ public class WipeManager {
             "§c• Ender chest → §fempty",
             "§c• Playtime & XP → §f0",
             "§c• Kills & deaths → §f0",
+            "§c• Auction house listings → §fremoved",
+            "§c• Buy orders & pending deliveries → §fremoved",
+            "§c• All homes → §fremoved",
             "",
             "§7Click §aWipe Everything §7to confirm."));
         inv.setItem(SLOT_CONFIRM, plain(Material.LIME_STAINED_GLASS_PANE, "§a§l✔  Wipe Everything"));
@@ -125,6 +131,8 @@ public class WipeManager {
 
         notifyUnwipePlugin(uuid, target);
         wipeCurrencies(uuid);
+        wipeAuctionHouse(uuid);
+        wipeHomes(uuid);
 
         if (target != null) {
             // Online: wipe via API so changes are live immediately
@@ -170,6 +178,31 @@ public class WipeManager {
                 .invoke(um, uuid, online, world.getWorldFolder());
         } catch (Exception e) {
             plugin.getLogger().warning("[Wipe] Could not save unwipe snapshot: " + e.getMessage());
+        }
+    }
+
+    private void wipeHomes(UUID uuid) {
+        Plugin homePlugin = Bukkit.getPluginManager().getPlugin("MostlyVanillaHome");
+        if (homePlugin == null) return;
+        try {
+            Object hm = homePlugin.getClass().getMethod("getHomeManager").invoke(homePlugin);
+            if (hm != null) hm.getClass().getMethod("wipePlayer", UUID.class).invoke(hm, uuid);
+        } catch (Exception e) {
+            plugin.getLogger().warning("[Wipe] Failed to wipe homes: " + e.getMessage());
+        }
+    }
+
+    private void wipeAuctionHouse(UUID uuid) {
+        Plugin ahPlugin = Bukkit.getPluginManager().getPlugin("MostlyVanillaAuctionHouse");
+        if (ahPlugin == null) return;
+        try {
+            Object am = ahPlugin.getClass().getMethod("getAuctionManager").invoke(ahPlugin);
+            if (am != null) am.getClass().getMethod("wipePlayer", UUID.class).invoke(am, uuid);
+
+            Object om = ahPlugin.getClass().getMethod("getOrderManager").invoke(ahPlugin);
+            if (om != null) om.getClass().getMethod("wipePlayer", UUID.class).invoke(om, uuid);
+        } catch (Exception e) {
+            plugin.getLogger().warning("[Wipe] Failed to wipe auction house data: " + e.getMessage());
         }
     }
 

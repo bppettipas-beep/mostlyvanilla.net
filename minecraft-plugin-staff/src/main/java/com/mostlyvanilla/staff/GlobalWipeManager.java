@@ -57,6 +57,8 @@ public class GlobalWipeManager {
             "§c• All kills, deaths & playtime",
             "§c• All economy balances",
             "§c• All advancements",
+            "§c• All auction house listings & orders",
+            "§c• All homes",
             "",
             "§7World terrain is NOT affected.",
             "",
@@ -83,6 +85,8 @@ public class GlobalWipeManager {
             "§c• XP & stats → §f0",
             "§c• Economy → §f0",
             "§c• Advancements → §fdeleted",
+            "§c• AH listings & orders → §fdeleted",
+            "§c• Homes → §fdeleted",
             "",
             "§e[2/4] §7The buttons have moved."));
         inv.setItem(confirm, plain(Material.LIME_STAINED_GLASS_PANE, "§a§l✔  Confirm — Wipe All"));
@@ -190,6 +194,10 @@ public class GlobalWipeManager {
             wipeCurrencies(uuid);
         }
 
+        // Wipe auction house, orders, and homes (all-at-once via plugin managers)
+        wipeAuctionHouseAll();
+        wipeHomesAll();
+
         int count = allUuids.size();
         staff.sendMessage(
             Component.text("✔ ", NamedTextColor.GREEN)
@@ -226,6 +234,30 @@ public class GlobalWipeManager {
                     break;
                 }
             }
+        }
+    }
+
+    private void wipeAuctionHouseAll() {
+        Plugin ahPlugin = Bukkit.getPluginManager().getPlugin("MostlyVanillaAuctionHouse");
+        if (ahPlugin == null) return;
+        try {
+            Object am = ahPlugin.getClass().getMethod("getAuctionManager").invoke(ahPlugin);
+            if (am != null) am.getClass().getMethod("wipeAll").invoke(am);
+            Object om = ahPlugin.getClass().getMethod("getOrderManager").invoke(ahPlugin);
+            if (om != null) om.getClass().getMethod("wipeAll").invoke(om);
+        } catch (Exception e) {
+            plugin.getLogger().warning("[GlobalWipe] Failed to wipe auction house data: " + e.getMessage());
+        }
+    }
+
+    private void wipeHomesAll() {
+        Plugin homePlugin = Bukkit.getPluginManager().getPlugin("MostlyVanillaHome");
+        if (homePlugin == null) return;
+        try {
+            Object hm = homePlugin.getClass().getMethod("getHomeManager").invoke(homePlugin);
+            if (hm != null) hm.getClass().getMethod("wipeAll").invoke(hm);
+        } catch (Exception e) {
+            plugin.getLogger().warning("[GlobalWipe] Failed to wipe homes: " + e.getMessage());
         }
     }
 

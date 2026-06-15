@@ -14,7 +14,9 @@ public class MostlyVanillaShop extends JavaPlugin {
 
         EconomyBridge  bridge         = new EconomyBridge(this);
         ShopManager    shopManager    = new ShopManager(this, bridge);
-        SellManager    sellManager    = new SellManager(this, bridge);
+        HistoryLogger  historyLogger  = new HistoryLogger(getLogger());
+        historyLogger.init(getDataFolder());
+        SellManager    sellManager    = new SellManager(this, bridge, historyLogger);
         BitShopManager bitShopManager = new BitShopManager(this, keyStore);
 
         ShopCommand shopCmd = new ShopCommand(shopManager, sellManager);
