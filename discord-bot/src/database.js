@@ -379,6 +379,7 @@ db.exec(`
         user_id      TEXT NOT NULL,
         mc_name      TEXT NOT NULL,
         rank         TEXT NOT NULL,
+        role_color   INTEGER DEFAULT 0,
         granted_by   TEXT NOT NULL,
         granted_at   INTEGER DEFAULT (strftime('%s','now')),
         expires_at   INTEGER NOT NULL,
@@ -391,10 +392,12 @@ db.exec(`
     );
 `);
 
+try { db.exec('ALTER TABLE rank_grants ADD COLUMN role_color INTEGER DEFAULT 0'); } catch {}
+
 const rankGrantStmts = {
     create:          db.prepare(`
-        INSERT INTO rank_grants (guild_id, user_id, mc_name, rank, granted_by, expires_at, channel_id)
-        VALUES (@guild_id, @user_id, @mc_name, @rank, @granted_by, @expires_at, @channel_id)
+        INSERT INTO rank_grants (guild_id, user_id, mc_name, rank, role_color, granted_by, expires_at, channel_id)
+        VALUES (@guild_id, @user_id, @mc_name, @rank, @role_color, @granted_by, @expires_at, @channel_id)
     `),
     getById:         db.prepare('SELECT * FROM rank_grants WHERE id = ?'),
     getActive:       db.prepare('SELECT * FROM rank_grants WHERE guild_id = ? AND expired = 0'),

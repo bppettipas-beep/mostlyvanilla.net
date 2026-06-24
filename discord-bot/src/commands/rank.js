@@ -27,7 +27,7 @@ function mcHeadUrl(mcName) {
 function buildRankEmbed(grant, discordUser) {
     const now      = Math.floor(Date.now() / 1000);
     const expired  = grant.expired || now >= grant.expires_at;
-    const color    = expired ? 0x64748b : (grant.rank === 'Vanilla+' ? 0xd97706 : 0x16a34a);
+    const color    = expired ? 0x64748b : (grant.role_color || 0x16a34a);
     const title    = expired ? '❌ Rank Expired' : `🎖️ Active Rank — ${grant.rank}`;
     const expiryValue = expired
         ? `<t:${grant.expires_at}:F>`
@@ -172,14 +172,10 @@ const data = new SlashCommandBuilder()
         .setName('give')
         .setDescription('Grant a donor rank to a player.')
         .addUserOption(o => o.setName('user').setDescription('Discord user to grant the rank to.').setRequired(true))
-        .addStringOption(o => o
+        .addRoleOption(o => o
             .setName('rank')
-            .setDescription('Rank to grant.')
+            .setDescription('Discord role to grant.')
             .setRequired(true)
-            .addChoices(
-                { name: 'Vanilla ($12)',  value: 'Vanilla'  },
-                { name: 'Vanilla+ ($15)', value: 'Vanilla+' },
-            )
         )
         .addStringOption(o => o.setName('duration').setDescription('How long the rank lasts (e.g. 30d, 1mo, 2w).').setRequired(true))
         .addStringOption(o => o.setName('minecraft').setDescription("Player's Minecraft username.").setRequired(true))
@@ -215,7 +211,8 @@ async function handleGive(interaction) {
     await interaction.deferReply({ ephemeral: true });
 
     const targetUser  = interaction.options.getUser('user');
-    const rankName    = interaction.options.getString('rank');
+    const role        = interaction.options.getRole('rank');
+    const rankName    = role.name;
     const durationRaw = interaction.options.getString('duration');
     const mcName      = interaction.options.getString('minecraft');
     const channel     = interaction.options.getChannel('channel');
@@ -233,6 +230,7 @@ async function handleGive(interaction) {
         user_id:    targetUser.id,
         mc_name:    mcName,
         rank:       rankName,
+        role_color: role.color || 0x16a34a,
         granted_by: interaction.user.id,
         expires_at: expiresAt,
         channel_id: channel.id,
