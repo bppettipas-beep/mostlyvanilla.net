@@ -16,6 +16,7 @@ const { data: strikeData, execute: strikeExecute, startStrikeBoard, startStrikeW
 const { data: gamesData, execute: gamesExecute, handleInteraction: gamesHandleInteraction } = require('./commands/games');
 const { data: chatlogData, execute: chatlogExecute } = require('./commands/chatlog');
 const { data: verifiedRoleData, execute: verifiedRoleExecute } = require('./commands/verifiedrole');
+const { data: rankData, execute: rankExecute, handleButton: rankHandleButton, handleModal: rankHandleModal, startRankChecker } = require('./commands/rank');
 const {
     banData, banExecute,
     unbanData, unbanExecute,
@@ -85,6 +86,7 @@ client.once(Events.ClientReady, async (c) => {
                     gamesData.toJSON(),
                     chatlogData.toJSON(),
                     verifiedRoleData.toJSON(),
+                    rankData.toJSON(),
                 ],
             }
         );
@@ -98,6 +100,7 @@ client.once(Events.ClientReady, async (c) => {
     startMemberEmbed(c);
     startStrikeBoard(c);
     startStrikeWipe(c);
+    startRankChecker(c);
 });
 
 client.on(Events.GuildMemberAdd, async (member) => {
@@ -210,6 +213,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (interaction.commandName === 'games')         await gamesExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'chatlog')        await chatlogExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         if (interaction.commandName === 'verifiedrole')  await verifiedRoleExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
+        if (interaction.commandName === 'rank')           await rankExecute(interaction).catch(err => console.error('[Bot] Command error:', err.message));
         return;
     }
 
@@ -218,6 +222,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         else if (interaction.customId.startsWith('ticket_'))   await ticketHandleButton(interaction).catch(err => console.error('[Bot] Ticket button error:', err.message));
         else if (interaction.customId.startsWith('staffapp_')) await staffappHandleButton(interaction).catch(err => console.error('[Bot] StaffApp button error:', err.message));
         else if (interaction.customId.startsWith('game_'))     await gamesHandleInteraction(interaction).catch(err => console.error('[Bot] Games error:', err.message));
+        else if (interaction.customId.startsWith('rank_'))     await rankHandleButton(interaction).catch(err => console.error('[Bot] Rank button error:', err.message));
         return;
     }
 
@@ -236,9 +241,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isModalSubmit()) {
-        if (interaction.customId.startsWith('embed_'))         await embedHandleModalSubmit(interaction).catch(err => console.error('[Bot] Embed modal error:', err.message));
-        else if (interaction.customId.startsWith('ticket_'))   await ticketHandleModal(interaction).catch(err => console.error('[Bot] Ticket modal error:', err.message));
-        else if (interaction.customId.startsWith('staffapp_')) await staffappHandleModal(interaction).catch(err => console.error('[Bot] StaffApp modal error:', err.message));
+        if (interaction.customId.startsWith('embed_'))              await embedHandleModalSubmit(interaction).catch(err => console.error('[Bot] Embed modal error:', err.message));
+        else if (interaction.customId.startsWith('ticket_'))        await ticketHandleModal(interaction).catch(err => console.error('[Bot] Ticket modal error:', err.message));
+        else if (interaction.customId.startsWith('staffapp_'))      await staffappHandleModal(interaction).catch(err => console.error('[Bot] StaffApp modal error:', err.message));
+        else if (interaction.customId.startsWith('rank_extend_modal:')) await rankHandleModal(interaction).catch(err => console.error('[Bot] Rank modal error:', err.message));
     }
 });
 

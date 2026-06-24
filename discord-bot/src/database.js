@@ -371,6 +371,43 @@ const drainPendingRoles = db.transaction(() => {
     return rows;
 });
 
+// ── Rank grants ───────────────────────────────────────────────────────────────
+db.exec(`
+    CREATE TABLE IF NOT EXISTS rank_grants (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id     TEXT NOT NULL,
+        user_id      TEXT NOT NULL,
+        mc_name      TEXT NOT NULL,
+        rank         TEXT NOT NULL,
+        granted_by   TEXT NOT NULL,
+        granted_at   INTEGER DEFAULT (strftime('%s','now')),
+        expires_at   INTEGER NOT NULL,
+        channel_id   TEXT,
+        message_id   TEXT,
+        reminded_1d  INTEGER DEFAULT 0,
+        reminded_1h  INTEGER DEFAULT 0,
+        reminded_1m  INTEGER DEFAULT 0,
+        expired      INTEGER DEFAULT 0
+    );
+`);
+
+const rankGrantStmts = {
+    create:          db.prepare(`
+        INSERT INTO rank_grants (guild_id, user_id, mc_name, rank, granted_by, expires_at, channel_id)
+        VALUES (@guild_id, @user_id, @mc_name, @rank, @granted_by, @expires_at, @channel_id)
+    `),
+    getById:         db.prepare('SELECT * FROM rank_grants WHERE id = ?'),
+    getActive:       db.prepare('SELECT * FROM rank_grants WHERE guild_id = ? AND expired = 0'),
+    getActiveAll:    db.prepare('SELECT * FROM rank_grants WHERE expired = 0'),
+    getActiveByUser: db.prepare('SELECT * FROM rank_grants WHERE guild_id = ? AND user_id = ? AND expired = 0 LIMIT 1'),
+    setMessageId:    db.prepare('UPDATE rank_grants SET message_id = ? WHERE id = ?'),
+    setExpired:      db.prepare('UPDATE rank_grants SET expired = 1 WHERE id = ?'),
+    extend:          db.prepare('UPDATE rank_grants SET expires_at = ?, reminded_1d = 0, reminded_1h = 0, reminded_1m = 0 WHERE id = ?'),
+    remind1d:        db.prepare('UPDATE rank_grants SET reminded_1d = 1 WHERE id = ?'),
+    remind1h:        db.prepare('UPDATE rank_grants SET reminded_1h = 1 WHERE id = ?'),
+    remind1m:        db.prepare('UPDATE rank_grants SET reminded_1m = 1 WHERE id = ?'),
+};
+
 // ── Settings ──────────────────────────────────────────────────────────────────
 const stmts = {
     getSetting:    db.prepare('SELECT value FROM settings WHERE key = ?'),
@@ -445,5 +482,20 @@ module.exports = {
         insert:      (row) => chatLogStmts.insert.run(row),
         getRecent:   chatLogStmts.getRecent,
         getByPlayer: chatLogStmts.getByPlayer,
+    },
+    rankGrants: {
+        create:          (data)              => Number(rankGrantStmts.create.run(data).lastInsertRowid),
+        getById:         (id)                => rankGrantStmts.getById.get(id),
+        getActive:       (guildId)           => rankGrantStmts.getActive.all(guildId),
+        getActiveAll:    ()                  => rankGrantStmts.getActiveAll.all(),
+        getActiveByUser: (guildId, userId)   => rankGrantStmts.getActiveByUser.get(guildId, userId),
+        setMessageId:    (id, messageId)     => rankGrantStmts.setMessageId.run(messageId, id),
+        setExpired:      (id)               => rankGrantStmts.setExpired.run(id),
+        extend:          (id, newExpiry)    => rankGrantStmts.extend.run(newExpiry, id),
+        setReminder: (id, type) => {
+            if (type === '1d') rankGrantStmts.remind1d.run(id);
+            else if (type === '1h') rankGrantStmts.remind1h.run(id);
+            else if (type === '1m') rankGrantStmts.remind1m.run(id);
+        },
     },
 };
